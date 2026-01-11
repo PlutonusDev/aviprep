@@ -1,5 +1,5 @@
 import { Suspense } from "react"
-import { HistoryContent } from "./history-content"
+import HistoryContent from "./history-content"
 
 export default function HistoryPage() {
   return (

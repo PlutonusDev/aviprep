@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { examHistory, theorySubjects } from "@/lib/mock-data";
-import { Button } from "@/ui/moving-border";
+import { Button } from "@/components/ui/button";
 import { Search, CheckCircle2, XCircle, Clock, Eye, Link, RotateCcw } from "lucide-react";
 import { useState } from "react"
 import { FaChevronDown, FaChevronUp } from "react-icons/fa6";
@@ -81,7 +81,7 @@ export default () => {
                 <Card>
                     <CardContent className="p-4">
                         <p className="text-sm text-muted-foreground">Pass Rate</p>
-                        <p className="text-2xl font-bold text-[var(--success)]">{Math.round((passedExams / totalExams) * 100)}%</p>
+                        <p className="text-2xl font-bold text-green-500">{Math.round((passedExams / totalExams) * 100)}%</p>
                     </CardContent>
                 </Card>
                 <Card>
@@ -179,10 +179,10 @@ export default () => {
                                         <TableCell>
                                             <div className="flex items-center gap-3">
                                                 <div
-                                                    className={`h-8 w-8 rounded-full flex items-center justify-center ${exam.passed ? "bg-[var(--success)]/10" : "bg-destructive/10"}`}
+                                                    className={`h-8 w-8 rounded-full flex items-center justify-center ${exam.passed ? "bg-green-500/10" : "bg-destructive/10"}`}
                                                 >
                                                     {exam.passed ? (
-                                                        <CheckCircle2 className="h-4 w-4 text-[var(--success)]" />
+                                                        <CheckCircle2 className="h-4 w-4 text-green-500" />
                                                     ) : (
                                                         <XCircle className="h-4 w-4 text-destructive" />
                                                     )}
@@ -193,7 +193,7 @@ export default () => {
                                         <TableCell className="text-muted-foreground">{exam.date}</TableCell>
                                         <TableCell>
                                             <div>
-                                                <span className={`font-semibold ${exam.passed ? "text-[var(--success)]" : "text-destructive"}`}>
+                                                <span className={`font-semibold ${exam.passed ? "text-green-500" : "text-destructive"}`}>
                                                     {exam.score}%
                                                 </span>
                                                 <p className="text-xs text-muted-foreground">
@@ -204,7 +204,7 @@ export default () => {
                                         <TableCell>
                                             <Badge
                                                 variant={exam.passed ? "default" : "destructive"}
-                                                className={exam.passed ? "bg-[var(--success)] hover:bg-[var(--success)]/80" : ""}
+                                                className={exam.passed ? "bg-green-500 hover:bg-green-500/80" : ""}
                                             >
                                                 {exam.passed ? "Passed" : "Failed"}
                                             </Badge>
