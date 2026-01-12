@@ -5,23 +5,11 @@ import { Input } from "@/components/ui/input"
 import { BackgroundBeams } from "@/ui/background-beams"
 import { Spotlight } from "@/ui/spotlight-new"
 import { ArrowRight, CheckCircle2, Loader2 } from "lucide-react"
-import { Metadata } from "next";
 import Link from "next/link"
 import { useState } from "react"
 import { BiSolidZap } from "react-icons/bi";
-import { FaArrowRight, FaBookOpen, FaClock, FaFireFlameCurved, FaUsers } from "react-icons/fa6"
+import { FaBookOpen, FaClock, FaFireFlameCurved, FaUsers } from "react-icons/fa6"
 import { IoBarChart } from "react-icons/io5";
-
-export const metadata: Metadata = {
-  title: "AviPrep",
-  description:
-    "Australia's #1 CASA CPL exam preparation platform. 5,000+ practice questions across 7 theory subjects, AI-powered insights, and detailed analytics. Join 500+ pilots on the waitlist.",
-  openGraph: {
-    title: "AviPrep | Master Your Flight Theory with Confidence",
-    description:
-      "Join 500+ aspiring pilots. 5,000+ questions, AI insights, 95% pass rate. Be the first to know when we launch.",
-  },
-}
 
 export default () => {
     const [email, setEmail] = useState("");
