@@ -21,7 +21,7 @@ export default () => {
                     <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-balance leading-[1.1]">
                         Ace your{" "}
                         <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-                            CASA CPL
+                            flight theory
                         </span>{" "}
                         exams with confidence
                     </h1>

@@ -1,3 +1,5 @@
+"use client"
+
 import Header from "@/components/hub/header"
 import Sidebar from "@/components/hub/sidebar"
 import { BackgroundBeams } from "@/ui/background-beams"

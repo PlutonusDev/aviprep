@@ -2,9 +2,10 @@ import { usePathname } from "next/navigation";
 import { RiDashboardHorizontalFill, RiSettings3Fill } from "react-icons/ri";
 import { GiPlaneWing } from "react-icons/gi";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
-import { FaBrain, FaComputer, FaMedal } from "react-icons/fa6";
-import { IoBarChart, IoSettings } from "react-icons/io5";
+import { cn } from "lib/utils";
+import { FaBrain, FaComputer, FaDoorClosed, FaMedal } from "react-icons/fa6";
+import { IoBarChart, IoSettings, IoSparkles } from "react-icons/io5";
+import { useUser } from "@lib/user-context";
 
 const navigation = [
     {
@@ -31,6 +32,14 @@ const navigation = [
         name: "AI Insights",
         href: "/practice/insights",
         icon: FaBrain
+    }
+]
+
+const bottomNav = [
+    {
+        name: "Upgrade",
+        href: "/practice/pricing",
+        icon: IoSparkles
     },
     {
         name: "Settings",
@@ -39,15 +48,8 @@ const navigation = [
     }
 ]
 
-const bottomNav = [
-    {
-        name: "Settings",
-        href: "/practice/settings",
-        icon: RiSettings3Fill
-    }
-]
-
 export default () => {
+    const { logout } = useUser();
     const pathname = usePathname();
 
     return (
@@ -55,8 +57,8 @@ export default () => {
             <div className="flex h-16 items-center gap-2 border-b border-border px-6">
                 <GiPlaneWing className="text-4xl text-sidebar-foreground" />
                 <div className="flex flex-col">
-                    <span className="text-sm font-semibold text-sidebar-foreground">CPL</span>
-                    <span className="text-xs text-muted-foreground">Exam Hub</span>
+                    <span className="text-sm font-semibold text-sidebar-foreground">AviPrep</span>
+                    <span className="text-xs text-muted-foreground">Study Hub</span>
                 </div>
             </div>
 
@@ -75,6 +77,20 @@ export default () => {
                     )
                 })}
             </nav>
+
+            <div className="border-t border-border px-3 py-4">
+                {bottomNav.map(item => (
+                    <Link key={item.name} href={item.href} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground">
+                        <item.icon className="text-lg" />
+                        {item.name}
+                    </Link>
+                ))}
+
+                <button onClick={logout} className="cursor-pointer flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground">
+                    <FaDoorClosed className="text-lg" />
+                    Sign Out
+                </button>
+            </div>
         </aside>
     )
 }

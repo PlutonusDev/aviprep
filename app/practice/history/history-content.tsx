@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-import { examHistory, theorySubjects } from "@/lib/mock-data";
+import { examHistory, theorySubjects } from "lib/mock-data";
 import { Button } from "@/components/ui/button";
 import { Search, CheckCircle2, XCircle, Clock, Eye, Link, RotateCcw } from "lucide-react";
 import { useState } from "react"
@@ -221,7 +221,7 @@ export default () => {
                                                     <Eye className="h-4 w-4" />
                                                     <span className="hidden sm:inline">Review</span>
                                                 </Button>
-                                                <Link href={`/dashboard/exams/${exam.subjectId}`}>
+                                                <Link href={`/practice/exams/${exam.subjectId}`}>
                                                     <Button variant="ghost" size="sm" className="gap-1">
                                                         <RotateCcw className="h-4 w-4" />
                                                         <span className="hidden sm:inline">Retry</span>

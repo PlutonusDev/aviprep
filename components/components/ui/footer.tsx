@@ -9,12 +9,7 @@ export default () => {
                 <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                     <div className="flex items-center gap-2">
                         <Link href="/" className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                                <span className="font-bold text-primary-foreground text-sm">
-                                    JH
-                                </span>
-                            </div>
-                            <span className="font-semibold tracking-tight">CPL Prep</span>
+                            <span className="font-semibold tracking-tight">AviPrep Study Hub</span>
                             <span className="text-sm text-muted-foreground">&copy; {currentYear} Joshua Hughes</span>
                         </Link>
                     </div>

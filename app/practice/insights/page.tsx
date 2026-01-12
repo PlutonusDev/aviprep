@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { theorySubjects, userStats, weakPoints } from "@/lib/mock-data"
+import { theorySubjects, userStats, weakPoints } from "lib/mock-data"
 import { CardSpotlight } from "@/ui/card-spotlight";
 import Link from "next/link";
 import { FaArrowRight, FaArrowTrendDown, FaArrowTrendUp, FaBrain, FaTriangleExclamation, FaWandMagicSparkles } from "react-icons/fa6";

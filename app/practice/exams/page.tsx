@@ -1,14 +1,51 @@
+"use client";
+
 import SubjectCard from "@/components/hub/subject-card";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { theorySubjects } from "@/lib/mock-data"
+import { SubjectData } from "@lib/types";
+import { theorySubjects } from "lib/mock-data"
+import { Loader2 } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { FaArrowTrendUp, FaBookOpen, FaClock, FaShuffle } from "react-icons/fa6";
 
 export default () => {
-    const purchasedSubjects = theorySubjects.filter(s => s.isPurchased);
-    const lockedSubjects = theorySubjects.filter(s => !s.isPurchased);
+    const [subjects, setSubjects] = useState<SubjectData[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        async function fetchSubjects() {
+            try {
+                const response = await fetch("/api/user/subjects");
+                if (!response.ok) throw new Error("Failed to fetch subjects");
+                const data = await response.json();
+                setSubjects(data.subjects);
+                setLoading(false);
+            } catch (error) {
+                setError("Failed to fetch subjects");
+                setLoading(false);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        fetchSubjects();
+    }, []);
+
+    const purchasedSubjects = subjects.filter(s => s.isPurchased);
+    const lockedSubjects = subjects.filter(s => !s.isPurchased);
+
+    if (loading) return (
+        <div className="flex items-center justify-center min-h-[50vh]">
+            <div className="flex flex-col items-center gap-4">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="text-muted-foreground">Loading your exams...</p>
+            </div>
+        </div>
+    )
 
     return (
         <div className="p-4 lg:p-6 space-y-6">
@@ -35,7 +72,7 @@ export default () => {
                 </Card>
 
                 <Card className="hover:border-primary/50 transition-colors cursor-pointer">
-                    <Link href="/dashboard/exams/timed">
+                    <Link href="/practice/exams/timed">
                         <CardContent className="p-6">
                             <div className="flex items-center gap-4">
                                 <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
@@ -51,7 +88,7 @@ export default () => {
                 </Card>
 
                 <Card className="hover:border-primary/50 transition-colors cursor-pointer">
-                    <Link href="/dashboard/insights">
+                    <Link href="/practice/insights">
                         <CardContent className="p-6">
                             <div className="flex items-center gap-4">
                                 <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">

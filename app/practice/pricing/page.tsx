@@ -5,11 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { theorySubjects } from "@/lib/mock-data";
+import { theorySubjects } from "lib/mock-data";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { FaBoltLightning, FaBrain, FaCheck, FaCrown, FaPlane, FaPrint, FaStar } from "react-icons/fa6";
-import { ALL_PRODUCTS, getProductById, SUBJECTS } from "@/lib/products";
+import { ALL_PRODUCTS, CPL_BUNDLE, getProductById, SUBJECTS } from "lib/products";
 
 export default () => {
     const router = useRouter();
@@ -33,8 +33,8 @@ export default () => {
         return subjectTotal + (selectedSubjects.length > 0 ? addonsTotal : 0);
     }
 
-    const bundlePrice = 79;
-    const bundleSavings = Math.abs(ALL_PRODUCTS.reduce((sum, s) => sum + (s.priceInCents / 100), 0) - bundlePrice * 4 + 9 + (14 * theorySubjects.length));
+    const bundlePrice = CPL_BUNDLE.priceInCents / 100;
+    const bundleSavings = Math.abs(SUBJECTS.reduce((sum, s) => sum + (s.priceInCents / 100), 0) - bundlePrice + 9 + (14 * 7));
 
     const handleBundleCheckout = () => {
         router.push("/checkout?products=cpl-bundle")
@@ -72,10 +72,8 @@ export default () => {
                                 <span className="text-xs font-semibold text-primary-foreground">BEST VALUE</span>
                             </div>
                             <CardHeader className="pb-4">
-                                <div className="flex items-center gap-2">
-                                    <div className="flex h-10 w-10 items-center rounded-lg bg-primary">
-                                        <FaPlane className="text-primary-foreground" />
-                                    </div>
+                                <div className="flex items-center gap-4">
+                                    <FaCrown className="text-4xl text-primary" />
                                     <div>
                                         <CardTitle className="text-xl">CPL Bundle</CardTitle>
                                         <CardDescription>Complete exam preparation</CardDescription>
@@ -89,7 +87,7 @@ export default () => {
                                 </div>
                                 <Badge variant="secondary" className="bg-green-500/20 text-green-500">
                                     <FaStar className="mr-2" />
-                                    Save ${bundleSavings}+ compared to individually purchasing
+                                    Save ${bundleSavings} compared to individually purchasing
                                 </Badge>
 
                                 <div className="space-y-3">
@@ -108,7 +106,7 @@ export default () => {
                                 </div>
                             </CardContent>
                             <CardFooter>
-                                <Button className="cursor-pointer w-full gap-2" size="lg">
+                                <Button onClick={handleBundleCheckout} className="cursor-pointer w-full gap-2" size="lg">
                                     <FaBoltLightning />
                                     Subscribe to Bundle
                                 </Button>
@@ -386,7 +384,7 @@ export default () => {
                             Are the questions aligned with the PEXO exams?
                         </p>
                         <p className="mt-1 text-sm text-muted-foreground">
-                            All questions are written to match the style and difficulty of actual CASA CPL theory exams, covering the entirety of all syllabus areas.
+                            All questions are written to match the style and difficulty of actual CASA PEXO theory exams, covering the entirety of all syllabus areas.
                         </p>
                     </div>
                     <div>

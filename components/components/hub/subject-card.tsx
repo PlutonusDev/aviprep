@@ -1,4 +1,3 @@
-import { TheorySubject } from "@/lib/mock-data";
 import { Card, CardContent, CardFooter, CardHeader } from "../ui/card";
 import { FaArrowRight, FaLock } from "react-icons/fa6";
 import { Button } from "../ui/button";
@@ -6,11 +5,7 @@ import { Badge } from "../ui/badge";
 import { Progress } from "../ui/progress";
 import Link from "next/link";
 
-interface SubjectCardProps {
-    subject: TheorySubject
-}
-
-export default ({ subject }: SubjectCardProps) => {
+export default ({ subject }) => {
     return (
         <Card className={`relative overflow-hidden transition-all hover:border-primary/50 ${!subject.isPurchased ? "opacity-75" : ""}`}>
             {!subject.isPurchased && (
@@ -19,7 +14,9 @@ export default ({ subject }: SubjectCardProps) => {
                         <FaLock className="text-xl text-muted-foreground mx-auto mb-2" />
                         <h3 className="text-foreground">{subject.name}</h3>
                         <p className="text-sm font-medium text-muted-foreground mb-2">Not Purchased</p>
-                        <Button size="sm" className="mt-3 cursor-pointer text-foreground">Unlock Access</Button>
+                        <Link href="/practice/pricing">
+                            <Button size="sm" className="mt-3 cursor-pointer text-foreground">Unlock Access</Button>
+                        </Link>
                     </div>
                 </div>
             )}
@@ -27,7 +24,6 @@ export default ({ subject }: SubjectCardProps) => {
             <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                     <div className="flex items-center space-x-2">
-                        <subject.icon className="text-lg text-primary" />
                         <h3 className="text-lg font-semibold text-foreground">{subject.name}</h3>
                     </div>
                     <Badge variant="secondary" className="text-xs">{subject.code}</Badge>
@@ -58,7 +54,7 @@ export default ({ subject }: SubjectCardProps) => {
             </CardContent>
 
             <CardFooter className="pt-0">
-                <Link href={`/dashboard/exams/${subject.id}`} className="w-full">
+                <Link href={`/practice/exams/${subject.id}`} className="w-full">
                     <Button variant="secondary" className="w-full group cursor-pointer">
                         Start Practice
                         <FaArrowRight className="ml-2 text-lg transition-transform group-hover:translate-x-1" />

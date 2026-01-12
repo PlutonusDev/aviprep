@@ -29,7 +29,7 @@
         "./components/*"
       ],
       "@lib/*": [
-        "./components/lib/*"
+        "lib/*"
       ],
       "@actions/*": [
         "./app/actions/*"

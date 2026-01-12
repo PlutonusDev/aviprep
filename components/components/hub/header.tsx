@@ -7,9 +7,10 @@ import { IoBarChart, IoSettings } from "react-icons/io5";
 import { AiFillNotification } from "react-icons/ai";
 import { PiSignOutBold } from "react-icons/pi";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
+import { cn } from "lib/utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "../ui/avatar";
+import { useUser } from "@lib/user-context";
 
 const navigation = [
     {
@@ -46,6 +47,10 @@ const navigation = [
 
 export default () => {
     const pathname = usePathname();
+    const { user, logout } = useUser();
+
+    const initials = user ? `${user.firstName[0].toUpperCase()}${user.lastName[0].toUpperCase()}` : "??";
+    const fullName = user ? `${user.firstName} ${user.lastName}` : "User";
 
     return (
         <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -61,8 +66,8 @@ export default () => {
                         <div className="flex h-16 items-center gap-2 border-b border-border px-6">
                             <FaPlane className="text-lg" />
                             <div className="flex flex-col">
-                                <span className="text-sm font-semibold">CPL</span>
-                                <span className="text-xs text-muted-foreground">Exam Hub</span>
+                                <span className="text-sm font-semibold">AviPrep</span>
+                                <span className="text-xs text-muted-foreground">Study Hub</span>
                             </div>
                         </div>
                         <nav className="space-y-1 px-3 py-4">
@@ -102,15 +107,15 @@ export default () => {
                         <DropdownMenuTrigger asChild>
                             <div className="relative h-9 w-9 rounded-full cursor-pointer">
                                 <Avatar className="h-9 w-9">
-                                    <AvatarFallback className="bg-primary text-primary-foreground">JH</AvatarFallback>
+                                    <AvatarFallback className="bg-primary text-primary-foreground">{initials}</AvatarFallback>
                                 </Avatar>
                             </div>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent className="w-56" align="end" forceMount>
                             <DropdownMenuLabel className="font-normal">
                                 <div className="flex flex-col space-y-1">
-                                    <p className="text-sm font-medium">Joshua Hughes</p>
-                                    <p className="text-xs text-muted-foreground">joshuajhughes1@gmail.com</p>
+                                    <p className="text-sm font-medium">{fullName}</p>
+                                    <p className="text-xs text-muted-foreground">{user?.email || "Loading..."}</p>
                                 </div>
                             </DropdownMenuLabel>
                             <DropdownMenuSeparator />
@@ -118,7 +123,7 @@ export default () => {
                                 <IoSettings className="mr-1 text-lg" />
                                 Settings
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="cursor-pointer">
+                            <DropdownMenuItem onClick={logout} className="cursor-pointer">
                                 <PiSignOutBold className="mr-1 text-lg" />
                                 Sign Out
                             </DropdownMenuItem>

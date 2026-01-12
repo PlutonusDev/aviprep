@@ -2,7 +2,7 @@
 
 import { createCheckoutSession, getCheckoutSessionStatus } from "@actions/stripe";
 import { Button } from "@/components/ui/button";
-import { calculateTotal, getProductById } from "@/lib/products";
+import { calculateTotal, getProductById } from "lib/products";
 import { loadStripe } from "@stripe/stripe-js";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";

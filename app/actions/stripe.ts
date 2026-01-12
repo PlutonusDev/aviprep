@@ -1,7 +1,7 @@
 "use server";
 
-import { stripe } from "@lib/stripe";
-import { getProductById } from "@lib/products";
+import { stripe } from "lib/stripe";
+import { getProductById } from "lib/products";
 
 export async function createCheckoutSession(productIds: string[], returnUrl: string) {
     const products = productIds.map(id => {
@@ -26,8 +26,8 @@ export async function createCheckoutSession(productIds: string[], returnUrl: str
                     },
                     unit_amount: product.priceInCents,
                     recurring: {
-                        interval: product.interval as "month",
-                        interval_count: product.intervalCount || 3,
+                        interval: "month",
+                        interval_count: 3,
                     },
                 },
                 quantity: 1,

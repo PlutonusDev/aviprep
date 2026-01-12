@@ -1,0 +1,143 @@
+generator client {
+    provider    = "prisma-client-js"
+    engineType  = "binary"
+}
+
+datasource db {
+    provider    = "mongodb"
+    url         = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  email         String    @unique
+  passwordHash  String
+  firstName     String
+  lastName      String
+  phone         String    // Australian phone number format
+  arn           String    @unique // Aviation Reference Number
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Subscription status
+  hasBundle     Boolean   @default(false)
+  bundleExpiry  DateTime?
+  
+  // Relations
+  purchases     Purchase[]
+  examAttempts  ExamAttempt[]
+  weakPoints    WeakPoint[]
+  studySessions StudySession[]
+}
+
+model Purchase {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String   @db.ObjectId
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  subjectId    String   // e.g., "aero", "met", "nav"
+  subjectName  String
+  subjectCode  String
+  
+  purchaseType String   // "individual" or "bundle"
+  priceAud     Int      // Price in cents
+  
+  // Add-ons for individual purchases
+  hasPrinting  Boolean  @default(false)
+  hasAiInsights Boolean @default(false)
+  
+  purchasedAt  DateTime @default(now())
+  expiresAt    DateTime
+  
+  // Stripe payment reference
+  stripePaymentId String?
+  stripeCustomerId String?
+  
+  @@index([userId])
+  @@index([subjectId])
+}
+
+model ExamAttempt {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId          String   @db.ObjectId
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  subjectId       String
+  subjectName     String
+  
+  score           Int      // Percentage
+  totalQuestions  Int
+  correctAnswers  Int
+  timeSpentMins   Int
+  passed          Boolean
+  
+  // Detailed results stored as JSON
+  questionResults Json     // Array of { questionId, answeredCorrectly, timeTaken }
+  
+  completedAt     DateTime @default(now())
+  
+  @@index([userId])
+  @@index([subjectId])
+  @@index([completedAt])
+}
+
+model WeakPoint {
+  id                 String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId             String   @db.ObjectId
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  topic              String
+  subjectId          String
+  subjectName        String
+  
+  accuracy           Int      // Percentage
+  questionsAttempted Int
+  recommendation     String
+  priority           String   // "high", "medium", "low"
+  
+  updatedAt          DateTime @updatedAt
+  
+  @@unique([userId, topic, subjectId])
+  @@index([userId])
+}
+
+model StudySession {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String   @db.ObjectId
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  subjectId   String?
+  durationMins Int
+  
+  startedAt   DateTime
+  endedAt     DateTime
+  
+  @@index([userId])
+  @@index([startedAt])
+}
+
+model Subject {
+  id              String @id @default(auto()) @map("_id") @db.ObjectId
+  subjectId       String @unique // "aero", "met", etc.
+  name            String
+  code            String
+  description     String
+  totalQuestions  Int
+  icon            String
+  priceAud        Int    // Price in cents
+}
+
+model Question {
+  id           String @id @default(auto()) @map("_id") @db.ObjectId
+  subjectId    String
+  topic        String
+  difficulty   String // "easy", "medium", "hard"
+  
+  questionText String
+  options      String[] // Array of options
+  correctIndex Int
+  explanation  String
+  
+  @@index([subjectId])
+  @@index([topic])
+}

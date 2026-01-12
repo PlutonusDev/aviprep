@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { examHistory, theorySubjects, userStats } from "@/lib/mock-data";
+import { examHistory, theorySubjects, userStats } from "lib/mock-data";
 import { Award, BookOpen, CheckCircle2, Clock, Flame, Target, TrendingUp, XCircle } from "lucide-react";
 import { FaArrowTrendUp } from "react-icons/fa6";
 import { AreaChart, PieChart, Pie, Cell, Legend, ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip, Area, BarChart, Bar } from "recharts";

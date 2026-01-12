@@ -16,7 +16,7 @@ export const CPL_BUNDLE: Product = {
     id: "cpl-bundle",
     name: "CPL Bundle",
     description: "Full access to all 7 CPL theory subjects with premium features",
-    priceInCents: 7900,
+    priceInCents: 11000,
     type: "subscription",
     interval: "quarter",
     features: [
@@ -36,7 +36,7 @@ export const SUBJECTS: Product[] = [
         name: "Aerodynamics",
         code: "CADA",
         description: "300+ practice questions covering principles of flight, aircraft performance, and stability",
-        priceInCents: 4900,
+        priceInCents: 5900,
         type: "one-time",
         features: [
             "300+ questions",
@@ -51,7 +51,7 @@ export const SUBJECTS: Product[] = [
     name: "Meteorology",
     code: "CMET",
     description: "280+ practice questions covering weather patterns, forecasting, and aviation weather services",
-    priceInCents: 4500,
+    priceInCents: 5900,
     type: "one-time",
     features: [
         "280+ questions",
@@ -66,7 +66,7 @@ export const SUBJECTS: Product[] = [
     name: "Navigation",
     code: "CNAV",
     description: "340+ practice questions covering VFR/IFR navigation, flight planning, and instruments",
-    priceInCents: 5500,
+    priceInCents: 7500,
     type: "one-time",
     features: [
         "340+ questions",
@@ -81,7 +81,7 @@ export const SUBJECTS: Product[] = [
     name: "Air Law",
     code: "CLWA",
     description: "290+ practice questions covering CASA regulations, airspace, and procedures",
-    priceInCents: 4900,
+    priceInCents: 5900,
     type: "one-time",
     features: [
         "290+ questions",
@@ -96,7 +96,7 @@ export const SUBJECTS: Product[] = [
     name: "Human Factors",
     code: "CHUF",
     description: "250+ practice questions covering physiology, psychology, and crew resource management",
-    priceInCents: 3900,
+    priceInCents: 4900,
     type: "one-time",
     features: [
         "250+ questions",
@@ -111,7 +111,7 @@ export const SUBJECTS: Product[] = [
     name: "Aircraft General Knowledge",
     code: "CSYA",
     description: "320+ practice questions covering engines, electrical, hydraulics, and avionics",
-    priceInCents: 5200,
+    priceInCents: 4900,
     type: "one-time",
     features: [
         "320+ questions",
@@ -126,7 +126,7 @@ export const SUBJECTS: Product[] = [
     name: "Operations, Performance & Flight Planning",
     code: "CFPA",
     description: "270+ practice questions covering weight & balance, takeoff/landing performance",
-    priceInCents: 4500,
+    priceInCents: 9900,
     type: "one-time",
     features: [
         "270+ questions",

@@ -72,10 +72,10 @@ export default function SuccessContent() {
                 </p>
                 <div className="flex gap-4">
                     <Button variant="outline" asChild>
-                        <Link href="/dashboard/pricing">Try Again</Link>
+                        <Link href="/practice/pricing">Try Again</Link>
                     </Button>
                     <Button asChild>
-                        <Link href="/dashboard">Go to Dashboard</Link>
+                        <Link href="/practice">Go to Dashboard</Link>
                     </Button>
                 </div>
             </div>
@@ -88,7 +88,7 @@ export default function SuccessContent() {
 
                 <div className="space-y-2">
                     <h1 className="text-3xl font-bold tracking-tight">Payment Successful!</h1>
-                    <p className="text-muted-foreground text-lg">Welcome to CPL Exam Hub. Your access has been activated.</p>
+                    <p className="text-muted-foreground text-lg">Welcome to the AviPrep Study Hub. Your access has been activated.</p>
                     {customerEmail && (
                         <p className="text-sm text-muted-foreground">
                             A confirmation email has been sent to <span className="font-medium text-foreground">{customerEmail}</span>
