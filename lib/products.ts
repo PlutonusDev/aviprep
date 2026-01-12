@@ -5,7 +5,7 @@ export interface Product {
     description: string;
     priceInCents: number;
     type: "one-time" | "subscription";
-    interval?: "money" | "quarter" | "year";
+    interval?: "month" | "year";
     intervalCount?: number;
     features: string[];
     category: "bundle" | "single";
@@ -18,7 +18,8 @@ export const CPL_BUNDLE: Product = {
     description: "Full access to all 7 CPL theory subjects with premium features",
     priceInCents: 11000,
     type: "subscription",
-    interval: "quarter",
+    interval: "month",
+    intervalCount: 3,
     features: [
         "All 7 theory subjects",
         "Unlimited practice exams",

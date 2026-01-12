@@ -26,7 +26,7 @@ export async function createCheckoutSession(productIds: string[], returnUrl: str
                     },
                     unit_amount: product.priceInCents,
                     recurring: {
-                        interval: "month",
+                        interval: product.interval as "month" | "year",
                         interval_count: 3,
                     },
                 },
@@ -48,7 +48,7 @@ export async function createCheckoutSession(productIds: string[], returnUrl: str
     });
 
     const session = await stripe.checkout.sessions.create({
-        ui_mode: "embedded",
+        ui_mode: "embedded" as const,
         redirect_on_completion: "always",
         return_url: returnUrl,
         line_items: lineItems,
