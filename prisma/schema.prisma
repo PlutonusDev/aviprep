@@ -141,3 +141,9 @@ model Question {
   @@index([subjectId])
   @@index([topic])
 }
+
+model Waitlist {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  email     String   @unique
+  createdAt DateTime @default(now())
+}
