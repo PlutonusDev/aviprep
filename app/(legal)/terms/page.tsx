@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "Terms of Service | AviPrep",
+  title: "AviPrep | Terms of Service",
   description: "Terms of Service for AviPrep - Australia's CPL theory exam preparation platform.",
 }
 

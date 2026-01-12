@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | AviPrep",
+  title: "AviPrep | Privacy Policy",
   description: "Privacy Policy for AviPrep - How we collect, use, and protect your personal information.",
 }
 
