@@ -204,7 +204,7 @@ export default function InsightsContent() {
             </p>
             {weakestSubject && (
               <div className="mt-3 pt-3 border-t border-border">
-                <Link href={`/dashboard/exams/${weakestSubject.id}`}>
+                <Link href={`/practice/exams/${weakestSubject.id}`}>
                   <Button variant="ghost" size="sm" className="w-full gap-2 text-primary">
                     Practice Now
                     <ArrowRight className="h-4 w-4" />
@@ -408,7 +408,7 @@ export default function InsightsContent() {
                 </p>
               </div>
             </div>
-            <Link href="/dashboard/exams">
+            <Link href="/practice/exams">
               <Button className="gap-2">
                 Start Targeted Practice
                 <ArrowRight className="h-4 w-4" />
@@ -454,7 +454,7 @@ function WeakPointCard({ weakPoint }: { weakPoint: WeakPointData }) {
             </div>
             <p className="text-sm text-muted-foreground">{weakPoint.recommendation}</p>
           </div>
-          <Link href={`/dashboard/exams/${weakPoint.subjectId}`}>
+          <Link href={`/practice/exams/${weakPoint.subjectId}`}>
             <Button variant="outline" size="sm" className="gap-2 shrink-0 bg-transparent">
               Practice
               <ArrowRight className="h-4 w-4" />
