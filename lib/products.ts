@@ -10,6 +10,8 @@ export interface Product {
     features: string[];
     category: "bundle" | "single";
     subjectId?: string;
+    stripeProductId: string;
+    stripePriceId: string;
 }
 
 export const CPL_BUNDLE: Product = {
@@ -28,7 +30,9 @@ export const CPL_BUNDLE: Product = {
         "Print exams & results",
         "Priority support"
     ],
-    category: "bundle"
+    category: "bundle",
+    stripeProductId: "prod_TlqCDtVoHM52wU",
+    stripePriceId: "price_1SoIVnL8qLbqF4tCGDT2ipV6"
 }
 
 export const SUBJECTS: Product[] = [
@@ -45,7 +49,9 @@ export const SUBJECTS: Product[] = [
             "Progress tracking"
         ],
         category: "single",
-        subjectId: "aerodynamics"
+        subjectId: "aerodynamics",
+        stripeProductId: "prod_TmXndMivSEVbwd",
+        stripePriceId: "price_1SoyhaL8qLbqF4tCBeZhrrzQ"
     },
     {
     id: "meteorology",
@@ -61,6 +67,8 @@ export const SUBJECTS: Product[] = [
     ],
     category: "single",
     subjectId: "meteorology",
+    stripeProductId: "prod_TmXpBSKGwbNKdY",
+    stripePriceId: "price_1SoyjjL8qLbqF4tCBXfo7MZ1"
   },
   {
     id: "navigation",
@@ -76,6 +84,8 @@ export const SUBJECTS: Product[] = [
     ],
     category: "single",
     subjectId: "navigation",
+    stripeProductId: "prod_TmXnNJjWstEznA",
+    stripePriceId: "price_1Soyi5L8qLbqF4tCfagb8NCZ"
   },
   {
     id: "air-law",
@@ -91,6 +101,8 @@ export const SUBJECTS: Product[] = [
     ],
     category: "single",
     subjectId: "air-law",
+    stripeProductId: "prod_TmXpNxrtS6pXQB",
+    stripePriceId: "price_1Soyk6L8qLbqF4tCeAp3Hz3G"
   },
   {
     id: "human-factors",
@@ -106,6 +118,8 @@ export const SUBJECTS: Product[] = [
     ],
     category: "single",
     subjectId: "human-factors",
+    stripeProductId: "prod_TmXoF3T2VzDS8p",
+    stripePriceId: "price_1SoyigL8qLbqF4tCzRogMwWN"
   },
   {
     id: "aircraft-systems",
@@ -121,6 +135,8 @@ export const SUBJECTS: Product[] = [
     ],
     category: "single",
     subjectId: "aircraft-systems",
+    stripeProductId: "prod_TmXqWHx0TeVbYT",
+    stripePriceId: "price_1SoykhL8qLbqF4tCaiTgap9i"
   },
   {
     id: "performance-planning",
@@ -136,6 +152,8 @@ export const SUBJECTS: Product[] = [
     ],
     category: "single",
     subjectId: "performance-planning",
+    stripeProductId: "prod_TmXpKKTNT8orAs",
+    stripePriceId: "price_1SoyjML8qLbqF4tC4Roq51qh"
   },
 ]
 
@@ -151,7 +169,9 @@ export const ADDONS: Product[] = [
             "Print results & reports",
             "PDF export"
         ],
-        category: "single"
+        category: "single",
+        stripeProductId: "prod_TmXuSD0Pi7tLhx",
+        stripePriceId: "price_1SoyozL8qLbqF4tCTGf5S9nv"
     },
     {
         id: "addon-ai-insights",
@@ -164,7 +184,9 @@ export const ADDONS: Product[] = [
             "Personalised study recommendations",
             "Progress predictions"
         ],
-        category: "single"
+        category: "single",
+        stripeProductId: "prod_TmXvaqif78cTwt",
+        stripePriceId: "price_1SoyplL8qLbqF4tCJHo6VEAq"
     }
 ]
 

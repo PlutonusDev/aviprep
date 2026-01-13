@@ -9,25 +9,26 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(auto()) @map("_id") @db.ObjectId
-  email         String    @unique
-  passwordHash  String
-  firstName     String
-  lastName      String
-  phone         String    // Australian phone number format
-  arn           String    @unique // Aviation Reference Number
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                String    @id @default(auto()) @map("_id") @db.ObjectId
+  email             String    @unique
+  passwordHash      String
+  firstName         String
+  lastName          String
+  phone             String    // Australian phone number format
+  arn               String    @unique // Aviation Reference Number
+  stripeCustomerId  String?   @unique // Stripe customer ID for payments
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
   
   // Subscription status
-  hasBundle     Boolean   @default(false)
-  bundleExpiry  DateTime?
+  hasBundle         Boolean   @default(false)
+  bundleExpiry      DateTime?
   
   // Relations
-  purchases     Purchase[]
-  examAttempts  ExamAttempt[]
-  weakPoints    WeakPoint[]
-  studySessions StudySession[]
+  purchases         Purchase[]
+  examAttempts      ExamAttempt[]
+  weakPoints        WeakPoint[]
+  studySessions     StudySession[]
 }
 
 model Purchase {
@@ -53,6 +54,7 @@ model Purchase {
   stripePaymentId String?
   stripeCustomerId String?
   
+  @@unique([userId, subjectId])
   @@index([userId])
   @@index([subjectId])
 }

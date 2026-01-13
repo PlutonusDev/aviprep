@@ -192,9 +192,9 @@ export default function TermsOfServicePage() {
 
       <h2 className="text-xl font-semibold text-foreground mt-10 mb-4">11. Governing Law</h2>
       <p className="text-muted-foreground leading-relaxed">
-        These Terms shall be governed by and construed in accordance with the laws of New South Wales, Australia,
+        These Terms shall be governed by and construed in accordance with the laws of Queensland, Australia,
         without regard to conflict of law provisions. Any disputes arising from these Terms or your use of the Service
-        shall be subject to the exclusive jurisdiction of the courts of New South Wales.
+        shall be subject to the exclusive jurisdiction of the courts of Queensland.
       </p>
 
       <h2 className="text-xl font-semibold text-foreground mt-10 mb-4">12. Contact Us</h2>

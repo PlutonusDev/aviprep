@@ -47,8 +47,8 @@ export default () => {
     return (
         <div className="min-h-screen bg-background text-foreground">
             <header className="border-b border-border/50">
-                <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-                    <span className="font-semibold text-lg tracking-tight">AviPrep</span>
+                <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center gap-2">
+                    <img className="h-12" src="/img/AviPrep-logo.png" alt="AviPrep logo" />
                 </nav>
             </header>
 
@@ -56,13 +56,12 @@ export default () => {
                 <div className="relative">
                     <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent" />
                     <Spotlight />
-                    <div className="opacity-70 pointer-events-none absolute top-0 left-0 w-screen h-[50vh]">
+                    <div className="opacity-70 pointer-events-none absolute top-0 left-0 w-screen h-[100vh]">
                         <BackgroundBeams />
-                        <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
                     </div>
                 </div>
 
-                <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-32 items-center">
+                <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-30 items-center">
                     <div className="max-w-3xl mx-auto text-center">
                         <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-balance leading-[1.1]">
                             Master Your Flight Theory
@@ -96,6 +95,9 @@ export default () => {
                             )}
                             {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
 
+                            <p className="mt-3 text-sm text-muted-foreground font-medium">
+                                Join the waitlist and receive early access and an exclusive 20% discount on all study hub digital products forever.
+                            </p>
                             <p className="mt-3 text-xs text-muted-foreground">
                                 By signing up, you agree to our <Link href="/terms" className="underline">Terms of Service</Link> and <Link href="/privacy" className="underline">Privacy Policy</Link>. No spam - ever.
                             </p>

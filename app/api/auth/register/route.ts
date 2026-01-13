@@ -2,9 +2,12 @@ import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { prisma } from "@lib/prisma"
 import { hashPassword, createSession, isValidAustralianPhone, isValidARN } from "@lib/auth"
+import { stripe } from "@lib/stripe";
 
 export async function POST(request: Request) {
   try {
+    return NextResponse.json({ error: "New registrations are disabled" });
+
     const body = await request.json()
     const { email, password, firstName, lastName, phone, arn } = body
 
@@ -52,6 +55,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "An account with this ARN already exists" }, { status: 400 })
     }
 
+    const stripeCustomer = await stripe.customers.create({
+      email: email.toLowerCase(),
+      name: `${firstName} ${lastName}`,
+      phone: phone,
+      metadata: {
+        arn: arn,
+        source: "aviprep",
+      },
+    });
+
     // Hash password
     const passwordHash = await hashPassword(password)
 
@@ -64,6 +77,7 @@ export async function POST(request: Request) {
         lastName,
         phone,
         arn,
+        stripeCustomerId: stripeCustomer.id,
       },
     })
 
