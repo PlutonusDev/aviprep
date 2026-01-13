@@ -31,7 +31,7 @@ const subjectPerformance = theorySubjects
 const difficultyData = [
     { name: "Easy", value: 320, color: "#00c951" },
     { name: "Medium", value: 410, color: "#ff6900" },
-    { name: "Hard", value: 130, color: "var(--destructive)" },
+    { name: "Hard", value: 130, color: "var(--red-500)" },
 ]
 
 const studyTimeData = [
@@ -87,8 +87,8 @@ export default () => {
                                     {passedExams}/{examHistory.length} exams passed
                                 </p>
                             </div>
-                            <div className="h-12 w-12 rounded-full bg-[var(--success)]/10 flex items-center justify-center">
-                                <Award className="h-6 w-6 text-[var(--success)]" />
+                            <div className="h-12 w-12 rounded-full bg-green-500/10 flex items-center justify-center">
+                                <Award className="h-6 w-6 text-green-500" />
                             </div>
                         </div>
                     </CardContent>
@@ -102,8 +102,8 @@ export default () => {
                                 <p className="text-3xl font-bold text-foreground">{userStats.studyStreak} days</p>
                                 <p className="text-xs text-muted-foreground mt-1">Personal best: 18 days</p>
                             </div>
-                            <div className="h-12 w-12 rounded-full bg-[var(--warning)]/10 flex items-center justify-center">
-                                <Flame className="h-6 w-6 text-[var(--warning)]" />
+                            <div className="h-12 w-12 rounded-full bg-orange-500/10 flex items-center justify-center">
+                                <Flame className="h-6 w-6 text-orange-500" />
                             </div>
                         </div>
                     </CardContent>
@@ -310,10 +310,10 @@ export default () => {
                                         </div>
                                         <span
                                             className={`text-lg font-bold ${subject.averageScore >= 80
-                                                ? "text-[var(--success)]"
+                                                ? "text-green-500"
                                                 : subject.averageScore >= 70
                                                     ? "text-primary"
-                                                    : "text-[var(--warning)]"
+                                                    : "text-orange-500"
                                                 }`}
                                         >
                                             {subject.averageScore > 0 ? `${subject.averageScore}%` : "—"}
@@ -374,14 +374,14 @@ export default () => {
                         </Card>
                         <Card>
                             <CardContent className="p-6 text-center">
-                                <Clock className="h-8 w-8 mx-auto text-[var(--success)] mb-2" />
+                                <Clock className="h-8 w-8 mx-auto text-green-500 mb-2" />
                                 <p className="text-3xl font-bold text-foreground">2.7h</p>
                                 <p className="text-sm text-muted-foreground">Daily Average</p>
                             </CardContent>
                         </Card>
                         <Card>
                             <CardContent className="p-6 text-center">
-                                <TrendingUp className="h-8 w-8 mx-auto text-[var(--warning)] mb-2" />
+                                <TrendingUp className="h-8 w-8 mx-auto text-orange-500 mb-2" />
                                 <p className="text-3xl font-bold text-foreground">+12%</p>
                                 <p className="text-sm text-muted-foreground">vs Last Week</p>
                             </CardContent>

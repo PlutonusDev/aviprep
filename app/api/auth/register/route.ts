@@ -6,7 +6,7 @@ import { stripe } from "@lib/stripe";
 
 export async function POST(request: Request) {
   try {
-    return NextResponse.json({ error: "New registrations are disabled" });
+    return NextResponse.json({ error: "New registrations are disabled" }, { status: 400 });
 
     const body = await request.json()
     const { email, password, firstName, lastName, phone, arn } = body
@@ -68,18 +68,44 @@ export async function POST(request: Request) {
     // Hash password
     const passwordHash = await hashPassword(password)
 
-    // Create user
-    const user = await prisma.user.create({
-      data: {
-        email: email.toLowerCase(),
-        passwordHash,
-        firstName,
-        lastName,
-        phone,
-        arn,
-        stripeCustomerId: stripeCustomer.id,
-      },
-    })
+    const user = await prisma.$transaction(async (tx) => {
+      const newUser = await tx.user.create({
+        data: {
+          email: email.toLowerCase(),
+          passwordHash,
+          firstName,
+          lastName,
+          phone,
+          arn,
+          stripeCustomerId: stripeCustomer.id,
+        },
+      });
+
+      const expiryDate = new Date();
+      expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+
+      await tx.purchase.create({
+        data: {
+          subjectId: "human-factors",
+          subjectName: "Human Factors",
+          subjectCode: "CHUF",
+          expiresAt: expiryDate,
+          hasPrinting: false,
+          hasAiInsights: false,
+          purchaseType: "individual",
+          priceAud: 0,
+          stripePaymentId: "free_trial",
+          stripeCustomerId: newUser.stripeCustomerId,
+          user: {
+            connect: {
+              id: newUser.id
+            },
+          },
+        },
+      });
+
+      return newUser;
+    });
 
     // Create session
     const token = await createSession({

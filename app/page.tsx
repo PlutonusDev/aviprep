@@ -93,7 +93,7 @@ export default () => {
                                     </span>
                                 </div>
                             )}
-                            {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
+                            {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
 
                             <p className="mt-3 text-sm text-muted-foreground font-medium">
                                 Join the waitlist and receive early access and an exclusive 20% discount on all study hub digital products forever.

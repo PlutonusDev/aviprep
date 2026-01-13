@@ -17,6 +17,7 @@ model User {
   phone             String    // Australian phone number format
   arn               String    @unique // Aviation Reference Number
   stripeCustomerId  String?   @unique // Stripe customer ID for payments
+  isAdmin           Boolean   @default(false)
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
   
@@ -148,4 +149,21 @@ model Waitlist {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   email     String   @unique
   createdAt DateTime @default(now())
+}
+
+model Coupon {
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  code            String    @unique
+  discountPercent Int       // Percentage off (0-100)
+  maxUses         Int?      // Null = unlimited
+  usedCount       Int       @default(0)
+  validFrom       DateTime  @default(now())
+  validUntil      DateTime?
+  isActive        Boolean   @default(true)
+  
+  // Optional: restrict to specific products
+  applicableProducts String[] // Product IDs it can be applied to, empty = all
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 }

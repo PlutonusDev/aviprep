@@ -21,9 +21,9 @@ export interface QuestionData {
   id: string
   topic: string
   difficulty: "easy" | "medium" | "hard"
-  question: string
+  questionText: string
   options: string[]
-  correctAnswer: number
+  correctIndex: number
   explanation: string
 }
 

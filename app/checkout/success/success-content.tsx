@@ -2,12 +2,11 @@
 
 import { useEffect, useState } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
-import { CheckCircle2, ArrowRight, Loader2, BookOpen, BarChart3, Sparkles } from "lucide-react"
+import { ArrowRight, Loader2, BookOpen, BarChart3, Sparkles } from "lucide-react"
 import Link from "next/link"
 import confetti from "canvas-confetti"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import { getCheckoutSessionStatus } from "@actions/stripe"
 
 export default function SuccessContent() {
@@ -61,8 +60,8 @@ export default function SuccessContent() {
     if (status === "error") {
         return (
             <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
-                <div className="rounded-full bg-destructive/10 p-4 mb-4">
-                    <svg className="h-8 w-8 text-destructive" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="rounded-full bg-red-500/10 p-4 mb-4">
+                    <svg className="h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </div>
