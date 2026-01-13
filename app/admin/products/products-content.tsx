@@ -40,7 +40,7 @@ export function ProductsContent() {
       id,
       name: product.name,
       description: product.description || "",
-      priceAud: product.priceInCents / 100,
+      priceAud: product.priceInCents,
       type: product.type,
       stripePriceId: product.stripePriceId,
       stripeProductId: product.stripeProductId,
