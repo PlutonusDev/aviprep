@@ -3,47 +3,58 @@ import { RiDashboardHorizontalFill, RiSettings3Fill } from "react-icons/ri";
 import { GiPlaneWing } from "react-icons/gi";
 import Link from "next/link";
 import { cn } from "lib/utils";
-import { FaBrain, FaComputer, FaDoorClosed, FaMedal } from "react-icons/fa6";
+import { FaBrain, FaComputer, FaDoorClosed, FaMedal, FaPaperPlane } from "react-icons/fa6";
 import { IoBarChart, IoSettings, IoSparkles } from "react-icons/io5";
+import { SlSpeech } from "react-icons/sl";
 import { useUser } from "@lib/user-context";
 
 const navigation = [
     {
         name: "Dashboard",
-        href: "/practice",
+        href: "/dashboard",
         icon: RiDashboardHorizontalFill
     },
     {
         name: "Practice Exams",
-        href: "/practice/exams",
+        href: "/dashboard/exams",
         icon: FaComputer
     },
     {
         name: "Statistics",
-        href: "/practice/statistics",
+        href: "/dashboard/statistics",
         icon: IoBarChart
     },
     {
         name: "Exam History",
-        href: "/practice/history",
+        href: "/dashboard/history",
         icon: FaMedal
     },
     {
         name: "AI Insights",
-        href: "/practice/insights",
+        href: "/dashboard/insights",
         icon: FaBrain
+    },
+    {
+        name: "Forums",
+        href: "/dashboard/forum",
+        icon: SlSpeech
+    },
+    {
+        name: "Messages",
+        href: "/dashboard/messages",
+        icon: FaPaperPlane
     }
 ]
 
 const bottomNav = [
     {
         name: "Upgrade",
-        href: "/practice/pricing",
+        href: "/dashboard/pricing",
         icon: IoSparkles
     },
     {
         name: "Settings",
-        href: "/practice/settings",
+        href: "/dashboard/settings",
         icon: IoSettings
     }
 ]

@@ -78,7 +78,7 @@ export default function CheckoutContent() {
             <div className="space-y-6 p-4 lg:p-6">
                 <div className="flex items-center gap-4">
                     <Button variant="ghost" size="icon" asChild>
-                        <Link href="/practice/pricing">
+                        <Link href="/dashboard/pricing">
                             <ArrowLeft className="h-5 w-5" />
                         </Link>
                     </Button>
@@ -95,7 +95,7 @@ export default function CheckoutContent() {
                     <h2 className="text-xl font-semibold mb-2">No items selected</h2>
                     <p className="text-muted-foreground mb-6">Please select products from our pricing page to checkout.</p>
                     <Button asChild>
-                        <Link href="/practice/pricing">View Pricing</Link>
+                        <Link href="/dashboard/pricing">View Pricing</Link>
                     </Button>
                 </div>
             </div>
@@ -106,7 +106,7 @@ export default function CheckoutContent() {
         <div className="space-y-6 p-4 lg:p-6">
             <div className="flex items-center gap-4">
                 <Button variant="ghost" size="icon" asChild>
-                    <Link href="/practice/pricing">
+                    <Link href="/dashboard/pricing">
                         <ArrowLeft className="h-5 w-5" />
                     </Link>
                 </Button>

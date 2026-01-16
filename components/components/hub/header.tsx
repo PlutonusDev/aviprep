@@ -9,38 +9,38 @@ import { PiSignOutBold } from "react-icons/pi";
 import Link from "next/link";
 import { cn } from "lib/utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "../ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { useUser } from "@lib/user-context";
 
 const navigation = [
     {
         name: "Dashboard",
-        href: "/practice",
+        href: "/dashboard",
         icon: RiDashboardHorizontalFill
     },
     {
         name: "Practice Exams",
-        href: "/practice/exams",
+        href: "/dashboard/exams",
         icon: FaComputer
     },
     {
         name: "Statistics",
-        href: "/practice/statistics",
+        href: "/dashboard/statistics",
         icon: IoBarChart
     },
     {
         name: "Exam History",
-        href: "/practice/history",
+        href: "/dashboard/history",
         icon: FaMedal
     },
     {
         name: "AI Insights",
-        href: "/practice/insights",
+        href: "/dashboard/insights",
         icon: FaBrain
     },
     {
         name: "Settings",
-        href: "/practice/settings",
+        href: "/dashboard/settings",
         icon: IoSettings
     }
 ]
@@ -107,6 +107,7 @@ export default () => {
                         <DropdownMenuTrigger asChild>
                             <div className="relative h-9 w-9 rounded-full cursor-pointer">
                                 <Avatar className="h-9 w-9">
+                                    <AvatarImage src={user?.profilePicture || undefined} alt={user?.firstName} />
                                     <AvatarFallback className="bg-primary text-primary-foreground">{initials}</AvatarFallback>
                                 </Avatar>
                             </div>
@@ -119,10 +120,12 @@ export default () => {
                                 </div>
                             </DropdownMenuLabel>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem className="cursor-pointer">
-                                <IoSettings className="mr-1 text-lg" />
-                                Settings
-                            </DropdownMenuItem>
+                            <Link href="/dashboard/settings">
+                                <DropdownMenuItem className="cursor-pointer">
+                                    <IoSettings className="mr-1 text-lg" />
+                                    Settings
+                                </DropdownMenuItem>
+                            </Link>
                             <DropdownMenuItem onClick={logout} className="cursor-pointer">
                                 <PiSignOutBold className="mr-1 text-lg" />
                                 Sign Out

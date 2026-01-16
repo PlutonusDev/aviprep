@@ -4,6 +4,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { cn } from "@lib/utils"
 import { LayoutDashboard, Users, HelpCircle, Package, Ticket, LogOut, Shield, Sparkles } from "lucide-react"
+import { SlSpeech } from "react-icons/sl"
 
 const navigation = [
   { name: "Overview", href: "/admin", icon: LayoutDashboard },
@@ -11,6 +12,7 @@ const navigation = [
   { name: "Questions", href: "/admin/questions", icon: HelpCircle },
   { name: "Products", href: "/admin/products", icon: Package },
   { name: "Coupons", href: "/admin/coupons", icon: Ticket },
+  { name: "Forums", href: "/admin/forums", icon: SlSpeech }
 ]
 
 export function AdminSidebar() {
@@ -52,7 +54,7 @@ export function AdminSidebar() {
 
       <div className="border-t border-border px-3 py-4">
         <Link
-          href="/practice"
+          href="/dashboard"
           className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
         >
           <LayoutDashboard className="h-5 w-5" />

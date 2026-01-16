@@ -4,7 +4,7 @@ import { jwtVerify } from "jose"
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "your-secret-key-min-32-chars-long!")
 
-const protectedRoutes = ["/practice", "/checkout"] // Added /practice to match your config
+const protectedRoutes = ["/dashboard", "/checkout"] // Added /dashboard to match your config
 const authRoutes = ["/login", "/register"]
 
 export async function middleware(request: NextRequest) {
@@ -36,7 +36,7 @@ export async function middleware(request: NextRequest) {
   if (authRoutes.some((route) => pathname.startsWith(route))) {
     if (isAuthenticated) {
       const url = request.nextUrl.clone()
-      url.pathname = "/practice" // or "/practice"
+      url.pathname = "/dashboard" // or "/dashboard"
       return NextResponse.redirect(url)
     }
   }
@@ -47,7 +47,7 @@ export async function middleware(request: NextRequest) {
 // Ensure the matcher covers all routes used in your logic
 export const config = {
   matcher: [
-    "/practice/:path*", 
+    "/dashboard/:path*", 
     "/login", 
     "/register"
   ],

@@ -52,7 +52,7 @@ export default function LoginPage() {
         return
       }
 
-      router.push("/practice")
+      router.push("/dashboard")
     } catch {
       setError("An unexpected error occurred. Please try again.")
       setIsLoading(false)

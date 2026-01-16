@@ -9,17 +9,19 @@ datasource db {
 }
 
 model User {
-  id                String    @id @default(auto()) @map("_id") @db.ObjectId
-  email             String    @unique
-  passwordHash      String
-  firstName         String
-  lastName          String
-  phone             String    // Australian phone number format
-  arn               String    @unique // Aviation Reference Number
-  stripeCustomerId  String?   @unique // Stripe customer ID for payments
-  isAdmin           Boolean   @default(false)
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  id                    String    @id @default(auto()) @map("_id") @db.ObjectId
+  email                 String    @unique
+  passwordHash          String
+  arn                   String    @unique // Aviation Reference Number
+  firstName             String
+  lastName              String
+  phone                 String    // Australian phone number format
+  stripeCustomerId      String?   @unique // Stripe customer ID for payments
+  isAdmin               Boolean   @default(false)
+  profilePicture        String?   // URL to profile picture
+  isSuspendedFromForum  Boolean   @default(false) // Forum posting suspension
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
   
   // Subscription status
   hasBundle         Boolean   @default(false)
@@ -30,6 +32,13 @@ model User {
   examAttempts      ExamAttempt[]
   weakPoints        WeakPoint[]
   studySessions     StudySession[]
+
+  // Forum relations
+  threads           Thread[]  @relation("ThreadAuthor")
+  posts             Post[]    @relation("PostAuthor")
+  reactions         Reaction[]
+  messagesSent      PrivateMessage[] @relation("MessagesSent")
+  messagesReceived  PrivateMessage[] @relation("MessagesReceived")
 }
 
 model Purchase {
@@ -166,4 +175,124 @@ model Coupon {
   
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+}
+
+model ForumCategory {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  description String?
+  slug        String   @unique
+  order       Int      @default(0)
+  
+  forums      Forum[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Forum {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  description String?
+  slug        String   @unique
+  order       Int      @default(0)
+  
+  categoryId  String   @db.ObjectId
+  category    ForumCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  
+  threads     Thread[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([categoryId])
+}
+
+model Thread {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  slug        String   @unique
+  
+  forumId     String   @db.ObjectId
+  forum       Forum    @relation(fields: [forumId], references: [id], onDelete: Cascade)
+  
+  authorId    String   @db.ObjectId
+  author      User     @relation("ThreadAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  
+  isSticky    Boolean  @default(false)
+  isClosed    Boolean  @default(false)
+  viewCount   Int      @default(0)
+  deleted     Boolean  @default(false)
+  
+  posts       Post[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([forumId, slug])
+  @@index([forumId])
+  @@index([authorId])
+  @@index([createdAt])
+}
+
+model Post {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  content     String
+  
+  threadId    String   @db.ObjectId
+  thread      Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  
+  authorId    String   @db.ObjectId
+  author      User     @relation("PostAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  
+  replyToId   String?  @db.ObjectId
+  replyTo     Post?    @relation("PostReplies", fields: [replyToId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  replies     Post[]   @relation("PostReplies")
+  
+  isFirstPost Boolean  @default(false) // The opening post of a thread
+  editedAt    DateTime? // Track when posts are edited
+  deleted     Boolean  @default(false)
+  reactions   Reaction[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([threadId])
+  @@index([authorId])
+}
+
+model Reaction {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  type      String   // "heart", "thumbsup", "fire", "sparkles"
+  
+  postId    String   @db.ObjectId
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  
+  @@unique([postId, userId, type])
+  @@index([postId])
+  @@index([userId])
+}
+
+model PrivateMessage {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  content     String
+  
+  senderId    String   @db.ObjectId
+  sender      User     @relation("MessagesSent", fields: [senderId], references: [id], onDelete: Cascade)
+  
+  receiverId  String   @db.ObjectId
+  receiver    User     @relation("MessagesReceived", fields: [receiverId], references: [id], onDelete: Cascade)
+  
+  isRead      Boolean  @default(false)
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([createdAt])
 }

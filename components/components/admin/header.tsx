@@ -32,12 +32,9 @@ export function AdminHeader() {
           </SheetTrigger>
           <SheetContent side="left" className="w-64 p-0">
             <div className="flex h-16 items-center gap-2 border-b border-border px-6">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-500">
-                <Shield className="h-5 w-5 text-red-500-foreground" />
-              </div>
               <div className="flex flex-col">
                 <span className="text-sm font-semibold">Admin Panel</span>
-                <span className="text-xs text-muted-foreground">CPL Exam Hub</span>
+                <span className="text-xs text-muted-foreground">AviPrep</span>
               </div>
             </div>
             <nav className="space-y-1 px-3 py-4">

@@ -19,7 +19,7 @@ export default function SuccessContent() {
         const sessionId = searchParams.get("session_id")
 
         if (!sessionId) {
-            router.push("/practice/pricing")
+            router.push("/dashboard/pricing")
             return
         }
 
@@ -37,7 +37,7 @@ export default function SuccessContent() {
                         colors: ["#0ea5e9", "#22c55e", "#f59e0b"],
                     })
 
-                    setTimeout(() => router.push("/practice"), 10000);
+                    setTimeout(() => router.push("/dashboard"), 10000);
                 } else {
                     setStatus("error")
                 }
@@ -71,10 +71,10 @@ export default function SuccessContent() {
                 </p>
                 <div className="flex gap-4">
                     <Button variant="outline" asChild>
-                        <Link href="/practice/pricing">Try Again</Link>
+                        <Link href="/dashboard/pricing">Try Again</Link>
                     </Button>
                     <Button asChild>
-                        <Link href="/practice">Go to Dashboard</Link>
+                        <Link href="/dashboard">Go to Dashboard</Link>
                     </Button>
                 </div>
             </div>
@@ -134,13 +134,13 @@ export default function SuccessContent() {
 
                 <div className="flex flex-col sm:flex-row gap-4 mt-12">
                     <Button size="lg" className="bg-sky-500 hover:bg-sky-600 text-white" asChild>
-                        <Link href="/practice">
+                        <Link href="/dashboard">
                             Go to Dashboard
                             <ArrowRight className="ml-2 h-4 w-4" />
                         </Link>
                     </Button>
                     <Button size="lg" variant="outline" asChild>
-                        <Link href="/practice/exams">Start Practicing</Link>
+                        <Link href="/dashboard/exams">Start Practicing</Link>
                     </Button>
                 </div>
             </div>

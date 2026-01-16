@@ -31,7 +31,7 @@ export default () => {
                     </p>
 
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-                        <Link href="/practice">
+                        <Link href="/dashboard">
                             <button className="rounded-md bg-primary text-lg group px-6 py-3 text-base font-medium shadow-lg shadow-primary/25 hover:bg-primary/70 transition-colors cursor-pointer">
                                     <div className="flex items-center">
                                         <span>Start Practicing Free</span>

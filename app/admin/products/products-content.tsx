@@ -72,7 +72,7 @@ export function ProductsContent() {
           <p className="text-muted-foreground">View and manage product pricing (synced with Stripe)</p>
         </div>
         <Button variant="outline" asChild>
-          <a href="https://practice.stripe.com/products" target="_blank" rel="noopener noreferrer">
+          <a href="https://dashboard.stripe.com/products" target="_blank" rel="noopener noreferrer">
             <ExternalLink className="mr-2 h-4 w-4" />
             Stripe Dashboard
           </a>
@@ -178,7 +178,7 @@ export function ProductsContent() {
               <p className="text-sm text-muted-foreground">
                 To update pricing, please make changes directly in the{" "}
                 <a
-                  href="https://practice.stripe.com/products"
+                  href="https://dashboard.stripe.com/products"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-primary underline"

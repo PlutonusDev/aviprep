@@ -22,7 +22,7 @@ export default () => {
                         </Link>
                     </div>
 
-                    <Link href="/practice">
+                    <Link href="/dashboard">
                         <button className="rounded-md bg-primary group px-4 py-1 text-base font-medium shadow-lg shadow-primary/25 hover:bg-primary/70 transition-colors cursor-pointer">
                             <div className="flex items-center">
                                 <span>Start Free</span>

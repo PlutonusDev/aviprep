@@ -90,7 +90,7 @@ export default function RegisterPage() {
         return
       }
 
-      router.push("/practice")
+      router.push("/dashboard")
     } catch {
       setError("An unexpected error occurred. Please try again.")
       setIsLoading(false)

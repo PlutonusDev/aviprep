@@ -24,6 +24,8 @@ export async function GET() {
         lastName: user.lastName,
         phone: user.phone,
         arn: user.arn,
+        profilePicture: user.profilePicture,
+        isAdmin: user.isAdmin,
         hasBundle: user.hasBundle,
         bundleExpiry: user.bundleExpiry,
         createdAt: user.createdAt,

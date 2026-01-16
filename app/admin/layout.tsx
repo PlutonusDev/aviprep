@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     default: "Admin Dashboard",
     template: "%s | AviPrep Admin",
   },
-  description: "Admin dashboard for managing CASA CPL Exam Hub",
+  description: "Admin dashboard for managing AviPrep",
   robots: {
     index: false,
     follow: false,

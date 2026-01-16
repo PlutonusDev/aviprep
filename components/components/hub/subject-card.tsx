@@ -14,7 +14,7 @@ export default ({ subject }) => {
                         <FaLock className="text-xl text-muted-foreground mx-auto mb-2" />
                         <h3 className="text-foreground">{subject.name}</h3>
                         <p className="text-sm font-medium text-muted-foreground mb-2">Not Purchased</p>
-                        <Link href="/practice/pricing">
+                        <Link href="/dashboard/pricing">
                             <Button size="sm" className="mt-3 cursor-pointer text-foreground">Unlock Access</Button>
                         </Link>
                     </div>
@@ -54,7 +54,7 @@ export default ({ subject }) => {
             </CardContent>
 
             <CardFooter className="pt-0">
-                <Link href={`/practice/exams/${subject.id}`} className="w-full">
+                <Link href={`/dashboard/exams/${subject.id}`} className="w-full">
                     <Button variant="secondary" className="w-full group cursor-pointer">
                         Start Practice
                         <FaArrowRight className="ml-2 text-lg transition-transform group-hover:translate-x-1" />

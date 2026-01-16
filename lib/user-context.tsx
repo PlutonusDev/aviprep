@@ -11,6 +11,7 @@ interface User {
   lastName: string
   phone: string
   arn: string
+  isAdmin: boolean
   hasBundle: boolean
   bundleExpiry: string | null
   createdAt: string
