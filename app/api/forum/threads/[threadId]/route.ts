@@ -105,7 +105,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ thre
     ])
 
     // Get post counts for each author
-    const authorIds = [...new Set(posts.map((p) => p.authorId))]
+    const authorIds = Array.from(new Set(posts.map((p) => p.authorId)))
     const postCounts = await prisma.post.groupBy({
       by: ["authorId"],
       where: { authorId: { in: authorIds } },

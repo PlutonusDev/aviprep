@@ -144,7 +144,7 @@ export function ImageCropper({ open, onClose, imageSrc, onCropComplete }: ImageC
         </div>
 
         <DialogFooter>
-          <Button className="cursor-pointer" variant="outline" onClick={onClose} className="bg-transparent">
+          <Button className="cursor-pointer bg-transparent" variant="outline" onClick={onClose}>
             Cancel
           </Button>
           <Button className="cursor-pointer" onClick={handleSave}>Save Avatar</Button>

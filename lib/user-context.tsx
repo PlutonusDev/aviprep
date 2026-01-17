@@ -5,6 +5,7 @@ import { createContext, useContext, useState, useCallback } from "react"
 import useSWR from "swr"
 
 interface User {
+  profilePicture: any
   id: string
   email: string
   firstName: string

@@ -190,7 +190,7 @@ const ResizableImage = Node.create({
             attrs: options,
           })
         },
-    }
+    } as any;
   },
 })
 
@@ -339,7 +339,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
                 onExit: () => {
                   popup?.remove()
                 },
-              }
+              } as any;
 
               function updatePopup(props: {
                 clientRect: () => DOMRect | null
@@ -384,7 +384,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
           const items = event.clipboardData?.items
           if (!items) return false
 
-          for (const item of items) {
+          for (const item of Array.from(items)) {
             if (item.type.startsWith("image/")) {
               event.preventDefault()
               const file = item.getAsFile()

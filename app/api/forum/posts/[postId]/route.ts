@@ -3,7 +3,7 @@ import { prisma } from "@lib/prisma"
 import { verifyToken } from "@lib/auth"
 import { cookies } from "next/headers"
 
-export async function PATCH(request: Request, { params }: { params: { postId: string } }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ postId: string }> }) {
   try {
     const { postId } = await params
     const cookieStore = await cookies()
@@ -53,7 +53,7 @@ export async function PATCH(request: Request, { params }: { params: { postId: st
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { postId: string } }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ postId: string }> }) {
   try {
     const { postId } = await params
     const cookieStore = await cookies()
@@ -84,7 +84,14 @@ export async function DELETE(request: Request, { params }: { params: { postId: s
     })
 
     if (post?.isFirstPost) {
-      await prisma.thread.delete({ where: { id: post.threadId } })
+      await prisma.thread.update({
+        where: {
+          id: post.threadId
+        },
+        data: {
+          deleted: true,
+        }
+      })
     } else {
       await prisma.post.update({
         where: { id: postId },
