@@ -5,7 +5,7 @@ import { getWaitlistTemplate } from "@lib/email-templates"
 
 export async function POST(request: Request) {
   try {
-    const { email } = await request.json()
+    const { email, token } = await request.json()
 
     if (!email || typeof email !== "string") {
       return NextResponse.json({ error: "Email is required" }, { status: 400 })
@@ -15,6 +15,17 @@ export async function POST(request: Request) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(email)) {
       return NextResponse.json({ error: "Invalid email format" }, { status: 400 })
+    }
+
+    const recaptchaRes = await fetch(
+        `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${token}`,
+        { method: "POST" }
+    );
+
+    const recaptchaData = await recaptchaRes.json();
+
+    if (!recaptchaData.success || recaptchaData.score < 0.5) {
+        return NextResponse.json({ error: "Recaptcha verification failed" }, { status: 400 });
     }
 
     // Check if email already exists
@@ -36,7 +47,7 @@ export async function POST(request: Request) {
     sendEmailWelcome({
       to: email.toLowerCase(),
       subject: "AviPrep Waitlist",
-      html: getWaitlistTemplate()
+      html: getWaitlistTemplate(email.toLowerCase())
     });
 
     return NextResponse.json({ success: true })

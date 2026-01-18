@@ -1,4 +1,4 @@
-function getBaseTemplate(content: string) {
+function getBaseTemplate(content: string, userEmail: string) {
     return `
     <!DOCTYPE html>
 <html lang="en">
@@ -95,7 +95,7 @@ function getBaseTemplate(content: string) {
                         You’re receiving this email because you signed up to the AviPrep waitlist.
                     </p>
                     <p>
-                        <a href="https://aviprep.com.au/dashboard/settings">Unsubscribe</a>
+                        <a href="https://aviprep.com.au/unsubscribe?email=${encodeURIComponent(userEmail)}">Unsubscribe</a>
                     </p>
                 </td>
             </tr>
@@ -106,13 +106,15 @@ function getBaseTemplate(content: string) {
   `
 }
 
-export function getWaitlistTemplate() {
+export function getWaitlistTemplate(userEmail: string) {
     return getBaseTemplate(`
         <h1>Welcome to the crew.</h1>
         <p>You're officially on the waitlist for AviPrep, and we've noted your email for your <strong>20% lifetime discount</strong> when we go live April 7th.</p>
         
         <p>We're building the theory resource we wish we had when we started training - something comprehensive, broken down into easy-to-understand concepts to get us into the cockpit sooner.</p>
         
+        <img src="https://aviprep.com.au/email/separator.png" alt="Horizontal separator" width="180" style="display: block; margin: 0 auto;">
+
         <p><strong>What you can expect at launch:</strong></p>
         
         <span class="feature-title">Comprehensive Coverage</span>
@@ -127,17 +129,19 @@ export function getWaitlistTemplate() {
         <span class="feature-title">Zero Fluff</span>
         <p class="feature-desc">Explanations that actually make sense, designed to help you clear those KDRs.</p>
 
+        <img src="https://aviprep.com.au/email/separator.png" alt="Horizontal separator" width="180" style="display: block; margin: 0 auto;">
+        
         <p>We'll be reaching out to you as we get closer to launch day with your exclusive early access link. In the meantime, feel free to follow our journey on our socials below for study tips and progress updates.</p>
         
         <p>Clear skies,<br><strong>The AviPrep team</strong></p>
-    `)
+    `, userEmail)
 }
 
-export function getCustomTemplate(htmlContent: string) {
+export function getCustomTemplate(htmlContent: string, userEmail: string) {
     // If the content already has full HTML structure, return as-is
     if (htmlContent.toLowerCase().includes("<!doctype") || htmlContent.toLowerCase().includes("<html")) {
         return htmlContent
     }
     // Otherwise wrap in base template
-    return getBaseTemplate(htmlContent)
+    return getBaseTemplate(htmlContent, userEmail)
 }

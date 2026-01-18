@@ -1,5 +1,6 @@
 import { Metadata } from "next";
 import "../components/globals.css";
+import CaptchaProvider from "@/components/meta/recaptcha-provider";
 
 export const metadata: Metadata = {
   title: "AviPrep",
@@ -13,11 +14,13 @@ export const metadata: Metadata = {
 }
 
 export default ({ children }: { children: React.ReactNode }) => {
-    return (
-        <html lang="en">
-            <body className="antialiased overflow-x-hidden cursor-default">
-                {children}
-            </body>
-        </html>
-    )
+  return (
+    <html lang="en">
+      <body className="antialiased overflow-x-hidden cursor-default">
+        <CaptchaProvider>
+          {children}
+        </CaptchaProvider>
+      </body>
+    </html>
+  )
 }

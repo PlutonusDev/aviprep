@@ -10,8 +10,10 @@ import { useState } from "react"
 import { BiSolidZap } from "react-icons/bi";
 import { FaBookOpen, FaClock, FaFireFlameCurved, FaUsers } from "react-icons/fa6"
 import { IoBarChart } from "react-icons/io5";
+import { useGoogleReCaptcha } from "react-google-recaptcha-v3";
 
 export default () => {
+    const { executeRecaptcha } = useGoogleReCaptcha();
     const [email, setEmail] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSubmitted, setIsSubmitted] = useState(false);
@@ -19,16 +21,19 @@ export default () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!executeRecaptcha) return;
         if (!email) return;
 
         setIsSubmitting(true);
         setError("");
 
         try {
+            const token = await executeRecaptcha("waitlist_join");
+
             const res = await fetch("/api/waitlist", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email }),
+                body: JSON.stringify({ email, token }),
             });
 
             if (!res.ok) {
