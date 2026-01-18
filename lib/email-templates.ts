@@ -68,7 +68,7 @@ function getBaseTemplate(content: string) {
             <tr>
                 <td style="padding: 40px 0 20px 0; text-align: center;">
                     <a href="https://aviprep.com.au" target="_blank">
-                        <img src="https://aviprep.com.au/img/email/logo.png" alt="AviPrep Logo" width="180" style="display: block; margin: 0 auto;">
+                        <img src="https://aviprep.com.au/email/logo.png" alt="AviPrep Logo" width="180" style="display: block; margin: 0 auto;">
                     </a>
                 </td>
             </tr>
