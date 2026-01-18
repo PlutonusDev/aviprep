@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { verifyToken } from "@lib/auth"
 import { prisma } from "@lib/prisma"
+import { sendEmailSupport } from "@lib/email"
+import { getCustomTemplate } from "@lib/email-templates"
 
 export async function GET() {
   try {

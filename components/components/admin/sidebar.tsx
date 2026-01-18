@@ -5,10 +5,12 @@ import { usePathname, useRouter } from "next/navigation"
 import { cn } from "@lib/utils"
 import { LayoutDashboard, Users, HelpCircle, Package, Ticket, LogOut, Shield, Sparkles } from "lucide-react"
 import { SlSpeech } from "react-icons/sl"
+import { MdEmail } from "react-icons/md"
 
 const navigation = [
   { name: "Overview", href: "/admin", icon: LayoutDashboard },
   { name: "Members", href: "/admin/members", icon: Users },
+  { name: "Email", href: "/admin/email", icon: MdEmail },
   { name: "Questions", href: "/admin/questions", icon: HelpCircle },
   { name: "Products", href: "/admin/products", icon: Package },
   { name: "Coupons", href: "/admin/coupons", icon: Ticket },
