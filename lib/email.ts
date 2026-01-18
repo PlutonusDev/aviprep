@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer"
+import { getCustomTemplate } from "./email-templates"
 
 const transporter = nodemailer.createTransport({
     name: "aviprep.com.au",
@@ -62,7 +63,8 @@ export async function sendBulkEmails(
 
     for (const recipient of recipients) {
         try {
-            let personalizedHtml = html
+            let personalizedHtml = getCustomTemplate(html, recipient.email);
+
             if (personalize && recipient.firstName) {
                 personalizedHtml = html.replace(/{{firstName}}/g, recipient.firstName)
             }

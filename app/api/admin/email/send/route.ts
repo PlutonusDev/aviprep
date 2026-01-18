@@ -25,8 +25,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Subject and HTML content are required" }, { status: 400 })
     }
 
-    const finalHtml = useWrapper ? getCustomTemplate(html) : html
-
     let recipientList: { email: string; firstName?: string }[] = []
 
     if (recipients === "all_users") {
@@ -51,6 +49,7 @@ export async function POST(request: Request) {
 
     // For a single recipient, send directly
     if (recipientList.length === 1) {
+      const finalHtml = useWrapper ? getCustomTemplate(html, recipientList[0].email) : html
       let personalizedHtml = finalHtml
       if (personalize && recipientList[0].firstName) {
         personalizedHtml = finalHtml.replace(/{{firstName}}/g, recipientList[0].firstName)
@@ -71,7 +70,7 @@ export async function POST(request: Request) {
     }
 
     // For bulk emails
-    const results = await sendBulkEmails(recipientList, subject, finalHtml, personalize)
+    const results = await sendBulkEmails(recipientList, subject, html, personalize)
     
     const sent = results.filter((r) => r.success).length
     const failed = results.filter((r) => !r.success).length
