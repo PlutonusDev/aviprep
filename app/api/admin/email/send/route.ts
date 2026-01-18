@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server"
 import { verifyAdmin } from "app/api/admin/middleware"
 import { prisma } from "@lib/prisma"
-import { sendEmail, sendBulkEmails } from "@lib/email"
+import { sendEmailSupport, sendBulkEmails } from "@lib/email"
 import { getCustomTemplate } from "@lib/email-templates"
 
 export async function POST(request: Request) {
   const adminCheck = await verifyAdmin()
-  if (adminCheck) return adminCheck
+  if ("error" in adminCheck) {
+    return NextResponse.json({ error: adminCheck.error }, { status: adminCheck.status })
+  }
 
   try {
     const body = await request.json()
@@ -54,7 +56,7 @@ export async function POST(request: Request) {
         personalizedHtml = finalHtml.replace(/{{firstName}}/g, recipientList[0].firstName)
       }
       
-      await sendEmail({
+      await sendEmailSupport({
         to: recipientList[0].email,
         subject,
         html: personalizedHtml,

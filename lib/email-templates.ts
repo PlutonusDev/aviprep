@@ -40,7 +40,7 @@ function getBaseTemplate(content: string) {
             border-spacing: 0;
         }
         .content {
-            padding: 30px;
+            padding: 30px 30px 10px 30px;
             line-height: 1.6;
             font-size: 16px;
         }
@@ -57,6 +57,9 @@ function getBaseTemplate(content: string) {
         .social-links {
             margin: 10px 0;
         }
+        h1 { color: #1a1a1a; font-size: 24px; margin-top: 0; }
+        .feature-title { font-weight: bold; color: #1a1a1a; margin-bottom: 2px; display: block; }
+        .feature-desc { margin-top: 0; margin-bottom: 15px; }
     </style>
 </head>
 <body>
@@ -79,13 +82,13 @@ function getBaseTemplate(content: string) {
             <tr>
                 <td class="footer">
                     <hr style="border: 0; border-top: 1px solid #eeeeee; margin: 20px 0;">
-                    <p><strong>AviPrep</strong></p>
+                    <h2><strong>AviPrep</strong></h2>
                     <p>© 2026 AviPrep. All rights reserved.</p>
                     
                     <div class="social-links">
                         <a href="https://x.com/AviPrep_AU">X</a> | 
                         <a href="https://instagram.com/AviPrep_AU">Instagram</a> |
-                        <a href="https://linkedin.com/company/AviPrep>LinkedIn</a>
+                        <a href="https://linkedin.com/company/AviPrep">LinkedIn</a>
                     </div>
 
                     <p style="margin-top: 20px;">
@@ -101,6 +104,33 @@ function getBaseTemplate(content: string) {
 </body>
 </html>
   `
+}
+
+export function getWaitlistTemplate() {
+    return getBaseTemplate(`
+        <h1>Welcome to the crew.</h1>
+        <p>You're officially on the waitlist for AviPrep, and we've noted your email for your <strong>20% lifetime discount</strong> when we go live April 7th.</p>
+        
+        <p>We're building the theory resource we wish we had when we started training - something comprehensive, broken down into easy-to-understand concepts to get us into the cockpit sooner.</p>
+        
+        <p><strong>What you can expect at launch:</strong></p>
+        
+        <span class="feature-title">Comprehensive Coverage</span>
+        <p class="feature-desc">From RPL and PPL to CPL subjects, plus IREX and ATPL support in the future.</p>
+
+        <span class="feature-title">Real Practice</span>
+        <p class="feature-desc">Interactive exams designed to mirror the real thing.</p>
+
+        <span class="feature-title">Community Support</span>
+        <p class="feature-desc">A dedicated forum to connect with other Aussie pilots.</p>
+
+        <span class="feature-title">Zero Fluff</span>
+        <p class="feature-desc">Explanations that actually make sense, designed to help you clear those KDRs.</p>
+
+        <p>We'll be reaching out to you as we get closer to launch day with your exclusive early access link. In the meantime, feel free to follow our journey on our socials below for study tips and progress updates.</p>
+        
+        <p>Clear skies,<br><strong>The AviPrep team</strong></p>
+    `)
 }
 
 export function getCustomTemplate(htmlContent: string) {

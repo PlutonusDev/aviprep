@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@lib/prisma"
+import { sendEmailWelcome } from "@lib/email"
+import { getWaitlistTemplate } from "@lib/email-templates"
 
 export async function POST(request: Request) {
   try {
@@ -30,6 +32,12 @@ export async function POST(request: Request) {
         email: email.toLowerCase(),
       },
     })
+
+    sendEmailWelcome({
+      to: email.toLowerCase(),
+      subject: "AviPrep Waitlist",
+      html: getWaitlistTemplate()
+    });
 
     return NextResponse.json({ success: true })
   } catch (error) {
