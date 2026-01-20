@@ -165,7 +165,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ th
     const { isSticky, isClosed } = await request.json()
 
     const thread = await prisma.thread.update({
-      where: { id: threadId },
+      where: { slug: threadId },
       data: {
         ...(isSticky !== undefined && { isSticky }),
         ...(isClosed !== undefined && { isClosed }),
