@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { stripe } from "@lib/stripe"
 import { prisma } from "@lib/prisma"
-import { getProductById, SUBJECTS, CPL_BUNDLE } from "@lib/products"
+import { getProductById, SUBJECTS, BUNDLES } from "@lib/products"
 import type Stripe from "stripe"
 
 // Disable body parsing, we need raw body for webhook verification
@@ -80,7 +80,7 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
   }
 
   // Check if bundle was purchased
-  const hasBundle = productIds.includes("cpl-bundle")
+  const hasBundle = productIds.includes("cpl-bundle") || productIds.includes("ppl-bundle")
 
   // Check for add-ons
   const hasPrinting = productIds.includes("addon-printing")
@@ -112,7 +112,7 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
           subjectName: subject.name,
           subjectCode: subject.id,
           purchaseType: "bundle",
-          priceAud: CPL_BUNDLE.priceInCents,
+          priceAud: BUNDLES.find((b) => b.subjectId === productIds[0]).priceInCents,
           hasPrinting: true, // Bundle includes printing
           hasAiInsights: true, // Bundle includes AI insights
           expiresAt: threeMonthsFromNow,

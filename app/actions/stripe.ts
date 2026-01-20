@@ -49,6 +49,9 @@ export async function createCheckoutSession(productIds: string[], returnUrl: str
         return_url: returnUrl,
         line_items: lineItems,
         mode: mode,
+        consent_collection: {
+            terms_of_service: "required",
+        },
         metadata: {
             userId: userId || "",
             productIds: productIds.join(",")

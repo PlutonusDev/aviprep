@@ -20,7 +20,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { CPL_BUNDLE, SUBJECTS, ADDONS } from "@lib/products"
+import { BUNDLES, SUBJECTS, ADDONS } from "@lib/products"
 
 const bundleFeatures = [
   { icon: Check, text: "Access to all 7 CPL theory subjects" },
@@ -40,8 +40,8 @@ const individualFeatures = [
 const printAddon = ADDONS.find((a) => a.id === "addon-printing")!
 const aiAddon = ADDONS.find((a) => a.id === "addon-ai-insights")!
 
-const totalIndividualValue = SUBJECTS.reduce((sum, s) => sum + s.priceInCents, 0)
-const bundleSavingsPercent = Math.round((1 - CPL_BUNDLE.priceInCents / totalIndividualValue) * 100)
+const totalIndividualValue = 0; //SUBJECTS.reduce((sum, s) => sum + s.priceInCents, 0)
+const bundleSavingsPercent = 0; //Math.round((1 - BUNDLES.priceInCents / totalIndividualValue) * 100)
 
 export default function PricingContent() {
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([])
@@ -84,8 +84,8 @@ export default function PricingContent() {
     (addPrinting ? printAddon.priceInCents : 0) +
     (addAI ? aiAddon.priceInCents : 0)
 
-  const handleBundlePurchase = () => {
-    router.push("/checkout?products=cpl-bundle")
+  const handleBundlePurchase = (id: string) => {
+    router.push(`/checkout?products=${id}`)
   }
 
   const handleIndividualPurchase = () => {
@@ -134,46 +134,50 @@ export default function PricingContent() {
         {/* Bundle Tab */}
         <TabsContent value="bundle" className="space-y-6">
           <div className="max-w-lg mx-auto">
-            <Card className="border-primary relative overflow-hidden">
-              <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-xs font-medium px-3 py-1 rounded-bl-lg">
-                Best Value
-              </div>
-              <CardHeader className="text-center pb-2">
-                <CardTitle className="text-2xl">{CPL_BUNDLE.name}</CardTitle>
-                <CardDescription>{CPL_BUNDLE.description}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="text-center">
-                  <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-4xl font-bold text-foreground">
-                      ${(CPL_BUNDLE.priceInCents / 100).toFixed(0)}
-                    </span>
-                    <span className="text-muted-foreground">/quarter</span>
+            {BUNDLES.map(bundle => {
+              return (
+                <Card className="border-primary relative overflow-hidden">
+                  <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-xs font-medium px-3 py-1 rounded-bl-lg">
+                    Best Value
                   </div>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    <span className="line-through">${(totalIndividualValue / 100).toFixed(0)}</span> Save{" "}
-                    {bundleSavingsPercent}%
-                  </p>
-                </div>
-
-                <div className="space-y-3">
-                  {bundleFeatures.map((feature, index) => (
-                    <div key={index} className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                        <feature.icon className="h-4 w-4 text-primary" />
+                  <CardHeader className="text-center pb-2">
+                    <CardTitle className="text-2xl">{bundle.name}</CardTitle>
+                    <CardDescription>{bundle.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="text-center">
+                      <div className="flex items-baseline justify-center gap-1">
+                        <span className="text-4xl font-bold text-foreground">
+                          ${(bundle.priceInCents / 100).toFixed(0)}
+                        </span>
+                        <span className="text-muted-foreground">/quarter</span>
                       </div>
-                      <span className="text-sm text-foreground">{feature.text}</span>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        <span className="line-through">${(totalIndividualValue / 100).toFixed(0)}</span> Save{" "}
+                        {bundleSavingsPercent}%
+                      </p>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button className="w-full gap-2" size="lg" onClick={handleBundlePurchase}>
-                  <Sparkles className="h-4 w-4" />
-                  Get Complete Bundle
-                </Button>
-              </CardFooter>
-            </Card>
+
+                    <div className="space-y-3">
+                      {bundle.features.map((feature, index) => (
+                        <div key={index} className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                            <feature.icon className="h-4 w-4 text-primary" />
+                          </div>
+                          <span className="text-sm text-foreground">{feature.text}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                  <CardFooter>
+                    <Button className="w-full gap-2" size="lg" onClick={() => handleBundlePurchase(bundle.id)}>
+                      <Sparkles className="h-4 w-4" />
+                      Get Complete Bundle
+                    </Button>
+                  </CardFooter>
+                </Card>
+              );
+            })}
           </div>
 
           {/* Subject list preview - using actual SUBJECTS data */}
@@ -189,7 +193,7 @@ export default function PricingContent() {
                       <Badge variant="outline">{subject.code}</Badge>
                       <span className="text-sm font-medium text-foreground">{subject.name}</span>
                     </div>
-                    <span className="text-xs text-muted-foreground">{subject.features[0]}</span>
+                    <span className="text-xs text-muted-foreground">{subject.features[0].text}</span>
                   </div>
                 ))}
               </div>
@@ -237,7 +241,7 @@ export default function PricingContent() {
                               <Badge variant="outline">{subject.code}</Badge>
                               <span className="font-medium text-foreground">{subject.name}</span>
                             </div>
-                            <p className="text-xs text-muted-foreground mt-1">{subject.features[0]}</p>
+                            <p className="text-xs text-muted-foreground mt-1">{subject.features[0].text}</p>
                           </div>
                         </div>
                         <span className="font-bold text-foreground">${(subject.priceInCents / 100).toFixed(0)}</span>

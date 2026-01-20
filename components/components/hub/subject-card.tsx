@@ -5,7 +5,7 @@ import { Badge } from "../ui/badge";
 import { Progress } from "../ui/progress";
 import Link from "next/link";
 
-export default ({ subject }) => {
+export default ({ subject, hideButton = false }) => {
     return (
         <Card className={`relative overflow-hidden transition-all hover:border-primary/50 ${!subject.isPurchased ? "opacity-75" : ""}`}>
             {!subject.isPurchased && (
@@ -53,14 +53,16 @@ export default ({ subject }) => {
                 </div>
             </CardContent>
 
-            <CardFooter className="pt-0">
-                <Link href={`/dashboard/exams/${subject.id}`} className="w-full">
-                    <Button variant="secondary" className="w-full group cursor-pointer">
-                        Start Practice
-                        <FaArrowRight className="ml-2 text-lg transition-transform group-hover:translate-x-1" />
-                    </Button>
-                </Link>
-            </CardFooter>
+            {!hideButton && (
+                <CardFooter className="pt-0">
+                    <Link href={`/dashboard/exams/${subject.id}`} className="w-full">
+                        <Button variant="secondary" className="w-full group cursor-pointer">
+                            Start Practice
+                            <FaArrowRight className="ml-2 text-lg transition-transform group-hover:translate-x-1" />
+                        </Button>
+                    </Link>
+                </CardFooter>
+            )}
         </Card>
     )
 }

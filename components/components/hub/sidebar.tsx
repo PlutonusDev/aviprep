@@ -3,7 +3,7 @@ import { RiDashboardHorizontalFill, RiSettings3Fill } from "react-icons/ri";
 import { GiPlaneWing } from "react-icons/gi";
 import Link from "next/link";
 import { cn } from "lib/utils";
-import { FaBrain, FaComputer, FaDoorClosed, FaMedal, FaPaperPlane } from "react-icons/fa6";
+import { FaBrain, FaClipboardList, FaComputer, FaDoorClosed, FaMedal, FaPaperPlane } from "react-icons/fa6";
 import { IoBarChart, IoSettings, IoSparkles } from "react-icons/io5";
 import { SlSpeech } from "react-icons/sl";
 import { useUser } from "@lib/user-context";
@@ -13,6 +13,11 @@ const navigation = [
         name: "Dashboard",
         href: "/dashboard",
         icon: RiDashboardHorizontalFill
+    },
+    {
+        name: "Subject Courses",
+        href: "/dashboard/learn",
+        icon: FaClipboardList
     },
     {
         name: "Practice Exams",

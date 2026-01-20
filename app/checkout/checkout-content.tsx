@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback, useEffect } from "react"
-import { useSearchParams, useRouter } from "next/navigation"
+import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { loadStripe } from "@stripe/stripe-js"
 import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js"
 import { ArrowLeft, Check, CreditCard, Loader2, Lock, Shield, Sparkles } from "lucide-react"
@@ -12,13 +12,14 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { createCheckoutSession, getCheckoutSessionStatus } from "app/actions/stripe"
-import { getProductById, calculateTotal, CPL_BUNDLE } from "@lib/products"
+import { getProductById, calculateTotal, BUNDLES } from "@lib/products"
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
 export default function CheckoutContent() {
     const searchParams = useSearchParams()
     const router = useRouter()
+    const pathname = usePathname()
     const [showStripeCheckout, setShowStripeCheckout] = useState(false)
     const [selectedProducts, setSelectedProducts] = useState<string[]>([])
     const [checkingStatus, setCheckingStatus] = useState(false)
@@ -29,6 +30,8 @@ export default function CheckoutContent() {
             const productIds = productsParam.split(",").filter(Boolean)
             setSelectedProducts(productIds)
         }
+
+        router.replace(pathname);
     }, [searchParams])
 
     useEffect(() => {
@@ -159,10 +162,10 @@ export default function CheckoutContent() {
                             <ul className="space-y-3">
                                 {isBundle ? (
                                     <>
-                                        {CPL_BUNDLE.features.map((feature, idx) => (
+                                        {BUNDLES[0].features.map((feature, idx) => (
                                             <li key={idx} className="flex items-center gap-3 text-sm">
-                                                <Check className="h-4 w-4 text-emerald-400" />
-                                                <span>{feature}</span>
+                                                <feature.icon className="h-4 w-4 text-emerald-400" />
+                                                <span>{feature.text}</span>
                                             </li>
                                         ))}
                                     </>
@@ -171,7 +174,7 @@ export default function CheckoutContent() {
                                         <li key={product!.id} className="flex items-center gap-3 text-sm">
                                             <Check className="h-4 w-4 text-emerald-400" />
                                             <span>
-                                                {product!.name} - {product!.features[0]}
+                                                {product!.name} - {product!.features[0].text}
                                             </span>
                                         </li>
                                     ))
