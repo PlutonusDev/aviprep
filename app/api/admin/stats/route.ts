@@ -28,7 +28,7 @@ export async function GET() {
     }
 
     // Fetch stats
-    const [totalMembers, totalQuestions, purchases, activeSubscriptions] = await Promise.all([
+    const [totalMembers, totalQuestions, purchases, activeSubscriptions, waitlistCount] = await Promise.all([
       prisma.user.count(),
       prisma.question.count(),
       prisma.purchase.aggregate({
@@ -40,6 +40,7 @@ export async function GET() {
           bundleExpiry: { gt: new Date() },
         },
       }),
+      prisma.waitlist.count(),
     ])
 
     return NextResponse.json({
@@ -47,6 +48,7 @@ export async function GET() {
       totalQuestions,
       totalRevenue: purchases._sum.priceAud ?? 0,
       activeSubscriptions,
+      waitlistCount,
     })
   } catch (error) {
     console.error("Admin stats error:", error)
