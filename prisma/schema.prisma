@@ -160,6 +160,20 @@ model Waitlist {
   createdAt DateTime @default(now())
 }
 
+model RtoContact {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  name         String
+  email        String
+  phone        String?
+  organisation String
+  contacted    Boolean  @default(false) // Track if partnerships team has followed up
+  notes        String?  // For internal notes
+  createdAt    DateTime @default(now())
+  
+  @@index([email])
+  @@index([createdAt])
+}
+
 model Coupon {
   id              String    @id @default(auto()) @map("_id") @db.ObjectId
   code            String    @unique

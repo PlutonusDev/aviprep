@@ -53,6 +53,23 @@ export async function sendEmailSupport({ to, subject, text, html }: EmailOptions
     }
 }
 
+export async function sendEmailPartnership({ to, subject, text, html }: EmailOptions) {
+    try {
+        const info = await transporter.sendMail({
+            from: '"AviPrep" <partnerships@aviprep.com.au>',
+            to: Array.isArray(to) ? to.join(", ") : to,
+            subject,
+            text: text || "",
+            html,
+        })
+        console.log("Email sent:", info.messageId)
+        return { success: true, messageId: info.messageId }
+    } catch (error) {
+        console.error("Email send error:", error)
+        throw error
+    }
+}
+
 export async function sendBulkEmails(
     recipients: { email: string; firstName?: string }[],
     subject: string,
