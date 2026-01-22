@@ -92,8 +92,8 @@ export async function POST(request: Request) {
               <p><strong>The AviPrep Team</strong></p>
             </div>
             <div class="footer">
-              <p>AviPrep - CASA-Aligned Flight Theory Preparation Platform</p>
-              <p>This is an automated message. Please do not reply directly to this email.</p>
+              <p>AviPrep</p>
+              <p>You are receiving this message because you inquired about a partnership with AviPrep.</p>
             </div>
           </div>
         </body>
