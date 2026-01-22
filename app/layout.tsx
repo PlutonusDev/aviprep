@@ -11,6 +11,7 @@ export const metadata: Metadata = {
     description:
       "Join 500+ aspiring pilots. 5,000+ questions, AI insights. Be the first to know when we launch.",
   },
+  manifest: "/site.webmanifest",
 }
 
 export default ({ children }: { children: React.ReactNode }) => {
