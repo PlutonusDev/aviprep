@@ -42,6 +42,7 @@ interface Forum {
   name: string
   description: string | null
   category: { id: string; name: string }
+  protected: boolean
 }
 
 export default function ForumThreadsContent() {
