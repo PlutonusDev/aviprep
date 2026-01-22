@@ -484,7 +484,7 @@ export default () => {
                                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                                             </svg>
-                                            <span>app.aviprep.com.au/analytics</span>
+                                            <span>aviprep.com.au/dashboard/insights</span>
                                         </div>
                                     </div>
                                 </div>
@@ -504,15 +504,15 @@ export default () => {
                                     <div className="space-y-2">
                                         <h4 className="text-sm font-semibold mb-3">Priority Areas for Review</h4>
                                         <div className="bg-red-500/10 border border-red-500/20 rounded px-3 py-2 flex items-center justify-between">
-                                            <span className="text-sm font-medium">Weight & Balance</span>
-                                            <span className="text-xs bg-red-500/20 px-2 py-1 rounded">45% accuracy</span>
+                                            <span className="text-sm font-medium">Performance - Weight & Balance Calculations [Section 6.4.2(a)]</span>
+                                            <span className="text-xs bg-red-500/20 px-2 py-1 rounded">66% accuracy</span>
                                         </div>
                                         <div className="bg-yellow-500/10 border border-yellow-500/20 rounded px-3 py-2 flex items-center justify-between">
-                                            <span className="text-sm font-medium">IFR Procedures</span>
+                                            <span className="text-sm font-medium">Air Law - Life Jacket Requirements [Section 2.4.1(d)(vi)]</span>
                                             <span className="text-xs bg-yellow-500/20 px-2 py-1 rounded">73% accuracy</span>
                                         </div>
                                         <div className="bg-green-500/10 border border-green-500/20 rounded px-3 py-2 flex items-center justify-between">
-                                            <span className="text-sm font-medium">Air Law</span>
+                                            <span className="text-sm font-medium">Meteorology - Microbursts [Section 2.8.1(b)]</span>
                                             <span className="text-xs bg-green-500/20 px-2 py-1 rounded">91% accuracy</span>
                                         </div>
                                     </div>
@@ -628,7 +628,7 @@ export default () => {
                                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                                             </svg>
-                                            <span>app.aviprep.com.au/review</span>
+                                            <span>aviprep.com.au/exam/review</span>
                                         </div>
                                     </div>
                                 </div>
@@ -640,7 +640,7 @@ export default () => {
                                             <CheckCircle2 className="h-5 w-5 text-green-500" />
                                             <span className="font-semibold text-green-700 dark:text-green-400">Correct Answer</span>
                                         </div>
-                                        <p className="text-sm text-muted-foreground">Your answer: <strong>B) 36,000 - 40,000 feet</strong></p>
+                                        <p className="text-sm text-muted-foreground">Your answer: <strong>36,000 - 40,000 feet</strong></p>
                                     </div>
 
                                     <div className="bg-card border border-border/50 rounded-lg p-4 space-y-4">
@@ -654,14 +654,14 @@ export default () => {
                                         <div className="pt-3 border-t border-border/50">
                                             <h4 className="font-semibold text-sm mb-2">Regulatory Reference</h4>
                                             <p className="text-xs text-muted-foreground">
-                                                CASA Part 61 MOS - Meteorology Competency Unit 2.3
+                                                CASA Part 61 MOS - Unit 1.8.2 Section 2.1.3(b)
                                             </p>
                                         </div>
 
                                         <div className="flex gap-2 pt-2">
                                             <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">Meteorology</span>
                                             <span className="text-xs bg-muted px-2 py-1 rounded">Atmosphere</span>
-                                            <span className="text-xs bg-muted px-2 py-1 rounded">Medium Difficulty</span>
+                                            <span className="text-xs bg-muted px-2 py-1 rounded">Easy Difficulty</span>
                                         </div>
                                     </div>
                                 </div>
