@@ -28,7 +28,10 @@ export async function POST(request: Request) {
     // Check if user is suspended
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
-      select: { isSuspendedFromForum: true },
+      select: {
+        isSuspendedFromForum: true,
+        isAdmin: true,
+      },
     })
 
     if (user?.isSuspendedFromForum) {
@@ -58,6 +61,8 @@ export async function POST(request: Request) {
         slug: forumId
       }
     });
+
+    if(forum.protected || !user.isAdmin) return NextResponse.json({ error: "Forum is protected" }, { status: 403 });
 
     // Generate unique slug
     let slug = generateSlug(title)

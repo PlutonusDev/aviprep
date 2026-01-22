@@ -79,6 +79,7 @@ export default function ForumThreadsContent() {
   }
 
   async function handleCreateThread() {
+    if(forum.protected && !user.isAdmin) return;
     const content = editorRef.current?.getHTML() || ""
     if (!newTitle.trim() || !content.trim() || content === "<p></p>") return
     setCreating(true)
@@ -141,46 +142,48 @@ export default function ForumThreadsContent() {
             {forum?.description && <p className="text-sm text-muted-foreground">{forum.description}</p>}
           </div>
         </div>
-        <Dialog open={showNewThread} onOpenChange={setShowNewThread}>
-          <DialogTrigger asChild>
-            <Button size="sm">
-              <Plus className="mr-2 h-4 w-4" />
-              New Thread
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create New Thread</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="title">Title</Label>
-                <Input
-                  id="title"
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder="Thread title..."
-                />
+        {(!forum.protected || user.isAdmin) && (
+          <Dialog open={showNewThread} onOpenChange={setShowNewThread}>
+            <DialogTrigger asChild>
+              <Button size="sm">
+                <Plus className="mr-2 h-4 w-4" />
+                New Thread
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Create New Thread</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="title">Title</Label>
+                  <Input
+                    id="title"
+                    value={newTitle}
+                    onChange={(e) => setNewTitle(e.target.value)}
+                    placeholder="Thread title..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="content">Content</Label>
+                  <RichTextEditor
+                    ref={editorRef}
+                    onChange={setNewContent}
+                    placeholder="What would you like to discuss? Use @ to mention users"
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button className="cursor-pointer" variant="outline" onClick={() => setShowNewThread(false)}>
+                    Cancel
+                  </Button>
+                  <Button className="cursor-pointer" onClick={handleCreateThread} disabled={creating}>
+                    {creating ? "Creating..." : "Create Thread"}
+                  </Button>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="content">Content</Label>
-                <RichTextEditor
-                  ref={editorRef}
-                  onChange={setNewContent}
-                  placeholder="What would you like to discuss? Use @ to mention users"
-                />
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button className="cursor-pointer" variant="outline" onClick={() => setShowNewThread(false)}>
-                  Cancel
-                </Button>
-                <Button className="cursor-pointer" onClick={handleCreateThread} disabled={creating}>
-                  {creating ? "Creating..." : "Create Thread"}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       <Card>

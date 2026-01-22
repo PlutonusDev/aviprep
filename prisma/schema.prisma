@@ -215,6 +215,7 @@ model Forum {
   category    ForumCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   
   threads     Thread[]
+  protected   Boolean  @default(false)
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

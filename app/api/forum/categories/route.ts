@@ -46,6 +46,11 @@ export async function GET() {
             threads: {
               take: 1,
               orderBy: { updatedAt: "desc" },
+              where: {
+                deleted: {
+                  not: true,
+                },
+              },
               include: {
                 author: {
                   select: { firstName: true, lastName: true },
