@@ -3,13 +3,14 @@
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { cn } from "@lib/utils"
-import { LayoutDashboard, Users, HelpCircle, Package, Ticket, LogOut, Shield, Sparkles } from "lucide-react"
+import { LayoutDashboard, Users, HelpCircle, Package, Ticket, LogOut, Shield, Sparkles, Building2 } from "lucide-react"
 import { SlSpeech } from "react-icons/sl"
 import { MdEmail } from "react-icons/md"
 
 const navigation = [
   { name: "Overview", href: "/admin", icon: LayoutDashboard },
   { name: "Members", href: "/admin/members", icon: Users },
+  { name: "Flight Schools", href: "/admin/flight-schools", icon: Building2 },
   { name: "Email", href: "/admin/email", icon: MdEmail },
   { name: "Questions", href: "/admin/questions", icon: HelpCircle },
   { name: "Products", href: "/admin/products", icon: Package },

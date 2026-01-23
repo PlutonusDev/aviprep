@@ -26,6 +26,12 @@ model User {
   // Subscription status
   hasBundle         Boolean   @default(false)
   bundleExpiry      DateTime?
+
+  flightSchoolId      String?       @db.ObjectId
+  flightSchool        FlightSchool? @relation ("FlightSchoolStudents", fields: [flightSchoolId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  isFlightSchoolAdmin Boolean       @default(false)
+  managedSchool       FlightSchool? @relation ("FlightSchoolAdmin")
+  enrolledAt          DateTime?
   
   // Relations
   purchases         Purchase[]
@@ -39,6 +45,85 @@ model User {
   reactions         Reaction[]
   messagesSent      PrivateMessage[] @relation("MessagesSent")
   messagesReceived  PrivateMessage[] @relation("MessagesReceived")
+}
+
+model FlightSchool {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  name          String
+  slug          String    @unique
+  email         String    @unique
+  phone         String?
+  address       String?
+  city          String?
+  state         String?
+  postcode      String?
+  website       String?
+  logo          String?
+
+  adminId       String    @unique @db.ObjectId
+  admin         User      @relation("FlightSchoolAdmin", fields: [adminId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  isActive      Boolean   @default(true)
+  maxStudents   Int       @default(50)
+
+  apiKey        String?   @unique
+  apiEnabled    Boolean   @default(true)
+  webhookUrl    String?
+  webhookSecret String?
+
+  subscriptionTier    String  @default("basic")
+  subscriptionExpiry  DateTime?
+
+  students      User[]    @relation("FlightSchoolStudents")
+
+  studentGroups StudentGroup[]
+
+  schoolPurchases SchoolPurchase[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model StudentGroup {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  description String?
+  color       String    @default("#3b82f6")
+
+  flightSchoolId  String  @db.ObjectId
+  flightSchool    FlightSchool @relation(fields: [flightSchoolId], references: [id], onDelete: Cascade)
+
+  studentIds  String[]  @db.ObjectId
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([flightSchoolId])
+}
+
+model SchoolPurchase {
+  id        String    @id @default(auto()) @map("_id")  @db.ObjectId
+
+  flightSchoolId  String  @db.ObjectId
+  flightSchool    FlightSchool  @relation(fields: [flightSchoolId], references: [id], onDelete: Cascade)
+
+  licenseType     String
+  productType     String
+  subjectId       String?
+  tier            String
+
+  totalSeats      Int
+  usedSeats       Int   @default(0)
+
+  pricePerSeat    Int
+  totalPrice      Int
+
+  purchasedAt     DateTime  @default(now())
+  expiresAt       DateTime
+
+  stripePaymentId String?
+
+  @@index([flightSchoolId])
 }
 
 model Purchase {
