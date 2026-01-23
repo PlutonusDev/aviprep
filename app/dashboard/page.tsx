@@ -57,7 +57,7 @@ export default () => {
         <div className="p-4 lg:p-6 space-y-6">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-foreground">Welcome back, Joshua</h1>
+                    <h1 className="text-2xl font-bold text-foreground">Welcome back, {user.firstName}</h1>
                     <p className="text-muted-foreground">
                         {purchasedSubjects.length > 0 ? "Continue your AviPrep journey. You're making great progress!" : "Get started by purchasing access to your first subject."}
                     </p>

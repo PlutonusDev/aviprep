@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useSchool } from "./layout"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -15,8 +15,13 @@ import {
   AlertCircle,
   CheckCircle2,
   UserPlus,
+  Loader2,
 } from "lucide-react"
 import Link from "next/link"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader } from "@/components/ui/dialog"
+import { DialogTitle } from "@radix-ui/react-dialog"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 
 interface DashboardStats {
   totalStudents: number
@@ -47,27 +52,61 @@ interface DashboardStats {
   }>
 }
 
+interface NewStudent {
+  firstName: string
+  lastName: string
+  email: string
+  phone: string
+  arn: string
+}
+
 export default function SchoolDashboard() {
   const { school, studentCount } = useSchool()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [addStudent, setAddStudent] = useState<NewStudent | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  const fetchStats = useCallback(async () => {
+    try {
+      const res = await fetch("/api/school/stats")
+      if (res.ok) {
+        const data = await res.json()
+        setStats(data)
+      }
+    } catch (error) {
+      console.error("Failed to fetch stats:", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const res = await fetch("/api/school/stats")
-        if (res.ok) {
-          const data = await res.json()
-          setStats(data)
-        }
-      } catch (error) {
-        console.error("Failed to fetch stats:", error)
-      } finally {
-        setIsLoading(false)
+    const debounce = setTimeout(fetchStats, 300)
+    return () => clearTimeout(debounce)
+  }, [fetchStats])
+
+  const handleAddStudent = async () => {
+    if (!addStudent) return
+    setSaving(true)
+    try {
+      const res = await fetch("/api/school/students", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(addStudent),
+      })
+      if (res.ok) {
+        setAddStudent(null)
+        fetchStats()
       }
+    } catch (error) {
+      console.error("Failed to add student:", error)
+    } finally {
+      setSaving(false)
     }
-    fetchStats()
-  }, [])
+  }
 
   if (!school) return null
 
@@ -79,11 +118,9 @@ export default function SchoolDashboard() {
           <h1 className="text-2xl font-bold">Dashboard</h1>
           <p className="text-muted-foreground">Welcome back, {school.name}</p>
         </div>
-        <Button asChild>
-          <Link href="/school/students/add">
-            <UserPlus className="mr-2 h-4 w-4" />
-            Add Student
-          </Link>
+        <Button onClick={() => setAddStudent({ firstName: "", lastName: "", email: "", phone: "", arn: "" })}>
+          <UserPlus className="mr-2 h-4 w-4" />
+          Add Student
         </Button>
       </div>
 
@@ -288,6 +325,71 @@ export default function SchoolDashboard() {
           </Card>
         </div>
       </div>
-    </div>
+
+      <Dialog open={!!addStudent} onOpenChange={() => setAddStudent(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Student</DialogTitle>
+            <DialogDescription>Add student information</DialogDescription>
+          </DialogHeader>
+          {addStudent && (
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">First Name</Label>
+                  <Input
+                    id="firstName"
+                    value={addStudent.firstName}
+                    onChange={(e) => setAddStudent({ ...addStudent, firstName: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Last Name</Label>
+                  <Input
+                    id="lastName"
+                    value={addStudent.lastName}
+                    onChange={(e) => setAddStudent({ ...addStudent, lastName: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={addStudent.email}
+                  onChange={(e) => setAddStudent({ ...addStudent, email: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone</Label>
+                <Input
+                  id="phone"
+                  value={addStudent.phone}
+                  onChange={(e) => setAddStudent({ ...addStudent, phone: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="arn">ARN</Label>
+                <Input
+                  id="arn"
+                  value={addStudent.arn}
+                  onChange={(e) => setAddStudent({ ...addStudent, arn: e.target.value })}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button className="cursor-pointer" variant="outline" onClick={() => setAddStudent(null)}>
+              Cancel
+            </Button>
+            <Button className="cursor-pointer" onClick={handleAddStudent} disabled={saving}>
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div >
   )
 }

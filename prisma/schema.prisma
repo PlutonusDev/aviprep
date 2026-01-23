@@ -234,6 +234,7 @@ model Question {
   options      String[] // Array of options
   correctIndex Int
   explanation  String
+  reference    String
   
   @@index([subjectId])
   @@index([topic])

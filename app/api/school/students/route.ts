@@ -4,6 +4,7 @@ import { prisma } from "@lib/prisma"
 import { verifyToken, hashPassword, isValidAustralianPhone, isValidARN } from "@lib/auth"
 import { sendEmailWelcome } from "@lib/email"
 import { getCustomTemplate } from "@lib/email-templates"
+import { stripe } from "@lib/stripe";
 
 async function getSchoolForAdmin(userId: string) {
   const user = await prisma.user.findUnique({
@@ -187,6 +188,16 @@ export async function POST(request: Request) {
       }
     }
 
+    const stripeCustomer = await stripe.customers.create({
+      email: email.toLowerCase(),
+      name: `${firstName} ${lastName}`,
+      phone: phone,
+      metadata: {
+        arn: arn,
+        source: "aviprep",
+      },
+    });
+
     // Create new user with temporary password
     const tempPassword = Math.random().toString(36).slice(-10)
     const passwordHash = await hashPassword(tempPassword)
@@ -200,6 +211,7 @@ export async function POST(request: Request) {
         arn,
         passwordHash,
         flightSchoolId: school.id,
+        stripeCustomerId: stripeCustomer.id,
         enrolledAt: new Date(),
       },
     })
