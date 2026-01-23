@@ -12,6 +12,7 @@ const questionSchema = z.object({
       options: z.array(z.string()).length(4).describe("Four answer options"),
       correctIndex: z.number().min(0).max(3).describe("Index of the correct answer (0-3)"),
       explanation: z.string().describe("Explanation of why the correct answer is correct"),
+      reference: z.string().describe("CASR Part 61 reference, eg: CASA Part 61 MOS - Unit 1.8.2 Section 2.1.3(b)")
     }),
   ),
 })

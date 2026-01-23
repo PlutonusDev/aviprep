@@ -20,6 +20,7 @@ interface GeneratedQuestion {
   options: string[]
   correctIndex: number
   explanation: string
+  reference: string
 }
 
 export function AIQuestionGenerator() {
@@ -317,6 +318,10 @@ export function AIQuestionGenerator() {
                     <div className="rounded bg-muted/50 p-3">
                       <p className="text-xs font-medium text-muted-foreground">Explanation:</p>
                       <p className="text-sm">{question.explanation}</p>
+                    </div>
+                    <div className="rounded bg-muted/50 p-3">
+                      <p className="text-xs font-medium text-muted-foreground">Reference:</p>
+                      <p className="text-sm">{question.reference}</p>
                     </div>
                   </div>
                 ))}

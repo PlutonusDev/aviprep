@@ -61,6 +61,7 @@ export async function POST(request: NextRequest) {
         options: body.options,
         correctIndex: body.correctIndex,
         explanation: body.explanation,
+        reference: body.reference,
       },
     })
 
