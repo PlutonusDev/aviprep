@@ -71,7 +71,7 @@ export default () => {
             </div>
 
             {weakPoints.length > 0 && (
-                <CardSpotlight radius={5000} color={"#010203"} className="p-0 bg-primary/5 border-primary/20">
+                <CardSpotlight radius={5000} color={"var(--card)"} className="p-0 bg-primary/5 border-primary/20">
                     <div className="p-6">
                         <div className="flex flex-col md:flex-row md:items-center gap-4">
                             <div className="z-20 flex h-12 w-12 items-center justify-center rounded-lg bg-primary">

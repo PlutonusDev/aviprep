@@ -11,6 +11,14 @@
     "@ai-sdk/provider-utils" "4.0.5"
     "@vercel/oidc" "3.1.0"
 
+"@ai-sdk/openai@^3.0.18":
+  version "3.0.18"
+  resolved "https://registry.yarnpkg.com/@ai-sdk/openai/-/openai-3.0.18.tgz#e898f64b6b6a40231cc8a3890439f2d10ed71070"
+  integrity sha512-uYscTyoaWij9FoPpKRNK8YgtDEuPpQlqREYylJCA8o5YQVQXghV0Dwgk1ehPVpg6USIO4L0C8GqQJ4AMm/Xb1g==
+  dependencies:
+    "@ai-sdk/provider" "3.0.5"
+    "@ai-sdk/provider-utils" "4.0.9"
+
 "@ai-sdk/provider-utils@4.0.5":
   version "4.0.5"
   resolved "https://registry.yarnpkg.com/@ai-sdk/provider-utils/-/provider-utils-4.0.5.tgz#ab531c9f78ac30e33ba1f66ca6e901f6cf68fec9"
@@ -20,10 +28,26 @@
     "@standard-schema/spec" "^1.1.0"
     eventsource-parser "^3.0.6"
 
+"@ai-sdk/provider-utils@4.0.9":
+  version "4.0.9"
+  resolved "https://registry.yarnpkg.com/@ai-sdk/provider-utils/-/provider-utils-4.0.9.tgz#f15d6ed31fca8aeca402fa56278659a20581057e"
+  integrity sha512-bB4r6nfhBOpmoS9mePxjRoCy+LnzP3AfhyMGCkGL4Mn9clVNlqEeKj26zEKEtB6yoSVcT1IQ0Zh9fytwMCDnow==
+  dependencies:
+    "@ai-sdk/provider" "3.0.5"
+    "@standard-schema/spec" "^1.1.0"
+    eventsource-parser "^3.0.6"
+
 "@ai-sdk/provider@3.0.2":
   version "3.0.2"
   resolved "https://registry.yarnpkg.com/@ai-sdk/provider/-/provider-3.0.2.tgz#d4ee0b53e2c0b2a1b3e36f7356844fda53e63487"
   integrity sha512-HrEmNt/BH/hkQ7zpi2o6N3k1ZR1QTb7z85WYhYygiTxOQuaml4CMtHCWRbric5WPU+RNsYI7r1EpyVQMKO1pYw==
+  dependencies:
+    json-schema "^0.4.0"
+
+"@ai-sdk/provider@3.0.5":
+  version "3.0.5"
+  resolved "https://registry.yarnpkg.com/@ai-sdk/provider/-/provider-3.0.5.tgz#730c5acdc4f074c877a547c1492fafc81bdc4f53"
+  integrity sha512-2Xmoq6DBJqmSl80U6V9z5jJSJP7ehaJJQMy2iFUqTay06wdCqTnPVBBQbtEL8RCChenL+q5DC5H5WzU3vV3v8w==
   dependencies:
     json-schema "^0.4.0"
 
@@ -6534,6 +6558,11 @@ universalify@^2.0.0:
   version "2.0.1"
   resolved "https://registry.yarnpkg.com/universalify/-/universalify-2.0.1.tgz#168efc2180964e6386d061e094df61afe239b18d"
   integrity sha512-gptHNQghINnc/vTGIk0SOFGFNXw7JVrlRUtConJRlvaw6DuX0wO5Jeko9sWrMBhh+PsYAZ7oXAiOnf/UKogyiw==
+
+unpdf@^1.4.0:
+  version "1.4.0"
+  resolved "https://registry.yarnpkg.com/unpdf/-/unpdf-1.4.0.tgz#1525233ff0a0be7b5eb8d58f5f992844131dfd6a"
+  integrity sha512-TahIk0xdH/4jh/MxfclzU79g40OyxtP00VnEUZdEkJoYtXAHWLiir6t3FC6z3vDqQTzc2ZHcla6uEiVTNjejuA==
 
 unpipe@~1.0.0:
   version "1.0.0"

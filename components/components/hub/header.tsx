@@ -11,6 +11,7 @@ import { cn } from "lib/utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { useUser } from "@lib/user-context";
+import { ThemeToggle } from "@/components/meta/theme-toggle";
 
 const navigation = [
     {
@@ -97,6 +98,8 @@ export default () => {
                 </div>
 
                 <div className="flex items-center gap-4">
+                    <ThemeToggle />
+
                     <div className="rounded-md relative">
                         <AiFillNotification className="text-xl" />
                         <span className="absolute -right-[2px] top-0 h-[9px] w-[9px] rounded-full bg-primary border border-border" />

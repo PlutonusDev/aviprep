@@ -13,6 +13,7 @@
     "prime": "npx prisma generate"
   },
   "devDependencies": {
+    "@ai-sdk/openai": "^3.0.18",
     "@tailwindcss/postcss": "^4.1.18",
     "@types/node": "^25.0.5",
     "@types/react": "^19.2.7",
@@ -24,7 +25,8 @@
     "prisma": "^6.0.1",
     "shadcn": "^3.6.3",
     "tailwindcss": "^4.1.18",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "unpdf": "^1.4.0"
   },
   "dependencies": {
     "@babel/core": "^7.28.5",
