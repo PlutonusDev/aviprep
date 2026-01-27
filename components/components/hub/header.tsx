@@ -6,7 +6,7 @@ import { RiDashboardHorizontalFill } from "react-icons/ri";
 import { IoBarChart, IoSettings } from "react-icons/io5";
 import { AiFillNotification } from "react-icons/ai";
 import { PiSignOutBold } from "react-icons/pi";
-import Link from "next/link";
+import Link from "@/components/meta/link";
 import { cn } from "lib/utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";

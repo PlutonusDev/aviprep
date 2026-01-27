@@ -62,13 +62,10 @@ export default function LoginPage() {
     <>
       {/* Mobile logo */}
       <div className="flex items-center justify-center gap-3 mb-8 lg:hidden">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
-          <Plane className="h-5 w-5 text-primary-foreground" />
-        </div>
-        <span className="text-xl font-bold text-foreground">AviPrep Hub</span>
+        <img className="h-32" src="/img/AviPrep-logo.png" />
       </div>
 
-      <Card className="border-0 shadow-none lg:border lg:shadow-sm">
+      <Card className="border-0 shadow-none lg:border lg:shadow-sm bg-transparent lg:bg-card">
         <CardHeader className="space-y-1 px-0 lg:px-6">
           <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
           <CardDescription>Enter your credentials to access your account</CardDescription>

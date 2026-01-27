@@ -3,7 +3,7 @@ import { Suspense } from "react"
 import ForumContent from "./forum-content"
 
 export const metadata: Metadata = {
-  title: "Forums | AviPrep",
+  title: "AviPrep | Forums",
   description: "Connect with fellow student pilots, share study tips, and discuss exam topics.",
 }
 

@@ -140,6 +140,9 @@
   body {
     @apply bg-background text-foreground;
   }
+  html {
+    scrollbar-gutter: stable;
+  }
   button:not(:disabled),
   [role="button"]:not(:disabled) {
     cursor: pointer;

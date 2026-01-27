@@ -1,12 +1,13 @@
 import { usePathname } from "next/navigation";
-import { RiDashboardHorizontalFill, RiSettings3Fill } from "react-icons/ri";
+import { RiDashboardHorizontalFill } from "react-icons/ri";
 import { GiPlaneWing } from "react-icons/gi";
-import Link from "next/link";
+import Link from "@/components/meta/link";
 import { cn } from "lib/utils";
 import { FaBrain, FaClipboardList, FaComputer, FaDoorClosed, FaMedal, FaPaperPlane } from "react-icons/fa6";
 import { IoBarChart, IoSettings, IoSparkles } from "react-icons/io5";
 import { SlSpeech } from "react-icons/sl";
 import { useUser } from "@lib/user-context";
+import { useEffect, useState } from "react";
 
 const navigation = [
     {
@@ -67,6 +68,20 @@ const bottomNav = [
 export default () => {
     const { logout } = useUser();
     const pathname = usePathname();
+    const [pendingPathname, setPendingPathname] = useState<string | null>(null);
+
+    useEffect(() => {
+        const handleStart = (e: any) => {
+            setPendingPathname(e.detail.href);
+        };
+
+        window.addEventListener("trigger-transition-start", handleStart);
+        setPendingPathname(null);
+
+        return () => window.removeEventListener("trigger-transition-start", handleStart);
+    }, [pathname]);
+
+    const currentPath = pendingPathname || pathname;
 
     return (
         <aside className="fixed inset-y-0 left-0 z-50 hidden w-64 flex-col border-r border-border bg-sidebar lg:flex">
@@ -76,7 +91,7 @@ export default () => {
 
             <nav className="flex-1 space-y-1 px-3 py-4">
                 {navigation.map(item => {
-                    const isActive = pathname === item.href;
+                    const isActive = currentPath === item.href;
                     return (
                         <Link key={item.name} href={item.href} className={cn(
                             "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",

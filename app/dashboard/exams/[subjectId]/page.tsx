@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ArrowLeft, ArrowRight, CheckCircle2, XCircle, RotateCcw, Flag, BookOpen, AlertTriangle } from "lucide-react"
-import Link from "next/link"
+import Link from "@/components/meta/link"
 import {
   AlertDialog,
   AlertDialogAction,

@@ -17,7 +17,8 @@ export default ({ children }: { children: React.ReactNode }) => {
     return (
         <UserProvider>
             <HubLayout>
-                {children}
+              <div className="absolute top-0 inset-0 bg-gradient-to-b from-blue-900/20 to-transparent pointer-events-none" />
+              {children}
             </HubLayout>
         </UserProvider>
     )

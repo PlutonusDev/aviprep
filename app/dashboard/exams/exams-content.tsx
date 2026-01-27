@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import { BookOpen, Shuffle, Clock, Target } from "lucide-react"
-import Link from "next/link"
+import Link from "@/components/meta/link"
 import type { SubjectData } from "@lib/types"
 
 export default function ExamsContent() {

@@ -3,9 +3,9 @@ import { Suspense } from "react"
 import SettingsContent from "./settings-content"
 
 export const metadata: Metadata = {
-  title: "Settings",
+  title: "AviPrep | Settings",
   description:
-    "Manage your CPL Exam Hub account settings, profile information, notifications, and subscription details.",
+    "Manage your AviPrep account settings, profile information, notifications, and subscription details.",
 }
 
 export default function SettingsPage() {

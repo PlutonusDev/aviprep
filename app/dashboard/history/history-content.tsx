@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Skeleton } from "@/components/ui/skeleton"
 import { CheckCircle2, XCircle, Search, Clock, ChevronDown, ChevronUp, RotateCcw, Eye, BookOpen } from "lucide-react"
-import Link from "next/link"
+import Link from "@/components/meta/link"
 import type { ExamHistoryItem, SubjectData } from "@lib/types"
 
 type SortField = "date" | "score" | "subject"
