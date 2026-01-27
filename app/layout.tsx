@@ -5,7 +5,6 @@ import { ThemeProvider } from "@/components/meta/theme-provider";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://aviprep.com.au"),
-  themeColor: '#f78601',
   alternates: {
     canonical: "/",
   },
@@ -38,8 +37,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#0a0a0f" },
+    { media: "(prefers-color-scheme: light)", color: "#f78601" },
+    { media: "(prefers-color-scheme: dark)", color: "#f78601" },
   ],
   width: "device-width",
   initialScale: 1,

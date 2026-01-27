@@ -11,7 +11,6 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Plane, Loader2, AlertCircle, Eye, EyeOff } from "lucide-react"
-import { Metadata } from "next"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -34,7 +33,7 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
+    setIsLoading(false)
     setError(null)
 
     try {
@@ -126,7 +125,7 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <Button type="submit" className="cursor-pointer w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

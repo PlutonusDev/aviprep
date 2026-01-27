@@ -4,7 +4,7 @@ import { jwtVerify } from "jose"
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "your-secret-key-min-32-chars-long!")
 
-const protectedRoutes = ["/dashboard", "/checkout"] // Added /dashboard to match your config
+const protectedRoutes = ["/dashboard", "/checkout", "/m/dashboard"] // Added /dashboard to match your config
 const authRoutes = ["/login", "/register"]
 
 export async function middleware(request: NextRequest) {
