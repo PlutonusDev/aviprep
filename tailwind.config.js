@@ -13,6 +13,11 @@ module.exports = {
             screens: {
                 "2xl": "1400px"
             }
+        },
+        extend: {
+            screens: {
+                'standalone': { 'raw': '(display-mode: standalone)' },
+            }
         }
     },
     plugins: [

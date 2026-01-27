@@ -143,3 +143,7 @@
 }
 
 .grecaptcha-badge { visibility: hidden; }
+
+.standalone-container {
+  padding-top: env(safe-area-inset-top);
+}

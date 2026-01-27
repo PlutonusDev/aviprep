@@ -8,8 +8,14 @@ const protectedRoutes = ["/dashboard", "/checkout"] // Added /dashboard to match
 const authRoutes = ["/login", "/register"]
 
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl
+  const { pathname, searchParams } = request.nextUrl
   const sessionToken = request.cookies.get("session")?.value
+  const isPwa = request.cookies.get('pwa')
+  const isPwaForce = searchParams.get('force-pwa') === 'true'
+
+  if (isPwa && !pathname.startsWith('/m') || isPwaForce) {
+    return NextResponse.redirect(new URL(`/m${pathname}`, request.url))
+  }
 
   let isAuthenticated = false
 
@@ -47,8 +53,6 @@ export async function middleware(request: NextRequest) {
 // Ensure the matcher covers all routes used in your logic
 export const config = {
   matcher: [
-    "/dashboard/:path*", 
-    "/login", 
-    "/register"
+    "/"
   ],
 }

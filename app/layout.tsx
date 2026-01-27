@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/meta/theme-provider";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://aviprep.com.au"),
+  themeColor: '#f78601',
   alternates: {
     canonical: "/",
   },
