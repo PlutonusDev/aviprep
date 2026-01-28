@@ -397,3 +397,133 @@ model PrivateMessage {
   @@index([receiverId])
   @@index([createdAt])
 }
+
+model Course {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  subjectId       String   // Links to subject from lib/subjects.ts
+  title           String
+  description     String
+  thumbnail       String?
+  
+  // Course structure
+  estimatedHours  Int      @default(1)
+  difficulty      String   @default("beginner") // "beginner", "intermediate", "advanced"
+  
+  // Ordering
+  order           Int      @default(0)
+  
+  // Status
+  isPublished     Boolean  @default(false)
+  
+  modules         Module[]
+  enrollments     CourseEnrollment[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([subjectId])
+}
+
+model Module {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  courseId    String   @db.ObjectId
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  
+  title       String
+  description String?
+  order       Int      @default(0)
+  
+  lessons     Lesson[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([courseId])
+}
+
+model Lesson {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  moduleId    String   @db.ObjectId
+  module      Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  
+  title       String
+  description String?
+  order       Int      @default(0)
+  
+  // Content type: "text", "video", "quiz", "interactive", "flashcards"
+  contentType String   @default("text")
+  
+  // Content stored as JSON for flexibility
+  // For text: { html: "..." }
+  // For video: { url: "...", duration: 120 }
+  // For quiz: { questions: [...] }
+  // For interactive: { type: "diagram|calculator|simulator", config: {...} }
+  // For flashcards: { cards: [{ front: "...", back: "..." }] }
+  content     Json
+  
+  // Estimated time in minutes
+  estimatedMins Int    @default(5)
+  
+  progress    LessonProgress[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([moduleId])
+}
+
+model CourseEnrollment {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String   @db.ObjectId
+  courseId    String   @db.ObjectId
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  
+  // Progress tracking
+  completedLessons String[] @db.ObjectId // Array of completed lesson IDs
+  lastAccessedAt   DateTime @default(now())
+  
+  // Completion
+  isCompleted      Boolean  @default(false)
+  completedAt      DateTime?
+  
+  enrolledAt       DateTime @default(now())
+  
+  @@unique([userId, courseId])
+  @@index([userId])
+  @@index([courseId])
+}
+
+model LessonProgress {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String   @db.ObjectId
+  lessonId    String   @db.ObjectId
+  lesson      Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  
+  // Progress data stored as JSON (quiz scores, time spent, etc.)
+  progressData Json?
+  
+  // Completion status
+  isCompleted  Boolean  @default(false)
+  completedAt  DateTime?
+  
+  // Time tracking
+  timeSpentSecs Int     @default(0)
+  
+  startedAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  @@unique([userId, lessonId])
+  @@index([userId])
+  @@index([lessonId])
+}
+
+model StripeProductMapping {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  internalProductId String   @unique // Our internal product ID from products.ts
+  stripeProductId   String   // Stripe product ID
+  stripePriceId     String   // Stripe price ID
+  productName       String
+  priceInCents      Int
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}

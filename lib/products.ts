@@ -1,243 +1,286 @@
-import { Check, Printer, BrainCircuit, BarChart3, Clock, ShieldCheck, Calendar, Sparkles } from "lucide-react";
+import { SUBJECTS, LICENSE_TYPES, type LicenseType } from "./subjects"
 
 export interface Product {
-    id: string;
-    code?: string;
-    name: string;
-    description: string;
-    priceInCents: number;
-    type: "one-time" | "subscription";
-    interval?: "month" | "year";
-    intervalCount?: number;
-    features: Feature[];
-    category: "bundle" | "single";
-    subjectId?: string;
-    stripeProductId: string;
-    stripePriceId: string;
+  id: string
+  name: string
+  description: string
+  priceInCents: number
+  type: "one-time" | "subscription"
+  interval?: "month" | "quarter" | "year"
+  intervalCount?: number
+  features: string[]
+  category: "bundle" | "subject" | "addon"
+  subjectId?: string
+  licenseType?: LicenseType
+  tier?: "exams-only" | "with-learning"
+  stripeProductId?: string
+  stripePriceId?: string
+  comingSoon?: boolean
 }
 
-export interface Feature {
-    icon: any;
-    text: string;
-}
-
-export const BUNDLES: Product[] = [{
+// Bundle products for each license type
+export const BUNDLES: Product[] = [
+  {
+    id: "rpl-bundle",
+    name: "RPL Complete Bundle",
+    description: "Full access to all RPL subjects with exams and learning content",
+    priceInCents: 9900, // $99/quarter
+    type: "subscription",
+    interval: "month",
+    intervalCount: 3,
+    features: [
+      "All 3 RPL subjects",
+      "Exams + Learning content",
+      "Unlimited practice exams",
+      "AI-powered insights",
+      "Progress tracking",
+    ],
+    category: "bundle",
+    licenseType: "rpl",
+    stripeProductId: "prod_rpl_bundle",
+    stripePriceId: "price_rpl_bundle",
+  },
+  {
     id: "ppl-bundle",
-    name: "PPL Bundle",
-    description: "Full access to all PPL theory subjects with premium features",
-    priceInCents: 8900,
+    name: "PPL Complete Bundle",
+    description: "Full access to all PPL subjects with exams and learning content",
+    priceInCents: 14900, // $149/quarter
     type: "subscription",
     interval: "month",
     intervalCount: 3,
     features: [
-        { icon: Check, text: "Access to all PPL theory subjects" },
-        { icon: Printer, text: "Print practice exams & results" },
-        { icon: BrainCircuit, text: "AI-powered weak point analysis" },
-        { icon: BarChart3, text: "Detailed performance statistics" },
-        { icon: Clock, text: "Unlimited exam attempts" },
-        { icon: ShieldCheck, text: "Priority support" }
+      "All 6 PPL subjects",
+      "Exams + Learning content",
+      "Unlimited practice exams",
+      "AI-powered insights",
+      "Detailed statistics",
+      "Print exams & results",
     ],
     category: "bundle",
-    stripeProductId: "prod_TpSpU6ch814GfZ",
-    stripePriceId: "price_1SrntPL8qLbqF4tCdc41cDQz"
-}, {
+    licenseType: "ppl",
+    stripeProductId: "prod_ppl_bundle",
+    stripePriceId: "price_ppl_bundle",
+  },
+  {
     id: "cpl-bundle",
-    name: "CPL Bundle",
-    description: "Full access to all 7 CPL theory subjects with premium features",
-    priceInCents: 11000,
+    name: "CPL Complete Bundle",
+    description: "Full access to all CPL subjects with exams and learning content",
+    priceInCents: 19900, // $199/quarter
     type: "subscription",
     interval: "month",
     intervalCount: 3,
     features: [
-        { icon: Check, text: "Access to all 7 CPL theory subjects" },
-        { icon: Printer, text: "Print practice exams & results" },
-        { icon: BrainCircuit, text: "AI-powered weak point analysis" },
-        { icon: BarChart3, text: "Detailed performance statistics" },
-        { icon: Clock, text: "Unlimited exam attempts" },
-        { icon: ShieldCheck, text: "Priority support" }
+      "All 7 CPL subjects",
+      "Exams + Learning content",
+      "Unlimited practice exams",
+      "AI-powered insights",
+      "Detailed statistics",
+      "Print exams & results",
+      "Priority support",
     ],
     category: "bundle",
-    stripeProductId: "prod_TlqCDtVoHM52wU",
-    stripePriceId: "price_1SoIVnL8qLbqF4tCGDT2ipV6"
-}]
-
-export const SUBJECTS: Product[] = [
-    {
-        id: "aerodynamics",
-        name: "Aerodynamics",
-        code: "CADA",
-        description: "300+ practice questions covering principles of flight, aircraft performance, and stability",
-        priceInCents: 5900,
-        type: "one-time",
-        features: [
-            { icon: Check, text: "300+ questions" },
-            { icon: Calendar, text: "12-month access" },
-            { icon: BarChart3, text: "Progress tracking" }
-        ],
-        category: "single",
-        subjectId: "aerodynamics",
-        stripeProductId: "prod_TmXndMivSEVbwd",
-        stripePriceId: "price_1SoyhaL8qLbqF4tCBeZhrrzQ"
-    },
-    {
-        id: "meteorology",
-        name: "Meteorology",
-        code: "CMET",
-        description: "280+ practice questions covering weather patterns, forecasting, and aviation weather services",
-        priceInCents: 5900,
-        type: "one-time",
-        features: [
-            { icon: Check, text: "280+ questions" },
-            { icon: Calendar, text: "12-month access" },
-            { icon: BarChart3, text: "Progress tracking" }
-        ],
-        category: "single",
-        subjectId: "meteorology",
-        stripeProductId: "prod_TmXpBSKGwbNKdY",
-        stripePriceId: "price_1SoyjjL8qLbqF4tCBXfo7MZ1"
-    },
-    {
-        id: "navigation",
-        name: "Navigation",
-        code: "CNAV",
-        description: "340+ practice questions covering VFR/IFR navigation, flight planning, and instruments",
-        priceInCents: 7500,
-        type: "one-time",
-        features: [
-            { icon: Check, text: "340+ questions" },
-            { icon: Calendar, text: "12-month access" },
-            { icon: BarChart3, text: "Progress tracking" }
-        ],
-        category: "single",
-        subjectId: "navigation",
-        stripeProductId: "prod_TmXnNJjWstEznA",
-        stripePriceId: "price_1Soyi5L8qLbqF4tCfagb8NCZ"
-    },
-    {
-        id: "air-law",
-        name: "Air Law",
-        code: "CLWA",
-        description: "290+ practice questions covering CASA regulations, airspace, and procedures",
-        priceInCents: 5900,
-        type: "one-time",
-        features: [
-            { icon: Check, text: "290+ questions" },
-            { icon: Calendar, text: "12-month access" },
-            { icon: BarChart3, text: "Progress tracking" }
-        ],
-        category: "single",
-        subjectId: "air-law",
-        stripeProductId: "prod_TmXpNxrtS6pXQB",
-        stripePriceId: "price_1Soyk6L8qLbqF4tCeAp3Hz3G"
-    },
-    {
-        id: "human-factors",
-        name: "Human Factors",
-        code: "CHUF",
-        description: "250+ practice questions covering physiology, psychology, and crew resource management",
-        priceInCents: 4900,
-        type: "one-time",
-        features: [
-            { icon: Check, text: "250+ questions" },
-            { icon: Calendar, text: "12-month access" },
-            { icon: BarChart3, text: "Progress tracking" }
-        ],
-        category: "single",
-        subjectId: "human-factors",
-        stripeProductId: "prod_TmXoF3T2VzDS8p",
-        stripePriceId: "price_1SoyigL8qLbqF4tCzRogMwWN"
-    },
-    {
-        id: "aircraft-systems",
-        name: "Aircraft General Knowledge",
-        code: "CSYA",
-        description: "320+ practice questions covering engines, electrical, hydraulics, and avionics",
-        priceInCents: 4900,
-        type: "one-time",
-        features: [
-            { icon: Check, text: "320+ questions" },
-            { icon: Calendar, text: "12-month access" },
-            { icon: BarChart3, text: "Progress tracking" }
-        ],
-        category: "single",
-        subjectId: "aircraft-systems",
-        stripeProductId: "prod_TmXqWHx0TeVbYT",
-        stripePriceId: "price_1SoykhL8qLbqF4tCaiTgap9i"
-    },
-    {
-        id: "performance-planning",
-        name: "Operations, Performance & Flight Planning",
-        code: "CFPA",
-        description: "270+ practice questions covering weight & balance, takeoff/landing performance",
-        priceInCents: 9900,
-        type: "one-time",
-        features: [
-            { icon: Check, text: "270+ questions" },
-            { icon: Calendar, text: "12-month access" },
-            { icon: BarChart3, text: "Progress tracking" }
-        ],
-        category: "single",
-        subjectId: "performance-planning",
-        stripeProductId: "prod_TmXpKKTNT8orAs",
-        stripePriceId: "price_1SoyjML8qLbqF4tC4Roq51qh"
-    },
+    licenseType: "cpl",
+    stripeProductId: "prod_TmXgjkC9sDgZap",
+    stripePriceId: "price_1Soyc2DWxOVmL9hvB51YIZog",
+  },
+  {
+    id: "irex-bundle",
+    name: "IREX Complete Bundle",
+    description: "Full access to all IREX subjects (Coming Soon)",
+    priceInCents: 17900,
+    type: "subscription",
+    interval: "month",
+    intervalCount: 3,
+    features: ["All IREX subjects", "Exams + Learning content", "Coming Soon"],
+    category: "bundle",
+    licenseType: "irex",
+    comingSoon: true,
+  },
+  {
+    id: "atpl-bundle",
+    name: "ATPL Complete Bundle",
+    description: "Full access to all ATPL subjects (Coming Soon)",
+    priceInCents: 24900,
+    type: "subscription",
+    interval: "month",
+    intervalCount: 3,
+    features: ["All ATPL subjects", "Exams + Learning content", "Coming Soon"],
+    category: "bundle",
+    licenseType: "atpl",
+    comingSoon: true,
+  },
 ]
 
+// Generate individual subject products from SUBJECTS
+export const SUBJECT_PRODUCTS: Product[] = SUBJECTS.flatMap((subject) => {
+  const baseProduct = {
+    subjectId: subject.id,
+    licenseType: subject.licenseType,
+    type: "one-time" as const,
+    category: "subject" as const,
+    comingSoon: subject.comingSoon,
+  }
+
+  return [
+    {
+      ...baseProduct,
+      id: `${subject.id}-exams`,
+      name: `${subject.name} - Exams Only`,
+      description: `${subject.totalQuestions} practice questions for ${subject.name}`,
+      priceInCents: subject.examOnlyPriceAud,
+      tier: "exams-only" as const,
+      features: [`${subject.totalQuestions} questions`, "12-month access", "Progress tracking", "Practice exams"],
+    },
+    {
+      ...baseProduct,
+      id: `${subject.id}-full`,
+      name: `${subject.name} - Full Access`,
+      description: `Complete learning content plus exams for ${subject.name}`,
+      priceInCents: subject.withLearningPriceAud,
+      tier: "with-learning" as const,
+      features: [
+        `${subject.totalQuestions} questions`,
+        "12-month access",
+        "Full learning content",
+        "Practice exams",
+        "Progress tracking",
+        "Detailed explanations",
+      ],
+    },
+  ]
+})
+
+// Add-ons
 export const ADDONS: Product[] = [
-    {
-        id: "addon-printing",
-        name: "Printing Feature",
-        description: "Print practice exams and results for offline study",
-        priceInCents: 900,
-        type: "one-time",
-        features: [
-            { icon: Printer, text: "Print practice exams" },
-            { icon: Printer, text: "Print results & reports" },
-            { icon: Printer, text: "PDF export" }
-        ],
-        category: "single",
-        stripeProductId: "prod_TmXuSD0Pi7tLhx",
-        stripePriceId: "price_1SoyozL8qLbqF4tCTGf5S9nv"
-    },
-    {
-        id: "addon-ai-insights",
-        name: "AI Insights",
-        description: "AI-powered analysis of your weak points and personalised study recommndations",
-        priceInCents: 1400,
-        type: "one-time",
-        features: [
-            { icon: Sparkles, text: "AI-powered analysis" },
-            { icon: Sparkles, text: "Personalised study recommendations" },
-            { icon: BrainCircuit, text: "Progress predictions" }
-        ],
-        category: "single",
-        stripeProductId: "prod_TmXvaqif78cTwt",
-        stripePriceId: "price_1SoyplL8qLbqF4tCJHo6VEAq"
-    }
+  {
+    id: "addon-printing",
+    name: "Printing Feature",
+    description: "Print practice exams and results for offline study",
+    priceInCents: 900,
+    type: "one-time",
+    features: ["Print exams", "Print results", "PDF export"],
+    category: "addon",
+    stripeProductId: "prod_TmXgrMdBiHHCK5",
+    stripePriceId: "price_1Soyc4DWxOVmL9hvp2Yvrva7",
+  },
+  {
+    id: "addon-ai-insights",
+    name: "AI Insights",
+    description: "AI-powered analysis of your weak points and study recommendations",
+    priceInCents: 1400,
+    type: "one-time",
+    features: ["Weak point analysis", "Study recommendations", "Progress predictions"],
+    category: "addon",
+    stripeProductId: "prod_TmXgdwqGzMvEY5",
+    stripePriceId: "price_1Soyc4DWxOVmL9hvGh8MeGG0",
+  },
 ]
 
-export const ALL_PRODUCTS = [
-    ...BUNDLES,
-    ...SUBJECTS,
-    ...ADDONS
-]
+export const ALL_PRODUCTS = [...BUNDLES, ...SUBJECT_PRODUCTS, ...ADDONS]
 
+// Helper functions
 export function getProductById(id: string): Product | undefined {
-    return ALL_PRODUCTS.find(p => p.id === id);
+  return ALL_PRODUCTS.find((p) => p.id === id)
+}
+
+export function getProductByStripePriceId(priceId: string): Product | undefined {
+  return ALL_PRODUCTS.find((p) => p.stripePriceId === priceId)
+}
+
+export function getBundleByLicense(licenseType: LicenseType): Product | undefined {
+  return BUNDLES.find((b) => b.licenseType === licenseType)
+}
+
+export function getSubjectProductsByLicense(licenseType: LicenseType): Product[] {
+  return SUBJECT_PRODUCTS.filter((p) => p.licenseType === licenseType)
 }
 
 export function calculateTotal(productIds: string[]): number {
-    const products = productIds
-        .map(id => getProductById(id))
-        .filter((p): p is Product => p !== undefined);
+  return productIds.reduce((total, id) => {
+    const product = getProductById(id)
+    return total + (product?.priceInCents || 0)
+  }, 0)
+}
 
-    const subjectCount = products.filter(p => p.category === "single" && p.subjectId).length;
+export function getTotalValueByLicense(licenseType: LicenseType, tier: "exams-only" | "with-learning"): number {
+  return SUBJECT_PRODUCTS.filter((p) => p.licenseType === licenseType && p.tier === tier).reduce(
+    (sum, p) => sum + p.priceInCents,
+    0
+  )
+}
 
-    return products.reduce((total, product) => {
-        if (product.id === "addon-ai-insights") {
-            return total + (product.priceInCents * subjectCount);
-        }
+// Legacy exports for backwards compatibility
+export const CPL_BUNDLE = BUNDLES.find((b) => b.id === "cpl-bundle")!
+export const SUBJECTS_LEGACY = SUBJECT_PRODUCTS.filter(
+  (p) => p.licenseType === "cpl" && p.tier === "with-learning"
+).map((p) => ({
+  ...p,
+  id: p.subjectId ?? p.id,
+  features: p.features,
+}))
 
-        return total + product.priceInCents;
-    }, 0);
+// Re-export SUBJECTS from subjects.ts for backward compatibility
+export { SUBJECTS } from "./subjects"
+
+export const PRODUCTS: Record<
+  string,
+  {
+    name: string
+    description: string
+    priceAud: number
+    type: "bundle" | "subject" | "addon"
+    stripePriceId?: string
+    stripeProductId?: string
+  }
+> = Object.fromEntries(
+  ALL_PRODUCTS.map((p) => [
+    p.id,
+    {
+      name: p.name,
+      description: p.description,
+      priceAud: p.priceInCents,
+      type: p.category,
+      stripePriceId: p.stripePriceId,
+      stripeProductId: p.stripeProductId,
+    },
+  ])
+)
+
+export type SubjectId = string
+
+// Helper type for products with synced Stripe IDs
+export interface ProductWithStripeIds extends Product {
+  syncedStripeProductId?: string
+  syncedStripePriceId?: string
+}
+
+// This function should be called server-side to get products with their actual Stripe IDs from the database
+export async function getProductsWithStripeIds(
+  prisma: { stripeProductMapping: { findMany: () => Promise<Array<{ internalProductId: string; stripeProductId: string; stripePriceId: string }>> } }
+): Promise<ProductWithStripeIds[]> {
+  const mappings = await prisma.stripeProductMapping.findMany()
+  const mappingsByProductId = new Map(
+    mappings.map((m) => [m.internalProductId, { stripeProductId: m.stripeProductId, stripePriceId: m.stripePriceId }])
+  )
+
+  return ALL_PRODUCTS.map((product) => {
+    const mapping = mappingsByProductId.get(product.id)
+    return {
+      ...product,
+      syncedStripeProductId: mapping?.stripeProductId || product.stripeProductId,
+      syncedStripePriceId: mapping?.stripePriceId || product.stripePriceId,
+    }
+  })
+}
+
+// Get Stripe price ID for a product (for checkout) - use synced ID if available, fallback to static
+export function getStripePriceIdForCheckout(
+  productId: string,
+  mappings?: Record<string, { stripeProductId: string; stripePriceId: string }>
+): string | undefined {
+  if (mappings && mappings[productId]) {
+    return mappings[productId].stripePriceId
+  }
+  const product = getProductById(productId)
+  return product?.stripePriceId
 }

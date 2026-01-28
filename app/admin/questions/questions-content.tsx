@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Search, Edit, Plus, ChevronLeft, ChevronRight, Loader2, Trash2, Sparkles } from "lucide-react"
 import { SUBJECTS } from "@lib/products"
-import Link from "next/link"
+import Link from "@/components/meta/link"
 
 interface Question {
   id: string

@@ -13,6 +13,8 @@ import OrderedList from "@tiptap/extension-ordered-list"
 import ListItem from "@tiptap/extension-list-item"
 import Blockquote from "@tiptap/extension-blockquote"
 import Dropcursor from "@tiptap/extension-dropcursor"
+import HardBreak from "@tiptap/extension-hard-break"
+import Heading from "@tiptap/extension-heading"
 import { Node, mergeAttributes } from "@tiptap/core"
 import { ReactNodeViewRenderer } from "@tiptap/react"
 import { useState, useCallback, forwardRef, useImperativeHandle, useRef } from "react"
@@ -31,7 +33,16 @@ import {
   Quote,
   Loader2,
   Upload,
+  Heading1,
+  Heading2,
+  Heading3,
 } from "lucide-react"
+
+const CustomHardBreak = HardBreak.extend({
+  renderText() {
+    return '\n'
+  },
+})
 
 function ResizableImageComponent({ node, updateAttributes, selected }: NodeViewProps) {
   const [isResizing, setIsResizing] = useState(false)
@@ -184,12 +195,12 @@ const ResizableImage = Node.create({
     return {
       setResizableImage:
         (options: { src: string; alt?: string; title?: string }) =>
-        ({ commands }) => {
-          return commands.insertContent({
-            type: this.name,
-            attrs: options,
-          })
-        },
+          ({ commands }) => {
+            return commands.insertContent({
+              type: this.name,
+              attrs: options,
+            })
+          },
     } as any;
   },
 })
@@ -225,8 +236,8 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
         alert("Invalid file type. Please upload a JPEG, PNG, GIF, or WebP image.")
         return null
       }
-      if (file.size > 5 * 1024 * 1024) {
-        alert("File too large. Maximum size is 5MB.")
+      if (file.size > 10 * 1024 * 1024) {
+        alert("File too large. Maximum size is 10MB.")
         return null
       }
 
@@ -242,6 +253,9 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
     }, [])
 
     const editor = useEditor({
+      parseOptions: {
+        preserveWhitespace: 'full',
+      },
       immediatelyRender: false,
       extensions: [
         StarterKit.configure({
@@ -284,6 +298,30 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
         Dropcursor.configure({
           color: "hsl(var(--primary))",
           width: 2,
+        }),
+        CustomHardBreak,
+        Heading.configure({
+          levels: [1, 2, 3],
+        }).extend({
+          renderHTML({ node, HTMLAttributes }) {
+            const hasLevel = this.options.levels.includes(node.attrs.level)
+            const level = hasLevel ? node.attrs.level : this.options.levels[0]
+
+            // Map levels to your specific Tailwind classes
+            const classes: Record<number, string> = {
+              1: 'text-2xl font-bold',
+              2: 'text-xl font-bold',
+              3: 'text-lg font-bold',
+            }
+
+            return [
+              `h${level}`,
+              mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, {
+                class: classes[level]
+              }),
+              0
+            ]
+          },
         }),
         Mention.configure({
           HTMLAttributes: {
@@ -358,7 +396,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
                 } else {
                   props.items.forEach((item) => {
                     const btn = document.createElement("button")
-                    btn.className = "w-full px-3 py-2 text-left text-sm hover:bg-secondary transition-colors"
+                    btn.className = "w-full px-3 py-2 text-left text-sm hover:bg-default transition-colors"
                     btn.textContent = item.label
                     btn.onclick = () => {
                       props.command(item)
@@ -393,7 +431,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
                 uploadFile(file)
                   .then((url) => {
                     if (url && editor) {
-                      ;(editor.chain().focus() as any).setResizableImage({ src: url }).run()
+                      ; (editor.chain().focus() as any).setResizableImage({ src: url }).run()
                     }
                   })
                   .catch(console.error)
@@ -418,7 +456,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
           uploadFile(file)
             .then((url) => {
               if (url && editor) {
-                ;(editor.chain().focus() as any).setResizableImage({ src: url }).run()
+                ; (editor.chain().focus() as any).setResizableImage({ src: url }).run()
               }
             })
             .catch(console.error)
@@ -432,7 +470,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
     useImperativeHandle(ref, () => ({
       getHTML: () => editor?.getHTML() || "",
       clearContent: () => editor?.commands.clearContent(),
-      setContent: (newContent: string) => editor?.commands.setContent(newContent),
+      setContent: (newContent: string) => editor?.commands.setContent(newContent, { parseOptions: { preserveWhitespace: "full" } }),
     }))
 
     const handleAddLink = useCallback(() => {
@@ -465,7 +503,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
         try {
           const url = await uploadFile(file)
           if (url) {
-            ;(editor.chain().focus() as any).setResizableImage({ src: url }).run()
+            ; (editor.chain().focus() as any).setResizableImage({ src: url }).run()
             setShowImageDialog(false)
           }
         } catch (err) {
@@ -480,7 +518,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
 
     const insertImageUrl = useCallback(() => {
       if (!editor || !imageUrl) return
-      ;(editor.chain().focus() as any).setResizableImage({ src: imageUrl }).run()
+        ; (editor.chain().focus() as any).setResizableImage({ src: imageUrl }).run()
       setShowImageDialog(false)
       setImageUrl("")
     }, [editor, imageUrl])
@@ -516,7 +554,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
         try {
           const url = await uploadFile(file)
           if (url) {
-            ;(editor.chain().focus() as any).setResizableImage({ src: url }).run()
+            ; (editor.chain().focus() as any).setResizableImage({ src: url }).run()
           }
         } catch (err) {
           console.error(err)
@@ -559,7 +597,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
         <div className="flex flex-wrap items-center gap-1 border-b border-border p-2">
           <Button
             type="button"
-            variant={editor.isActive("bold") ? "secondary" : "ghost"}
+            variant={editor.isActive("bold") ? "default" : "ghost"}
             size="icon"
             className="h-8 w-8"
             onClick={() => editor.chain().focus().toggleBold().run()}
@@ -568,7 +606,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
           </Button>
           <Button
             type="button"
-            variant={editor.isActive("italic") ? "secondary" : "ghost"}
+            variant={editor.isActive("italic") ? "default" : "ghost"}
             size="icon"
             className="h-8 w-8"
             onClick={() => editor.chain().focus().toggleItalic().run()}
@@ -577,7 +615,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
           </Button>
           <Button
             type="button"
-            variant={editor.isActive("underline") ? "secondary" : "ghost"}
+            variant={editor.isActive("underline") ? "default" : "ghost"}
             size="icon"
             className="h-8 w-8"
             onClick={() => editor.chain().focus().toggleUnderline().run()}
@@ -587,7 +625,35 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
           <div className="mx-1 h-6 w-px bg-border" />
           <Button
             type="button"
-            variant={editor.isActive("bulletList") ? "secondary" : "ghost"}
+            variant={editor.isActive("heading", { level: 1 }) ? "default" : "ghost"}
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+          >
+            <Heading1 className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            variant={editor.isActive("heading", { level: 2 }) ? "default" : "ghost"}
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+          >
+            <Heading2 className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            variant={editor.isActive("heading", { level: 3 }) ? "default" : "ghost"}
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+          >
+            <Heading3 className="h-4 w-4" />
+          </Button>
+          <div className="mx-1 h-6 w-px bg-border" />
+          <Button
+            type="button"
+            variant={editor.isActive("bulletList") ? "default" : "ghost"}
             size="icon"
             className="h-8 w-8"
             onClick={() => editor.chain().focus().toggleBulletList().run()}
@@ -596,7 +662,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
           </Button>
           <Button
             type="button"
-            variant={editor.isActive("orderedList") ? "secondary" : "ghost"}
+            variant={editor.isActive("orderedList") ? "default" : "ghost"}
             size="icon"
             className="h-8 w-8"
             onClick={() => editor.chain().focus().toggleOrderedList().run()}
@@ -605,7 +671,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
           </Button>
           <Button
             type="button"
-            variant={editor.isActive("blockquote") ? "secondary" : "ghost"}
+            variant={editor.isActive("blockquote") ? "default" : "ghost"}
             size="icon"
             className="h-8 w-8"
             onClick={() => editor.chain().focus().toggleBlockquote().run()}
@@ -615,7 +681,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
           <div className="mx-1 h-6 w-px bg-border" />
           <Button
             type="button"
-            variant={editor.isActive("link") ? "secondary" : "ghost"}
+            variant={editor.isActive("link") ? "default" : "ghost"}
             size="icon"
             className="h-8 w-8"
             onClick={handleAddLink}

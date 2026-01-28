@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Loader2, Sparkles, Plus, Check, X, ArrowLeft } from "lucide-react"
 import { SUBJECTS } from "@lib/products"
-import Link from "next/link"
+import Link from "@/components/meta/link"
 
 interface GeneratedQuestion {
   subjectId: string

@@ -1,9 +1,9 @@
 "use client"
 
-import Link from "next/link"
+import Link from "@/components/meta/link"
 import { usePathname, useRouter } from "next/navigation"
 import { cn } from "@lib/utils"
-import { LayoutDashboard, Users, HelpCircle, Package, Ticket, LogOut, Shield, Sparkles, Building2 } from "lucide-react"
+import { LayoutDashboard, Users, HelpCircle, Package, Ticket, LogOut, Shield, Sparkles, Building2, GraduationCap } from "lucide-react"
 import { SlSpeech } from "react-icons/sl"
 import { MdEmail } from "react-icons/md"
 
@@ -11,8 +11,9 @@ const navigation = [
   { name: "Overview", href: "/admin", icon: LayoutDashboard },
   { name: "Members", href: "/admin/members", icon: Users },
   { name: "Flight Schools", href: "/admin/flight-schools", icon: Building2 },
-  { name: "Email", href: "/admin/email", icon: MdEmail },
+  { name: "Courses", href: "/admin/courses", icon: GraduationCap },
   { name: "Questions", href: "/admin/questions", icon: HelpCircle },
+  { name: "Email", href: "/admin/email", icon: MdEmail },
   { name: "Products", href: "/admin/products", icon: Package },
   { name: "Coupons", href: "/admin/coupons", icon: Ticket },
   { name: "Forums", href: "/admin/forums", icon: SlSpeech }

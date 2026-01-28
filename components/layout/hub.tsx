@@ -13,7 +13,7 @@ export default ({ children }: { children: React.ReactNode }) => {
                 <Header />
                 <div className="relative overflow-hidden">
                     <PageTransition />
-                    <main className="pb-20 lg:pb-8">{children}</main>
+                    <main>{children}</main>
                 </div>
             </div>
             <div className="opacity-70 pointer-events-none absolute top-0 left-0 w-screen h-full">

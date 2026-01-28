@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { usePathname } from "next/navigation";
 import { FaPlane, FaCloud } from "react-icons/fa";
 import { useEffect, useState } from "react";
-import { set } from "date-fns";
 
 const AVIATION_FACTS = [
   "The four forces of flight: Lift, Weight, Thrust, and Drag.",

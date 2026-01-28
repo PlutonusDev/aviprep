@@ -137,19 +137,28 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
+
   html {
     scrollbar-gutter: stable;
   }
+
   button:not(:disabled),
   [role="button"]:not(:disabled) {
     cursor: pointer;
   }
+
+  .tiptap-content p {
+    min-height: 1rem;
+  }
 }
 
-.grecaptcha-badge { visibility: hidden; }
+.grecaptcha-badge {
+  visibility: hidden;
+}
 
 .standalone-container {
   padding-top: env(safe-area-inset-top);
