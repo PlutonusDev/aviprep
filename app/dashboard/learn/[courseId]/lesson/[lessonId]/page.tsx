@@ -1,19 +1,18 @@
 "use client"
 
-import { useState, useEffect, use } from "react"
+import { useState, useEffect, use, useCallback } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { 
   ArrowLeft,
-  ArrowRight,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Loader2,
-  Menu,
-  X,
+  PanelLeftOpen,
+  PanelLeftClose,
 } from "lucide-react"
 import { LessonContent } from "@/components/learn/lesson-content"
 import { LessonSidebar } from "@/components/learn/lesson-sidebar"
@@ -51,17 +50,14 @@ export default function LessonPage({
 }) {
   const { courseId, lessonId } = use(params)
   const router = useRouter()
+  
   const [course, setCourse] = useState<CourseData | null>(null)
   const [lesson, setLesson] = useState<Lesson | null>(null)
   const [loading, setLoading] = useState(true)
   const [completing, setCompleting] = useState(false)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
 
-  useEffect(() => {
-    fetchLesson()
-  }, [courseId, lessonId])
-
-  const fetchLesson = async () => {
+  const fetchLesson = useCallback(async () => {
     try {
       const res = await fetch(`/api/learn/lessons/${lessonId}?courseId=${courseId}`)
       if (res.ok) {
@@ -71,8 +67,40 @@ export default function LessonPage({
       }
     } catch (error) {
       console.error("Failed to fetch lesson:", error)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
+  }, [courseId, lessonId])
+
+  useEffect(() => {
+    fetchLesson()
+  }, [fetchLesson])
+
+  // Keyboard shortcut (Ctrl+B or Cmd+B) to toggle sidebar
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "b") {
+        e.preventDefault()
+        setSidebarOpen((prev) => !prev)
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [])
+
+  const getAllLessons = () => course?.modules.flatMap(m => m.lessons) || []
+  const getCurrentIndex = () => getAllLessons().findIndex(l => l.id === lessonId)
+  
+  const getPrevLesson = () => {
+    const lessons = getAllLessons()
+    const index = getCurrentIndex()
+    return index > 0 ? lessons[index - 1] : null
+  }
+  
+  const getNextLesson = () => {
+    const lessons = getAllLessons()
+    const index = getCurrentIndex()
+    return index < lessons.length - 1 ? lessons[index + 1] : null
   }
 
   const handleComplete = async () => {
@@ -87,14 +115,12 @@ export default function LessonPage({
       })
       
       if (res.ok) {
-        // Update local state
         setCourse(prev => prev ? {
           ...prev,
           completedLessons: [...prev.completedLessons, lessonId],
           progress: Math.round(((prev.completedLessons.length + 1) / prev.totalLessons) * 100),
         } : null)
 
-        // Navigate to next lesson if available
         const next = getNextLesson()
         if (next) {
           router.push(`/dashboard/learn/${courseId}/lesson/${next.id}`)
@@ -102,30 +128,9 @@ export default function LessonPage({
       }
     } catch (error) {
       console.error("Failed to complete lesson:", error)
+    } finally {
+      setCompleting(false)
     }
-    setCompleting(false)
-  }
-
-  const getAllLessons = () => {
-    if (!course) return []
-    return course.modules.flatMap(m => m.lessons)
-  }
-
-  const getCurrentIndex = () => {
-    const lessons = getAllLessons()
-    return lessons.findIndex(l => l.id === lessonId)
-  }
-
-  const getPrevLesson = () => {
-    const lessons = getAllLessons()
-    const index = getCurrentIndex()
-    return index > 0 ? lessons[index - 1] : null
-  }
-
-  const getNextLesson = () => {
-    const lessons = getAllLessons()
-    const index = getCurrentIndex()
-    return index < lessons.length - 1 ? lessons[index + 1] : null
   }
 
   if (loading) {
@@ -154,70 +159,79 @@ export default function LessonPage({
   const totalLessons = getAllLessons().length
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
-      {/* Mobile sidebar toggle */}
-      <Button
-        variant="outline"
-        size="icon"
-        className="fixed bottom-4 right-4 z-50 lg:hidden shadow-lg bg-transparent"
-        onClick={() => setSidebarOpen(!sidebarOpen)}
+    <div className="relative flex h-[calc(100vh-4rem)] overflow-hidden bg-background">
+      {/* Sidebar Logic:
+          - Mobile: Fixed position, slides over content.
+          - Desktop (lg): Relative position, occupies space (w-80) when open, w-0 when closed.
+      */}
+      <aside 
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 transform bg-sidebar transition-all duration-300 ease-in-out lg:relative lg:z-0 border-r",
+          sidebarOpen 
+            ? "translate-x-0 w-80" 
+            : "-translate-x-full lg:translate-x-0 lg:w-0 lg:border-none"
+        )}
       >
-        {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-      </Button>
+        <div className={cn(
+          "h-full w-80 transition-opacity duration-300",
+          !sidebarOpen && "lg:opacity-0 lg:pointer-events-none"
+        )}>
+          <LessonSidebar
+            course={course}
+            currentLessonId={lessonId}
+          />
+        </div>
+      </aside>
 
-      {/* Sidebar */}
-      <div className={cn(
-        "fixed inset-y-0 left-0 z-40 w-80 transform bg-background border-r transition-transform lg:relative lg:translate-x-0",
-        sidebarOpen ? "translate-x-0" : "-translate-x-full"
-      )}>
-        <LessonSidebar
-          course={course}
-          currentLessonId={lessonId}
-          onClose={() => setSidebarOpen(false)}
-        />
-      </div>
-
-      {/* Overlay for mobile */}
+      {/* Mobile Overlay (Only visible when sidebar is open on small screens) */}
       {sidebarOpen && (
         <div 
-          className="fixed inset-0 z-30 bg-background/80 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden transition-opacity"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top bar */}
-        <div className="flex items-center justify-between border-b px-4 h-12 shrink-0">
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" asChild>
-              <Link href={`/dashboard/learn/${courseId}`}>
-                <ArrowLeft className="h-5 w-5" />
-              </Link>
+      {/* Main content area: Flex-1 ensures it fills all remaining space */}
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Top Header Navigation */}
+        <header className="flex items-center justify-between border-b px-4 h-12 shrink-0 bg-background/95 backdrop-blur">
+          <div className="flex items-center gap-2 overflow-hidden">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="shrink-0 hover:bg-primary/10 hover:text-primary"
+              title="Toggle Sidebar (Ctrl+B)"
+            >
+              {sidebarOpen ? <PanelLeftClose className="h-5 w-5" /> : <PanelLeftOpen className="h-5 w-5" />}
             </Button>
-            <div>
-              <h1 className="text-sm font-medium truncate max-w-[200px] sm:max-w-none">
-                {lesson.title}
-              </h1>
-            </div>
+
+            <div className="h-4 w-[1px] bg-border mx-1 hidden sm:block" />
+
+            <h1 className="text-sm font-semibold truncate text-foreground">
+              {lesson.title}
+            </h1>
           </div>
           
           <div className="flex items-center gap-4">
-            <div className="hidden sm:flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">
-                {currentIndex + 1} / {totalLessons}
+            <div className="hidden md:flex items-center gap-3">
+              <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+                Lesson {currentIndex + 1} of {totalLessons}
               </span>
-              <Progress value={course.progress} className="w-24 h-2" />
+              <Progress value={course.progress} className="w-20 h-1.5" />
             </div>
             {isCompleted && (
-              <CheckCircle2 className="h-5 w-5 text-success" />
+              <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                <span className="text-[10px] font-bold uppercase">Completed</span>
+              </div>
             )}
           </div>
-        </div>
+        </header>
 
-        {/* Lesson content */}
+        {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto">
-          <div className="max-w-4xl mx-auto p-6">
+          <div className="max-w-4xl mx-auto p-6 lg:p-10">
             <LessonContent 
               lesson={lesson} 
               onComplete={handleComplete}
@@ -226,70 +240,79 @@ export default function LessonPage({
           </div>
         </div>
 
-        {/* Bottom navigation */}
-        <div className="flex items-center justify-between border-t px-4 py-3 shrink-0 bg-background">
+        {/* Bottom Navigation Bar */}
+        <footer className="flex items-center justify-between border-t px-4 py-3 shrink-0 bg-background/95">
           <Button
             variant="outline"
+            size="sm"
             disabled={!prevLesson}
             asChild={!!prevLesson}
+            className="h-9 px-4"
           >
             {prevLesson ? (
               <Link href={`/dashboard/learn/${courseId}/lesson/${prevLesson.id}`}>
-                <ChevronLeft className="h-4 w-4 mr-1" />
-                Previous
+                <ChevronLeft className="h-4 w-4 mr-2" />
+                Prev
               </Link>
             ) : (
-              <>
-                <ChevronLeft className="h-4 w-4 mr-1" />
-                Previous
-              </>
+              <div className="flex items-center">
+                <ChevronLeft className="h-4 w-4 mr-2" />
+                Prev
+              </div>
             )}
           </Button>
 
-          {!isCompleted ? (
-            <Button onClick={handleComplete} disabled={completing}>
-              {completing ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <CheckCircle2 className="h-4 w-4 mr-2" />
-              )}
-              Mark Complete
-            </Button>
-          ) : nextLesson ? (
-            <Button asChild>
-              <Link href={`/dashboard/learn/${courseId}/lesson/${nextLesson.id}`}>
-                Next Lesson
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </Link>
-            </Button>
-          ) : (
-            <Button asChild>
-              <Link href={`/dashboard/learn/${courseId}`}>
-                Finish Course
-                <CheckCircle2 className="h-4 w-4 ml-2" />
-              </Link>
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {!isCompleted ? (
+              <Button 
+                onClick={handleComplete} 
+                disabled={completing}
+                className="h-9 px-6 bg-primary shadow-sm hover:shadow-md transition-all"
+              >
+                {completing ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                )}
+                Mark Complete
+              </Button>
+            ) : nextLesson ? (
+              <Button asChild className="h-9 px-6">
+                <Link href={`/dashboard/learn/${courseId}/lesson/${nextLesson.id}`}>
+                  Next Lesson
+                  <ChevronRight className="h-4 w-4 ml-2" />
+                </Link>
+              </Button>
+            ) : (
+              <Button asChild variant="secondary" className="h-9 px-6">
+                <Link href={`/dashboard/learn/${courseId}`}>
+                  Finish Course
+                </Link>
+              </Button>
+            )}
+          </div>
 
           <Button
             variant="outline"
+            size="sm"
             disabled={!nextLesson}
             asChild={!!nextLesson}
+            className="h-9 px-4"
           >
             {nextLesson ? (
               <Link href={`/dashboard/learn/${courseId}/lesson/${nextLesson.id}`}>
                 Next
-                <ChevronRight className="h-4 w-4 ml-1" />
+                <ChevronRight className="h-4 w-4 ml-2" />
               </Link>
             ) : (
-              <>
+              <div className="flex items-center">
                 Next
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </>
+                <ChevronRight className="h-4 w-4 ml-2" />
+              </div>
             )}
           </Button>
-        </div>
-      </div>
+        </footer>
+      </main>
     </div>
   )
 }

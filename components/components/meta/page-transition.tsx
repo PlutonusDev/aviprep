@@ -183,12 +183,12 @@ export default function PageTransition() {
             </div>
 
             <motion.div
-              className="absolute top-1/4 left-1/2 h-[20%] transform -translate-x-1/2 z-60 p-8 text-center max-w-4xl"
+              className="absolute top-1/3 left-1/2 h-[20%] transform -translate-x-1/2 z-60 p-8 text-center max-w-6xl"
               variants={factVariants}
               initial="hidden"
               animate={isTriggered ? "visible" : "hidden"} // Parent controls everything
             >
-              <h3 className="text-2xl md:text-4xl text-foreground font-light leading-relaxed text-center max-w-4xl">
+              <h3 className="text-xl md:text-xl text-foreground font-light leading-relaxed text-center max-w-6xl">
                 {fact.split("").map((char, i) => (
                   <motion.span
                     key={`${char}-${i}`}
@@ -248,11 +248,11 @@ export default function PageTransition() {
             </div>
 
             <motion.div
-              className="absolute top-1/4 left-1/2 h-[20%] transform -translate-x-1/2 z-60 p-8 text-center max-w-4xl"
+              className="absolute top-1/3 left-1/2 h-[20%] transform -translate-x-1/2 z-60 p-8 text-center max-w-6xl"
               variants={factVariants}
               initial="visible"
             >
-              <h3 className="text-2xl md:text-4xl text-foreground font-light leading-relaxed text-center max-w-4xl">
+              <h3 className="text-xl md:text-xl text-foreground font-light leading-relaxed text-center max-w-6xl">
                 {fact}
               </h3>
             </motion.div>

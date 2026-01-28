@@ -14,6 +14,16 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { User, Bell, Shield, CreditCard, Trash2, Camera, Loader2 } from "lucide-react"
 import { ImageCropper } from "@/components/hub/image-cropper"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { toast } from "sonner"
 
 export default function SettingsContent() {
   const { user, purchases, refresh } = useUser()
@@ -23,6 +33,47 @@ export default function SettingsContent() {
 
   const [cropperOpen, setCropperOpen] = useState(false)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
+
+  const [passwordData, setPasswordData] = useState({
+    oldPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  })
+  const [isChangingPassword, setIsChangingPassword] = useState(false)
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false)
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast.error("New passwords do not match")
+      return
+    }
+
+    setIsChangingPassword(true)
+    try {
+      const res = await fetch("/api/auth/update-password", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          oldPassword: passwordData.oldPassword,
+          newPassword: passwordData.newPassword,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) throw new Error(data.message || "Failed to update password")
+
+      toast.success("Password updated successfully")
+      setPasswordDialogOpen(false)
+      setPasswordData({ oldPassword: "", newPassword: "", confirmPassword: "" })
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Something went wrong")
+    } finally {
+      setIsChangingPassword(false)
+    }
+  }
 
   const handleAvatarClick = () => {
     fileInputRef.current?.click()
@@ -336,9 +387,62 @@ export default function SettingsContent() {
               <p className="font-medium text-foreground">Password</p>
               <p className="text-sm text-muted-foreground">Change your account password</p>
             </div>
-            <Button variant="outline" className="bg-transparent">
-              Change Password
-            </Button>
+
+            <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="bg-transparent">
+                  Change Password
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <form onSubmit={handlePasswordChange}>
+                  <DialogHeader>
+                    <DialogTitle>Update Password</DialogTitle>
+                    <DialogDescription>
+                      Enter your current password and choose a new secure one.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="oldPassword">Current Password</Label>
+                      <Input
+                        id="oldPassword"
+                        type="password"
+                        required
+                        value={passwordData.oldPassword}
+                        onChange={(e) => setPasswordData({ ...passwordData, oldPassword: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="newPassword">New Password</Label>
+                      <Input
+                        id="newPassword"
+                        type="password"
+                        required
+                        value={passwordData.newPassword}
+                        onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                      <Input
+                        id="confirmPassword"
+                        type="password"
+                        required
+                        value={passwordData.confirmPassword}
+                        onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button type="submit" disabled={isChangingPassword}>
+                      {isChangingPassword && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Update Password
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
           </div>
         </CardContent>
       </Card>

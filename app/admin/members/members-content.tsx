@@ -19,6 +19,7 @@ import { Switch } from "@/components/ui/switch"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Search, Edit, ChevronLeft, ChevronRight, UserPlus, Loader2 } from "lucide-react"
 import { SUBJECTS } from "@lib/products"
+import { cn } from "@lib/utils"
 
 interface Member {
   id: string
@@ -56,6 +57,7 @@ export function MembersContent() {
   const [saving, setSaving] = useState(false)
   const [grantAccessOpen, setGrantAccessOpen] = useState(false)
   const [selectedSubject, setSelectedSubject] = useState("")
+  const [selectedSubjectSearch, setSelectedSubjectSearch] = useState("")
 
   const fetchMembers = useCallback(async () => {
     setLoading(true)
@@ -376,32 +378,74 @@ export function MembersContent() {
       </Dialog>
 
       {/* Grant Access Dialog */}
-      <Dialog open={grantAccessOpen} onOpenChange={setGrantAccessOpen}>
-        <DialogContent>
+      <Dialog open={grantAccessOpen} onOpenChange={(open) => {
+        setGrantAccessOpen(open);
+        if (!open) setSelectedSubject(""); // Reset selection on close
+      }}>
+        <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Grant Subject Access</DialogTitle>
-            <DialogDescription>Grant {editMember?.firstName} access to a subject for 12 months</DialogDescription>
+            <DialogDescription>
+              Grant {editMember?.firstName} access to a subject for 12 months.
+            </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <Label htmlFor="subject">Subject</Label>
-            <Select value={selectedSubject} onValueChange={setSelectedSubject}>
-              <SelectTrigger className="mt-2">
-                <SelectValue placeholder="Select a subject" />
-              </SelectTrigger>
-              <SelectContent>
-                {SUBJECTS.map((subject) => (
-                  <SelectItem key={subject.id} value={subject.id}>
-                    {subject.name} ({subject.code})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="subject-search">Search Subject</Label>
+              <div className="relative">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="subject-search"
+                  placeholder="Search by name or code..."
+                  className="pl-8"
+                  value={selectedSubjectSearch} // You'll need to add this state: const [selectedSubjectSearch, setSelectedSubjectSearch] = useState("")
+                  onChange={(e) => setSelectedSubjectSearch(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="rounded-md border">
+              <div className="h-[200px] overflow-y-auto">
+                <div className="p-2">
+                  {SUBJECTS.filter(s =>
+                    s.name.toLowerCase().includes(selectedSubjectSearch.toLowerCase()) ||
+                    s.code.toLowerCase().includes(selectedSubjectSearch.toLowerCase())
+                  ).map((subject) => (
+                    <button
+                      key={subject.id}
+                      className={cn(
+                        "flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-sm transition-colors hover:bg-accent/20",
+                        selectedSubject === subject.id ? "bg-accent/50 text-primary" : "transparent"
+                      )}
+                      onClick={() => setSelectedSubject(subject.id)}
+                    >
+                      <div className="flex flex-col items-start">
+                        <span className="font-medium">{subject.name}</span>
+                        <span className="text-xs text-muted-foreground">{subject.code}</span>
+                      </div>
+                      {selectedSubject === subject.id && (
+                        <div className="h-2 w-2 rounded-full bg-primary" />
+                      )}
+                    </button>
+                  ))}
+                  {SUBJECTS.filter(s =>
+                    s.name.toLowerCase().includes(selectedSubjectSearch.toLowerCase()) ||
+                    s.code.toLowerCase().includes(selectedSubjectSearch.toLowerCase())
+                  ).length === 0 && (
+                      <p className="p-4 text-center text-sm text-muted-foreground">No subjects found.</p>
+                    )}
+                </div>
+              </div>
+            </div>
           </div>
           <DialogFooter>
-            <Button className="cursor-pointer" variant="outline" onClick={() => setGrantAccessOpen(false)}>
+            <Button variant="outline" onClick={() => setGrantAccessOpen(false)}>
               Cancel
             </Button>
-            <Button className="cursor-pointer" onClick={handleGrantAccess} disabled={saving || !selectedSubject}>
+            <Button
+              onClick={handleGrantAccess}
+              disabled={saving || !selectedSubject}
+            >
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Grant Access
             </Button>

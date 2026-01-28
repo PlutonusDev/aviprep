@@ -17,7 +17,7 @@
   --secondary-foreground: oklch(0.25 0.01 250);
   --muted: oklch(0.92 0.005 250);
   --muted-foreground: oklch(0.45 0.01 250);
-  --accent: oklch(0.55 0.15 150);
+  --accent: oklch(0.7304 0.1754 57.56);
   --accent-foreground: oklch(0.98 0 0);
   --destructive: oklch(0.55 0.22 25);
   --destructive-foreground: oklch(0.98 0 0);
@@ -60,7 +60,7 @@
   --secondary-foreground: oklch(0.85 0 0);
   --muted: oklch(0.25 0.01 250);
   --muted-foreground: oklch(0.65 0 0);
-  --accent: oklch(0.75 0.15 150);
+  --accent: oklch(0.7304 0.1754 57.56);
   --accent-foreground: oklch(0.13 0.01 250);
   --destructive: oklch(0.55 0.22 25);
   --destructive-foreground: oklch(0.98 0 0);
@@ -140,10 +140,13 @@
 
   body {
     @apply bg-background text-foreground;
+    padding-right: 0px !important;
   }
 
   html {
-    scrollbar-gutter: stable;
+    scrollbar-gutter: stable !important;
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   button:not(:disabled),
@@ -153,6 +156,24 @@
 
   .tiptap-content p {
     min-height: 1rem;
+  }
+
+  :root {
+    --removed-body-scroll-bar-size: 0px !important;
+  }
+
+  body[data-scroll-locked] {
+    padding-right: 0px !important;
+    /* Some versions of Radix also use margin */
+    margin-right: 0px !important;
+  }
+
+  input,
+  textarea,
+  [contenteditable="true"],
+  .allow-select {
+    user-select: text;
+    -webkit-user-select: text;
   }
 }
 

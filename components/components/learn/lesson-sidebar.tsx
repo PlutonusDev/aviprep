@@ -2,12 +2,12 @@
 
 import React from "react"
 
-import Link from "next/link"
+import Link from "@/components/meta/link"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Progress } from "@/components/ui/progress"
-import { 
-  CheckCircle2, 
-  Circle, 
+import {
+  CheckCircle2,
+  Circle,
   FileText,
   Video,
   HelpCircle,
@@ -16,6 +16,7 @@ import {
   X,
   GraduationCap,
   ArrowLeft,
+  Menu,
 } from "lucide-react"
 import { cn } from "@lib/utils"
 import { Button } from "@/components/ui/button"
@@ -45,7 +46,6 @@ interface Course {
 interface LessonSidebarProps {
   course: Course
   currentLessonId: string
-  onClose?: () => void
 }
 
 const contentTypeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -56,7 +56,7 @@ const contentTypeIcons: Record<string, React.ComponentType<{ className?: string 
   flashcards: CreditCard,
 }
 
-export function LessonSidebar({ course, currentLessonId, onClose }: LessonSidebarProps) {
+export function LessonSidebar({ course, currentLessonId }: LessonSidebarProps) {
   return (
     <div className="flex flex-col h-full bg-sidebar overflow-hidden">
       {/* Header */}
@@ -65,11 +65,6 @@ export function LessonSidebar({ course, currentLessonId, onClose }: LessonSideba
           <GraduationCap className="h-5 w-5 text-primary" />
           <span className="font-semibold text-sm truncate">{course.title}</span>
         </div>
-        {onClose && (
-          <Button variant="ghost" size="icon" className="lg:hidden" onClick={onClose}>
-            <X className="h-5 w-5" />
-          </Button>
-        )}
       </div>
 
       {/* Progress */}
@@ -95,7 +90,7 @@ export function LessonSidebar({ course, currentLessonId, onClose }: LessonSideba
                 </div>
                 <h3 className="text-sm font-medium truncate">{module.title}</h3>
               </div>
-              
+
               <div className="ml-3 border-l pl-4 space-y-1">
                 {module.lessons.map((lesson) => {
                   const isCompleted = course.completedLessons.includes(lesson.id)
@@ -106,7 +101,6 @@ export function LessonSidebar({ course, currentLessonId, onClose }: LessonSideba
                     <Link
                       key={lesson.id}
                       href={`/dashboard/learn/${course.id}/lesson/${lesson.id}`}
-                      onClick={onClose}
                       className={cn(
                         "flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
                         isCurrent && "bg-primary/10 text-primary",
