@@ -10,12 +10,12 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { 
-  GraduationCap, 
-  BookOpen, 
-  Clock, 
-  Play, 
-  CheckCircle2, 
+import {
+  GraduationCap,
+  BookOpen,
+  Clock,
+  Play,
+  CheckCircle2,
   Lock,
   ChevronRight,
   BarChart3,
@@ -190,37 +190,35 @@ export default function LearnPage() {
                   if (subjectCourses.length === 0) return null
 
                   return subjectCourses.map((course) => (
-                    <Card key={course.id} className="group relative overflow-hidden transition-all hover:shadow-md">
-                      {!hasAccess && (
-                        <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-                          <div className="text-center">
-                            <Lock className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                            <p className="text-sm font-medium">Unlock with Learning Access</p>
-                            <Button size="sm" className="mt-2" asChild>
-                              <Link href={`/dashboard/pricing?license=${selectedLicense}`}>
-                                Get Access
-                              </Link>
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                      
+                    <Card key={course.id} className="group overflow-hidden transition-all hover:shadow-md">
                       <CardHeader className="pb-3">
                         <div className="flex items-start justify-between">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                            <Icon className="h-5 w-5 text-primary" />
+                          <div>
+                            <CardTitle className="text-lg">{course.title}</CardTitle>
+                            <CardDescription className="line-clamp-2">
+                              {course.description}
+                            </CardDescription>
                           </div>
-                          <Badge variant="outline" className={getDifficultyColor(course.difficulty)}>
-                            {course.difficulty}
-                          </Badge>
+                          <div className={`rounded-md px-2 py-1 text-xs font-medium text-foreground flex items-center justify-center bg-secondary  ${getDifficultyColor(course.difficulty)}`}>
+                            {subject.name} - {course.difficulty}
+                          </div>
                         </div>
-                        <CardTitle className="mt-3 text-lg">{course.title}</CardTitle>
-                        <CardDescription className="line-clamp-2">
-                          {course.description}
-                        </CardDescription>
                       </CardHeader>
-                      
-                      <CardContent className="space-y-4">
+
+                      <CardContent className="space-y-4 relative">
+                        {!hasAccess && (
+                          <div className="absolute rounded-md mx-4 inset-0 z-10 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+                            <div className="text-center">
+                              <Lock className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                              <p className="text-sm font-medium">Unlock with Learning Access</p>
+                              <Button size="sm" className="mt-2" asChild>
+                                <Link href={`/dashboard/pricing?license=${selectedLicense}`}>
+                                  Get Access
+                                </Link>
+                              </Button>
+                            </div>
+                          </div>
+                        )}
                         <div className="flex items-center gap-4 text-sm text-muted-foreground">
                           <div className="flex items-center gap-1">
                             <BookOpen className="h-4 w-4" />
@@ -242,8 +240,8 @@ export default function LearnPage() {
                           </div>
                         )}
 
-                        <Button 
-                          className="w-full" 
+                        <Button
+                          className="w-full"
                           variant={course.isEnrolled ? "outline" : "default"}
                           asChild
                         >
