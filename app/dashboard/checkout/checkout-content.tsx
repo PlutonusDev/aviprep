@@ -6,7 +6,7 @@ import { loadStripe } from "@stripe/stripe-js"
 import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js"
 import { ArrowLeft, Check, CreditCard, Loader2, Lock, Shield, Sparkles } from "lucide-react"
 import { SiKlarna, SiAfterpay } from "react-icons/si"
-import Link from "next/link"
+import Link from "@/components/meta/link"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"

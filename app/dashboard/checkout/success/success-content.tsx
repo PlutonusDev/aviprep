@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { ArrowRight, Loader2, BookOpen, BarChart3, Sparkles } from "lucide-react"
-import Link from "next/link"
+import Link from "@/components/meta/link"
 import confetti from "canvas-confetti"
 
 import { Button } from "@/components/ui/button"

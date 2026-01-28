@@ -26,7 +26,7 @@ import {
     GraduationCap,
     ChevronRight,
 } from "lucide-react"
-import Link from "next/link"
+import Link from "@/components/meta/link"
 import { useUser } from "@lib/user-context"
 import { SUBJECTS as allSubjects } from "@lib/subjects"
 import type React from "react"
