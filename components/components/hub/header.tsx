@@ -47,13 +47,13 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import Link from "next/link"
+import Link from "@/components/meta/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@lib/utils"
 import { useUser } from "@lib/user-context"
 import { SUBJECTS, LICENSE_TYPES } from "@lib/subjects"
 import type React from "react"
+import { NotificationsDropdown } from "./notifications-dropdown"
 
 const navigation = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -555,79 +555,7 @@ export default function Header() {
                     <div className="flex items-center gap-2">
                         <ThemeToggle />
 
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="relative mr-2">
-                                    <Bell className="h-9 w-9" />
-                                    <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary" />
-                                    <span className="sr-only">Notifications</span>
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuLabel className="font-normal">
-                                    <div className="flex flex-col gap-4 p-2 min-w-[320px]">
-                                        <div className="flex items-center justify-between">
-                                            <p className="text-sm font-semibold">Notifications</p>
-                                            <Badge variant="secondary" className="text-[10px] h-5">3 New</Badge>
-                                        </div>
-
-                                        <div className="space-y-4">
-                                            <div className="flex flex-col gap-2">
-                                                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Today</p>
-
-                                                {/* AI Insight */}
-                                                <div className="flex gap-3 rounded-lg border border-transparent hover:bg-accent/50 p-2 transition-colors cursor-pointer">
-                                                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                                                        <BrainCircuit className="h-4 w-4 text-primary" />
-                                                    </div>
-                                                    <div className="flex flex-col gap-1">
-                                                        <p className="text-xs font-medium leading-none">AI Insight Ready</p>
-                                                        <p className="text-[11px] text-muted-foreground line-clamp-2">
-                                                            We've analyzed your "Meteorology" performance.
-                                                        </p>
-                                                        <p className="text-[10px] text-primary">2m ago</p>
-                                                    </div>
-                                                </div>
-
-                                                {/* Achievement */}
-                                                <div className="flex gap-3 rounded-lg border border-transparent hover:bg-accent/50 p-2 transition-colors cursor-pointer">
-                                                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/10">
-                                                        <GraduationCap className="h-4 w-4 text-emerald-500" />
-                                                    </div>
-                                                    <div className="flex flex-col gap-1">
-                                                        <p className="text-xs font-medium leading-none">Course Completed</p>
-                                                        <p className="text-[11px] text-muted-foreground">
-                                                            Congrats! You finished "Air Law 101".
-                                                        </p>
-                                                        <p className="text-[10px] text-muted-foreground">4h ago</p>
-                                                    </div>
-                                                </div>
-
-                                                {/* Warning/Reminder */}
-                                                <div className="flex gap-3 rounded-lg border border-transparent hover:bg-accent/50 p-2 transition-colors cursor-pointer">
-                                                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-500/10">
-                                                        <History className="h-4 w-4 text-amber-500" />
-                                                    </div>
-                                                    <div className="flex flex-col gap-1">
-                                                        <p className="text-xs font-medium leading-none">Exam Reminder</p>
-                                                        <p className="text-[11px] text-muted-foreground">
-                                                            "Navigation" practice exam expires in 24h.
-                                                        </p>
-                                                        <p className="text-[10px] text-muted-foreground">8h ago</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </DropdownMenuLabel>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem className="flex items-center">
-                                    <Link href="/dashboard/notifications">
-                                        <span className="text-sm font-semibold leading-none">View all notifications</span>
-                                    </Link>
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                        <NotificationsDropdown />
 
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>

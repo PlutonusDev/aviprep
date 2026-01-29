@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { prisma } from "@lib/prisma"
 import { verifyToken } from "@lib/auth"
+import { notifyCourseEnrolled } from "@lib/notifications"
 
 export async function POST(
   request: Request,
@@ -30,6 +31,16 @@ export async function POST(
       return NextResponse.json({ error: "Course not found" }, { status: 404 })
     }
 
+    // Check if already enrolled
+    const existingEnrollment = await prisma.courseEnrollment.findUnique({
+      where: {
+        userId_courseId: {
+          userId: session.userId,
+          courseId,
+        },
+      },
+    })
+
     // Create or update enrollment
     const enrollment = await prisma.courseEnrollment.upsert({
       where: {
@@ -47,6 +58,13 @@ export async function POST(
         completedLessons: [],
       },
     })
+
+    // Send notification only if this is a new enrollment
+    if (!existingEnrollment) {
+      await notifyCourseEnrolled(session.userId, course.title, courseId).catch(err =>
+        console.error("Failed to send enrollment notification:", err)
+      )
+    }
 
     return NextResponse.json({ enrollment })
   } catch (error) {

@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { stripe } from "@lib/stripe"
 import { prisma } from "@lib/prisma"
 import { getProductById, SUBJECTS, CPL_BUNDLE } from "@lib/products"
+import { notifyPurchase } from "@lib/notifications"
 import type Stripe from "stripe"
 
 // Disable body parsing, we need raw body for webhook verification
@@ -163,6 +164,15 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
       })
     }
   }
+
+  // Send purchase notification
+  const productNames = hasBundle 
+    ? "CPL Bundle" 
+    : productIds.map(id => getProductById(id)?.name).filter(Boolean).join(", ")
+  
+  await notifyPurchase(userId, productNames).catch(err =>
+    console.error("Failed to send purchase notification:", err)
+  )
 
   console.log(`Successfully processed payment for user ${userId}`)
 }

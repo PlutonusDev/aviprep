@@ -1,12 +1,11 @@
 "use client"
 
-import { useState, useEffect, use, useCallback } from "react"
+import { useState, useEffect, use, useCallback, useRef } from "react"
 import Link from "@/components/meta/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { 
-  ArrowLeft,
+import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -56,7 +55,14 @@ export default function LessonPage({
   const [loading, setLoading] = useState(true)
   const [completing, setCompleting] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const lessonStartTime = useRef<Date>(new Date())
 
+  useEffect(() => {
+    fetchLesson()
+    // Reset start time when lesson changes
+    lessonStartTime.current = new Date()
+  }, [courseId, lessonId])
+  
   const fetchLesson = useCallback(async () => {
     try {
       const res = await fetch(`/api/learn/lessons/${lessonId}?courseId=${courseId}`)
@@ -71,10 +77,6 @@ export default function LessonPage({
       setLoading(false)
     }
   }, [courseId, lessonId])
-
-  useEffect(() => {
-    fetchLesson()
-  }, [fetchLesson])
 
   // Keyboard shortcut (Ctrl+B or Cmd+B) to toggle sidebar
   useEffect(() => {
@@ -107,11 +109,17 @@ export default function LessonPage({
     if (!lesson || !course) return
     
     setCompleting(true)
+
+    const timeSpentMins = Math.max(
+      1,
+      Math.round((new Date().getTime() - lessonStartTime.current.getTime()) / 60000)
+    )
+
     try {
       const res = await fetch(`/api/learn/lessons/${lessonId}/complete`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ courseId }),
+        body: JSON.stringify({ courseId, timeSpentMins }),
       })
       
       if (res.ok) {

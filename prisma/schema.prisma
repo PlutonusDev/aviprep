@@ -527,3 +527,26 @@ model StripeProductMapping {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 }
+
+model Notification {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String   @db.ObjectId
+  
+  type        String   // "course_enrolled", "exam_completed", "course_completed", "purchase", "message", "achievement"
+  title       String
+  message     String
+  
+  // Optional metadata for linking
+  link        String?  // URL to navigate to
+  imageUrl    String?  // Icon or image
+  metadata    Json?    // Additional data like courseId, examId, etc.
+  
+  isRead      Boolean  @default(false)
+  readAt      DateTime?
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([userId])
+  @@index([createdAt])
+  @@index([isRead])
+}

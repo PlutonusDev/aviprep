@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@lib/prisma"
 import { verifyToken } from "@lib/auth"
 import { cookies } from "next/headers"
+import { notifyNewMessage } from "@lib/notifications"
 
 export async function GET(request: Request) {
   try {
@@ -124,6 +125,12 @@ export async function POST(request: Request) {
         },
       },
     })
+
+    // Send notification to receiver
+    const senderName = `${message.sender.firstName} ${message.sender.lastName}`
+    await notifyNewMessage(receiverId, senderName, payload.userId, content).catch(err => 
+      console.error("Failed to send message notification:", err)
+    )
 
     return NextResponse.json(message, { status: 201 })
   } catch (error) {

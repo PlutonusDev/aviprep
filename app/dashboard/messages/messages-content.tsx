@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useSearchParams } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -9,10 +9,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Mail, Send, Search, Plus, ArrowLeft } from "lucide-react"
+import { Mail, Send, Search, Plus, ArrowLeft, Loader2 } from "lucide-react"
 import { format, formatDistanceToNow } from "date-fns"
 import { useUser } from "@lib/user-context"
 import { cn } from "@lib/utils"
+
+const POLLING_INTERVAL = 3000 // Poll every 3 seconds for new messages
 
 interface User {
   id: string
@@ -50,22 +52,11 @@ export default function MessagesContent() {
   const [searchResults, setSearchResults] = useState<User[]>([])
   const [searching, setSearching] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const lastMessageIdRef = useRef<string | null>(null)
+  const pollingRef = useRef<NodeJS.Timeout | null>(null)
 
-  useEffect(() => {
-    fetchConversations()
-  }, [])
-
-  useEffect(() => {
-    if (toUserId && !selectedPartner) {
-      selectConversation(toUserId)
-    }
-  }, [toUserId])
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages])
-
-  async function fetchConversations() {
+  // Memoized fetch functions
+  const fetchConversations = useCallback(async () => {
     try {
       const res = await fetch("/api/messages")
       if (!res.ok) throw new Error("Failed to load")
@@ -76,7 +67,80 @@ export default function MessagesContent() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  const fetchMessagesForPartner = useCallback(async (partnerId: string) => {
+    try {
+      const res = await fetch(`/api/messages/${partnerId}`)
+      if (!res.ok) throw new Error("Failed to load")
+      const data = await res.json()
+      
+      // Only update if there are new messages
+      const newLastId = data.messages[data.messages.length - 1]?.id
+      if (newLastId && newLastId !== lastMessageIdRef.current) {
+        lastMessageIdRef.current = newLastId
+        setMessages(data.messages)
+        // Also update partner info in case it changed
+        setSelectedPartner(data.partner)
+      } else if (!lastMessageIdRef.current && data.messages.length > 0) {
+        lastMessageIdRef.current = newLastId
+        setMessages(data.messages)
+        setSelectedPartner(data.partner)
+      }
+    } catch (err) {
+      console.error(err)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchConversations()
+  }, [fetchConversations])
+
+  useEffect(() => {
+    if (toUserId && !selectedPartner) {
+      selectConversation(toUserId)
+    }
+  }, [toUserId])
+
+  // Real-time polling for new messages
+  useEffect(() => {
+    if (!selectedPartner) {
+      // Clear polling when no conversation selected
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current)
+        pollingRef.current = null
+      }
+      return
+    }
+
+    // Start polling for the selected conversation
+    pollingRef.current = setInterval(() => {
+      fetchMessagesForPartner(selectedPartner.id)
+      fetchConversations() // Also refresh conversation list for unread counts
+    }, POLLING_INTERVAL)
+
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current)
+        pollingRef.current = null
+      }
+    }
+  }, [selectedPartner, fetchMessagesForPartner])
+
+  // Also poll conversations list when no partner selected
+  useEffect(() => {
+    if (selectedPartner) return // Already handled above
+
+    const interval = setInterval(() => {
+      fetchConversations()
+    }, POLLING_INTERVAL * 2) // Poll less frequently for list
+
+    return () => clearInterval(interval)
+  }, [selectedPartner])
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [messages])
 
   async function selectConversation(partnerId: string) {
     try {
@@ -85,6 +149,8 @@ export default function MessagesContent() {
       const data = await res.json()
       setSelectedPartner(data.partner)
       setMessages(data.messages)
+      // Track last message for polling
+      lastMessageIdRef.current = data.messages[data.messages.length - 1]?.id || null
       fetchConversations() // Refresh unread counts
     } catch (err) {
       console.error(err)
@@ -94,22 +160,26 @@ export default function MessagesContent() {
   async function handleSend() {
     if (!newMessage.trim() || !selectedPartner) return
     setSending(true)
+    const messageContent = newMessage
+    setNewMessage("") // Clear immediately for better UX
+    
     try {
       const res = await fetch("/api/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           receiverId: selectedPartner.id,
-          content: newMessage,
+          content: messageContent,
         }),
       })
       if (!res.ok) throw new Error("Failed to send")
       const msg = await res.json()
       setMessages((prev) => [...prev, msg])
-      setNewMessage("")
+      lastMessageIdRef.current = msg.id // Update ref so polling doesn't duplicate
       fetchConversations()
     } catch (err) {
       console.error(err)
+      setNewMessage(messageContent) // Restore on error
     } finally {
       setSending(false)
     }
@@ -151,7 +221,7 @@ export default function MessagesContent() {
   }
 
   return (
-    <div className="p-4 lg:p-6 space-y-6">
+    <div className="p-4 lg:p-6 space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Messages</h1>
@@ -217,7 +287,7 @@ export default function MessagesContent() {
 
       <div className="grid h-[calc(100vh-220px)] grid-cols-1 gap-4 lg:grid-cols-3">
         {/* Conversations List */}
-        <Card className={cn("lg:col-span-1", selectedPartner && "hidden lg:block")}>
+        <Card className={cn("lg:col-span-1 overflow-y-auto", selectedPartner && "hidden lg:block")}>
           <CardContent className="p-0">
             <ScrollArea className="h-[calc(100vh-280px)]">
               {conversations.length === 0 ? (
@@ -269,7 +339,7 @@ export default function MessagesContent() {
         </Card>
 
         {/* Chat Area */}
-        <Card className={cn("lg:col-span-2", !selectedPartner && "hidden lg:flex lg:items-center lg:justify-center")}>
+        <Card className={cn("lg:col-span-2 overflow-y-auto", !selectedPartner && "hidden lg:flex lg:items-center lg:justify-center")}>
           {selectedPartner ? (
             <CardContent className="flex h-full flex-col p-0">
               {/* Header */}

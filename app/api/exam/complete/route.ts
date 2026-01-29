@@ -3,6 +3,7 @@ import { cookies } from "next/headers"
 import { verifyToken } from "@lib/auth"
 import { prisma } from "@lib/prisma"
 import { getSubjectById } from "@lib/subjects"
+import { notifyExamCompleted } from "@lib/notifications"
 
 export async function POST(request: Request) {
   try {
@@ -22,7 +23,7 @@ export async function POST(request: Request) {
     const { subjectId, score, totalQuestions, correctAnswers, timeSpentMins, questionResults } = body
 
     // Validate input
-    if (!subjectId || score === undefined || !totalQuestions || correctAnswers === undefined || (!timeSpentMins && timeSpentMins !== 0)) {
+    if (!subjectId || score === undefined || !totalQuestions || correctAnswers === undefined || !timeSpentMins) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
@@ -66,6 +67,11 @@ export async function POST(request: Request) {
       await updateWeakPoints(payload.userId, subjectId, subject.name, questionResults)
     }
 
+    // Send notification
+    await notifyExamCompleted(payload.userId, subject.name, score, passed).catch(err =>
+      console.error("Failed to send exam notification:", err)
+    )
+
     return NextResponse.json({
       success: true,
       examAttempt,
@@ -95,7 +101,7 @@ async function updateWeakPoints(
   })
 
   // Update weak points for each topic
-  for (const [topic, results] of Array.from(topicResults.entries())) {
+  for (const [topic, results] of Array.from(topicResults)) {
     // Get existing weak point if it exists
     const existingWeakPoint = await prisma.weakPoint.findUnique({
       where: {

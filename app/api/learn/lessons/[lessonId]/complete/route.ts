@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { prisma } from "@lib/prisma"
 import { verifyToken } from "@lib/auth"
+import { notifyCourseCompleted } from "@lib/notifications"
 
 export async function POST(
   request: Request,
@@ -9,7 +10,7 @@ export async function POST(
 ) {
   try {
     const { lessonId } = await params
-    const { courseId, progressData } = await request.json()
+    const { courseId, progressData, timeSpentSecs } = await request.json()
 
     const cookieStore = await cookies()
     const token = cookieStore.get("session")?.value
@@ -23,6 +24,18 @@ export async function POST(
       return NextResponse.json({ error: "Invalid session" }, { status: 401 })
     }
 
+    // Get the lesson to find its associated subject
+    const lesson = await prisma.lesson.findUnique({
+      where: { id: lessonId },
+      include: {
+        module: {
+          include: {
+            course: { select: { subjectId: true, title: true } }
+          }
+        }
+      }
+    })
+
     // Update or create lesson progress
     await prisma.lessonProgress.upsert({
       where: {
@@ -35,6 +48,7 @@ export async function POST(
         isCompleted: true,
         completedAt: new Date(),
         progressData: progressData || undefined,
+        timeSpentSecs: timeSpentSecs || 0,
       },
       create: {
         userId: session.userId,
@@ -42,8 +56,26 @@ export async function POST(
         isCompleted: true,
         completedAt: new Date(),
         progressData: progressData || undefined,
+        timeSpentSecs: timeSpentSecs || 0,
       },
     })
+
+    // Create a study session for the time spent (contributes to study streak)
+    if (timeSpentSecs && timeSpentSecs > 0) {
+      const durationMins = Math.max(1, Math.round(timeSpentSecs / 60))
+      const endedAt = new Date()
+      const startedAt = new Date(endedAt.getTime() - timeSpentSecs * 1000)
+      
+      await prisma.studySession.create({
+        data: {
+          userId: session.userId,
+          subjectId: lesson?.module.course.subjectId || null,
+          durationMins,
+          startedAt,
+          endedAt,
+        },
+      })
+    }
 
     // Update course enrollment
     const enrollment = await prisma.courseEnrollment.findUnique({
@@ -82,6 +114,11 @@ export async function POST(
           lastAccessedAt: new Date(),
         },
       })
+
+      // Send notification if course completed
+      if (isCompleted && course) {
+        await notifyCourseCompleted(session.userId, course.title, courseId)
+      }
     }
 
     return NextResponse.json({ success: true })
