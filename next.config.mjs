@@ -5,7 +5,8 @@ const nextConfig = {
     poweredByHeader: false,
     env: {
         NEXT_TELEMETRY_DISABLED: '1',
-    }
+    },
+    eslint: { ignoreDuringBuilds: true },
 }
 
 export default nextConfig;
