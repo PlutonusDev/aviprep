@@ -1,9 +1,8 @@
 "use client"
 
-import React from "react"
-
-import { useState, useEffect, use } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import Link from "next/link"
+import React, { useState, useEffect, useCallback } from "react"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -23,32 +22,28 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 import {
   Plus,
-  MoreVertical,
   Pencil,
   Trash2,
   ArrowLeft,
   FileText,
-  Video,
   HelpCircle,
   Layers,
-  CreditCard,
-  Clock,
   GripVertical,
+  ImageIcon,
+  ListChecks,
+  ChevronDown,
+  ChevronUp,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react"
-import Link from "@/components/meta/link"
+import { toast } from "sonner"
+import { use } from "react"
 
 interface Lesson {
   id: string
@@ -78,16 +73,18 @@ interface Course {
 
 const contentTypeIcons: Record<string, any> = {
   text: FileText,
-  video: Video,
+  media: ImageIcon,
   quiz: HelpCircle,
-  interactive: Layers,
-  flashcards: CreditCard,
+  exercise: ListChecks,
+  flashcards: Layers,
 }
 
 export default function CourseEditorPage({ params }: { params: Promise<{ courseId: string }> }) {
   const { courseId } = use(params)
   const [course, setCourse] = useState<Course | null>(null)
   const [loading, setLoading] = useState(true)
+  const [openModules, setOpenModules] = useState<string[]>([])
+  const [reordering, setReordering] = useState(false)
   
   // Module dialog
   const [moduleDialogOpen, setModuleDialogOpen] = useState(false)
@@ -167,14 +164,14 @@ export default function CourseEditorPage({ params }: { params: Promise<{ courseI
         case "text":
           content = { html: "<p>Enter your content here...</p>" }
           break
-        case "video":
-          content = { url: "", duration: 0 }
+        case "media":
+          content = { items: [] }
           break
         case "quiz":
           content = { questions: [] }
           break
-        case "interactive":
-          content = { type: "diagram", config: {} }
+        case "exercise":
+          content = { type: "steps", steps: [] }
           break
         case "flashcards":
           content = { cards: [] }
@@ -211,6 +208,102 @@ export default function CourseEditorPage({ params }: { params: Promise<{ courseI
     if (!confirm("Delete this lesson?")) return
     await fetch(`/api/admin/lessons/${lessonId}`, { method: "DELETE" })
     fetchCourse()
+  }
+
+  async function handleMoveLessonUp(moduleId: string, lessonId: string, currentOrder: number) {
+    if (currentOrder === 0 || reordering) return
+    setReordering(true)
+    try {
+      const res = await fetch("/api/admin/lessons/reorder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lessonId,
+          newOrder: currentOrder - 1,
+        }),
+      })
+      if (res.ok) {
+        fetchCourse()
+      } else {
+        toast.error("Failed to reorder lesson")
+      }
+    } catch {
+      toast.error("Failed to reorder lesson")
+    } finally {
+      setReordering(false)
+    }
+  }
+
+  async function handleMoveLessonDown(moduleId: string, lessonId: string, currentOrder: number, maxOrder: number) {
+    if (currentOrder >= maxOrder || reordering) return
+    setReordering(true)
+    try {
+      const res = await fetch("/api/admin/lessons/reorder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lessonId,
+          newOrder: currentOrder + 1,
+        }),
+      })
+      if (res.ok) {
+        fetchCourse()
+      } else {
+        toast.error("Failed to reorder lesson")
+      }
+    } catch {
+      toast.error("Failed to reorder lesson")
+    } finally {
+      setReordering(false)
+    }
+  }
+
+  async function handleMoveModuleUp(moduleId: string, currentOrder: number) {
+    if (currentOrder === 0 || reordering) return
+    setReordering(true)
+    try {
+      const res = await fetch("/api/admin/modules/reorder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          moduleId,
+          newOrder: currentOrder - 1,
+        }),
+      })
+      if (res.ok) {
+        fetchCourse()
+      } else {
+        toast.error("Failed to reorder module")
+      }
+    } catch {
+      toast.error("Failed to reorder module")
+    } finally {
+      setReordering(false)
+    }
+  }
+
+  async function handleMoveModuleDown(moduleId: string, currentOrder: number, maxOrder: number) {
+    if (currentOrder >= maxOrder || reordering) return
+    setReordering(true)
+    try {
+      const res = await fetch("/api/admin/modules/reorder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          moduleId,
+          newOrder: currentOrder + 1,
+        }),
+      })
+      if (res.ok) {
+        fetchCourse()
+      } else {
+        toast.error("Failed to reorder module")
+      }
+    } catch {
+      toast.error("Failed to reorder module")
+    } finally {
+      setReordering(false)
+    }
   }
 
   if (loading) {
@@ -283,115 +376,203 @@ export default function CourseEditorPage({ params }: { params: Promise<{ courseI
           </CardContent>
         </Card>
       ) : (
-        <Accordion type="multiple" className="space-y-2">
-          {course.modules.map((module, moduleIndex) => (
-            <AccordionItem key={module.id} value={module.id} className="border rounded-lg">
-              <AccordionTrigger className="px-4 hover:no-underline">
-                <div className="flex items-center gap-3 flex-1">
-                  <GripVertical className="h-5 w-5 text-muted-foreground" />
-                  <span className="font-medium">
-                    Module {moduleIndex + 1}: {module.title}
-                  </span>
-                  <Badge variant="outline" className="ml-2">
-                    {module.lessons.length} lessons
-                  </Badge>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-4 pb-4">
-                <div className="flex justify-between items-center mb-4">
-                  <p className="text-sm text-muted-foreground">
-                    {module.description || "No description"}
-                  </p>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setEditingModule(module)
-                        setModuleForm({
-                          title: module.title,
-                          description: module.description || "",
-                        })
-                        setModuleDialogOpen(true)
-                      }}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDeleteModule(module.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Lessons */}
-                <div className="space-y-2">
-                  {module.lessons.map((lesson, lessonIndex) => {
-                    const Icon = contentTypeIcons[lesson.contentType] || FileText
-                    return (
-                      <div
-                        key={lesson.id}
-                        className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg group"
-                      >
-                        <GripVertical className="h-4 w-4 text-muted-foreground" />
-                        <Icon className="h-4 w-4 text-muted-foreground" />
-                        <div className="flex-1">
-                          <span className="font-medium">
-                            {moduleIndex + 1}.{lessonIndex + 1} {lesson.title}
-                          </span>
-                          <span className="ml-2 text-xs text-muted-foreground">
-                            ({lesson.estimatedMins} min)
-                          </span>
+        <div className="space-y-3">
+          {course.modules
+            .sort((a, b) => a.order - b.order)
+            .map((module, moduleIndex) => {
+              const isOpen = openModules.includes(module.id)
+              const maxModuleOrder = course.modules.length - 1
+              
+              return (
+                <Collapsible
+                  key={module.id}
+                  open={isOpen}
+                  onOpenChange={(open) => {
+                    setOpenModules(
+                      open
+                        ? [...openModules, module.id]
+                        : openModules.filter((id) => id !== module.id)
+                    )
+                  }}
+                >
+                  <Card>
+                    <CollapsibleTrigger asChild>
+                      <div className="flex items-center gap-3 p-4 cursor-pointer hover:bg-muted/50 transition-colors">
+                        {/* Reorder buttons */}
+                        <div className="flex flex-col gap-0.5">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5"
+                            disabled={moduleIndex === 0 || reordering}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleMoveModuleUp(module.id, module.order)
+                            }}
+                          >
+                            <ChevronUp className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5"
+                            disabled={moduleIndex >= maxModuleOrder || reordering}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleMoveModuleDown(module.id, module.order, maxModuleOrder)
+                            }}
+                          >
+                            <ChevronDown className="h-3 w-3" />
+                          </Button>
                         </div>
-                        <Badge variant="outline" className="capitalize">
-                          {lesson.contentType}
-                        </Badge>
-                        <div className="opacity-0 group-hover:opacity-100 flex gap-1">
-                          <Link href={`/admin/courses/${courseId}/lesson/${lesson.id}`}>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                          </Link>
+
+                        <div className="flex-1 flex items-center gap-3">
+                          <span className="font-medium">
+                            Module {moduleIndex + 1}: {module.title}
+                          </span>
+                          <Badge variant="outline">
+                            {module.lessons.length} lesson{module.lessons.length !== 1 ? "s" : ""}
+                          </Badge>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
                           <Button
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8"
-                            onClick={() => handleDeleteLesson(lesson.id)}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setEditingModule(module)
+                              setModuleForm({
+                                title: module.title,
+                                description: module.description || "",
+                              })
+                              setModuleDialogOpen(true)
+                            }}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleDeleteModule(module.id)
+                            }}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
+                          {isOpen ? (
+                            <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                          ) : (
+                            <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                          )}
                         </div>
                       </div>
-                    )
-                  })}
-                  
-                  <Button
-                    variant="ghost"
-                    className="w-full border-dashed"
-                    onClick={() => {
-                      setEditingLesson(null)
-                      setLessonModuleId(module.id)
-                      setLessonForm({
-                        title: "",
-                        description: "",
-                        contentType: "text",
-                        estimatedMins: 5,
-                        content: {},
-                      })
-                      setLessonDialogOpen(true)
-                    }}
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Lesson
-                  </Button>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
+                    </CollapsibleTrigger>
+                    
+                    <CollapsibleContent>
+                      <div className="px-4 pb-4 border-t">
+                        {module.description && (
+                          <p className="text-sm text-muted-foreground py-3">
+                            {module.description}
+                          </p>
+                        )}
+
+                        {/* Lessons */}
+                        <div className="space-y-2 mt-2">
+                          {module.lessons
+                            .sort((a, b) => a.order - b.order)
+                            .map((lesson, lessonIndex) => {
+                              const Icon = contentTypeIcons[lesson.contentType] || FileText
+                              const maxLessonOrder = module.lessons.length - 1
+                              
+                              return (
+                                <div
+                                  key={lesson.id}
+                                  className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg group"
+                                >
+                                  {/* Reorder buttons */}
+                                  <div className="flex flex-col gap-0.5">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-5 w-5"
+                                      disabled={lessonIndex === 0 || reordering}
+                                      onClick={() => handleMoveLessonUp(module.id, lesson.id, lesson.order)}
+                                    >
+                                      <ArrowUp className="h-3 w-3" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-5 w-5"
+                                      disabled={lessonIndex >= maxLessonOrder || reordering}
+                                      onClick={() => handleMoveLessonDown(module.id, lesson.id, lesson.order, maxLessonOrder)}
+                                    >
+                                      <ArrowDown className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                  
+                                  <Icon className="h-4 w-4 text-muted-foreground" />
+                                  <div className="flex-1 min-w-0">
+                                    <span className="font-medium">
+                                      {moduleIndex + 1}.{lessonIndex + 1} {lesson.title}
+                                    </span>
+                                    <span className="ml-2 text-xs text-muted-foreground">
+                                      ({lesson.estimatedMins} min)
+                                    </span>
+                                  </div>
+                                  <Badge variant="outline" className="capitalize shrink-0">
+                                    {lesson.contentType}
+                                  </Badge>
+                                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Link href={`/admin/courses/${courseId}/lesson/${lesson.id}`}>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                                        <Pencil className="h-4 w-4" />
+                                      </Button>
+                                    </Link>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-destructive"
+                                      onClick={() => handleDeleteLesson(lesson.id)}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          
+                          <Button
+                            variant="outline"
+                            className="w-full border-dashed bg-transparent"
+                            onClick={() => {
+                              setEditingLesson(null)
+                              setLessonModuleId(module.id)
+                              setLessonForm({
+                                title: "",
+                                description: "",
+                                contentType: "text",
+                                estimatedMins: 5,
+                                content: {},
+                              })
+                              setLessonDialogOpen(true)
+                            }}
+                          >
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add Lesson
+                          </Button>
+                        </div>
+                      </div>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
+              )
+            })}
+        </div>
       )}
 
       {/* Module Dialog */}
@@ -456,9 +637,9 @@ export default function CourseEditorPage({ params }: { params: Promise<{ courseI
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="text">Text Content</SelectItem>
-                  <SelectItem value="video">Video</SelectItem>
+                  <SelectItem value="media">Media (Images, Videos, Links)</SelectItem>
                   <SelectItem value="quiz">Quiz</SelectItem>
-                  <SelectItem value="interactive">Interactive</SelectItem>
+                  <SelectItem value="exercise">Exercise (Steps, Matching, Ordering)</SelectItem>
                   <SelectItem value="flashcards">Flashcards</SelectItem>
                 </SelectContent>
               </Select>

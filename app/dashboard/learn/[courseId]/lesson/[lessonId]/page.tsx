@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, use, useCallback, useRef } from "react"
-import Link from "@/components/meta/link"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -55,12 +55,26 @@ export default function LessonPage({
   const [loading, setLoading] = useState(true)
   const [completing, setCompleting] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
-  const lessonStartTime = useRef<Date>(new Date())
+  const startTimeRef = useRef<number>(Date.now())
+  const timeSpentRef = useRef<number>(0)
+
+  useEffect(() => {
+    startTimeRef.current = Date.now()
+    
+    // Update time every minute for long sessions
+    const interval = setInterval(() => {
+      timeSpentRef.current = Math.floor((Date.now() - startTimeRef.current) / 1000)
+    }, 60000)
+
+    return () => {
+      clearInterval(interval)
+      // Calculate final time when leaving
+      timeSpentRef.current = Math.floor((Date.now() - startTimeRef.current) / 1000)
+    }
+  }, [lessonId])
 
   useEffect(() => {
     fetchLesson()
-    // Reset start time when lesson changes
-    lessonStartTime.current = new Date()
   }, [courseId, lessonId])
   
   const fetchLesson = useCallback(async () => {
@@ -108,27 +122,26 @@ export default function LessonPage({
   const handleComplete = async () => {
     if (!lesson || !course) return
     
+    // Calculate time spent
+    const timeSpentSecs = Math.floor((Date.now() - startTimeRef.current) / 1000)
+    
     setCompleting(true)
-
-    const timeSpentMins = Math.max(
-      1,
-      Math.round((new Date().getTime() - lessonStartTime.current.getTime()) / 60000)
-    )
-
     try {
       const res = await fetch(`/api/learn/lessons/${lessonId}/complete`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ courseId, timeSpentMins }),
+        body: JSON.stringify({ courseId, timeSpentSecs }),
       })
       
       if (res.ok) {
+        // Update local state
         setCourse(prev => prev ? {
           ...prev,
           completedLessons: [...prev.completedLessons, lessonId],
           progress: Math.round(((prev.completedLessons.length + 1) / prev.totalLessons) * 100),
         } : null)
 
+        // Navigate to next lesson if available
         const next = getNextLesson()
         if (next) {
           router.push(`/dashboard/learn/${courseId}/lesson/${next.id}`)
@@ -136,9 +149,8 @@ export default function LessonPage({
       }
     } catch (error) {
       console.error("Failed to complete lesson:", error)
-    } finally {
-      setCompleting(false)
     }
+    setCompleting(false)
   }
 
   if (loading) {
@@ -255,7 +267,7 @@ export default function LessonPage({
             size="sm"
             disabled={!prevLesson}
             asChild={!!prevLesson}
-            className="h-9 px-4"
+            className="h-9 px-4 bg-transparent"
           >
             {prevLesson ? (
               <Link href={`/dashboard/learn/${courseId}/lesson/${prevLesson.id}`}>
@@ -305,7 +317,7 @@ export default function LessonPage({
             size="sm"
             disabled={!nextLesson}
             asChild={!!nextLesson}
-            className="h-9 px-4"
+            className="h-9 px-4 bg-transparent"
           >
             {nextLesson ? (
               <Link href={`/dashboard/learn/${courseId}/lesson/${nextLesson.id}`}>

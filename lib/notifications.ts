@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client"
 import { prisma } from "./prisma"
 
 type NotificationType = 
@@ -15,7 +16,7 @@ interface CreateNotificationParams {
   message: string
   link?: string
   imageUrl?: string
-  metadata?: Record<string, unknown>
+  metadata?: Prisma.InputJsonValue
 }
 
 export async function createNotification(params: CreateNotificationParams) {
@@ -27,7 +28,7 @@ export async function createNotification(params: CreateNotificationParams) {
       message: params.message,
       link: params.link,
       imageUrl: params.imageUrl,
-      metadata: params.metadata,
+      metadata: params.metadata as Prisma.InputJsonValue,
     },
   })
 }

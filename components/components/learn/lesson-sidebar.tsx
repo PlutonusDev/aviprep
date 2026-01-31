@@ -2,7 +2,7 @@
 
 import React from "react"
 
-import Link from "@/components/meta/link"
+import Link from "next/link"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Progress } from "@/components/ui/progress"
 import {
