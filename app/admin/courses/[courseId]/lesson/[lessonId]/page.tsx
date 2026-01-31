@@ -266,7 +266,6 @@ function TextEditor({
       if (res.ok) {
         const data = await res.json()
         setContent({ ...content, html: data.content.html })
-        console.log(data.content.html);
         setEditorKey(prev => prev + 1)
         toast.success("Content generated successfully!")
       } else {
