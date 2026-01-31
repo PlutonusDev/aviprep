@@ -6,7 +6,6 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -373,7 +372,7 @@ export default function LearnPage() {
                               className="text-primary"
                             />
                           </svg>
-                          <span className="absolute inset-0 flex items-center justify-center text-[10px] font-medium">
+                          <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold">
                             {course.progress || 0}%
                           </span>
                         </div>
@@ -385,10 +384,10 @@ export default function LearnPage() {
                     {/* Course Info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-semibold truncate">{course.title}</h3>
                         <Badge variant="secondary" className="text-xs shrink-0">
                           {subjectCode}
                         </Badge>
+                        <h3 className="font-semibold truncate">{course.title}</h3>
                         {getDifficultyBadge(course.difficulty)}
                       </div>
                       <p className="text-sm text-muted-foreground line-clamp-1 mt-0.5">
@@ -401,7 +400,7 @@ export default function LearnPage() {
                         </span>
                         <span className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
-                          {course.estimatedHours}h
+                          {course.estimatedHours}h duration
                         </span>
                         <Link 
                           href={`/dashboard/learn?license=${selectedLicense}&subject=${course.subjectId}`}
