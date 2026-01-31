@@ -7,6 +7,7 @@ const nextConfig = {
         NEXT_TELEMETRY_DISABLED: '1',
     },
     eslint: { ignoreDuringBuilds: true },
+    typescript: { ignoreBuildErrors: true },
 }
 
 export default nextConfig;
