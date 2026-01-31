@@ -247,6 +247,7 @@ function TextEditor({
 }) {
   const [generating, setGenerating] = useState(false)
   const [topic, setTopic] = useState("")
+  const [editorKey, setEditorKey] = useState(0)
 
   const handleGenerate = async () => {
     setGenerating(true)
@@ -265,6 +266,7 @@ function TextEditor({
       if (res.ok) {
         const data = await res.json()
         setContent({ ...content, html: data.content.html })
+        setEditorKey(prev => prev + 1)
         toast.success("Content generated successfully!")
       } else {
         toast.error("Failed to generate content")
@@ -316,6 +318,7 @@ function TextEditor({
         </Card>
 
         <RichTextEditor
+          key={editorKey}
           content={content.html || ""}
           onChange={(html) => setContent({ ...content, html })}
           placeholder="Write your lesson content here..."
