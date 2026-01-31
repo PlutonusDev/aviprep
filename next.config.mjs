@@ -6,8 +6,8 @@ const nextConfig = {
     env: {
         NEXT_TELEMETRY_DISABLED: '1',
     },
-    eslint: { ignoreDuringBuilds: true },
-    typescript: { ignoreBuildErrors: true },
+    // eslint: { ignoreDuringBuilds: true },
+    // typescript: { ignoreBuildErrors: true },
 }
 
 export default nextConfig;

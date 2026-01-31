@@ -70,7 +70,7 @@ const exerciseOrderingSchema = z.object({
     ),
 })
 
-export async function POST(request: Request) {
+export async function POST(request: Request): Promise<Response> {
     const adminCheck = await verifyAdmin()
     if ("error" in adminCheck) {
         return NextResponse.json({ error: adminCheck.error }, { status: adminCheck.status })
@@ -130,13 +130,11 @@ Requirements:
 - Be educational, clear, and engaging
 - Suitable for student pilots preparing for CPL theory exams`
 
-        let result
-
         switch (contentType) {
-            case "text":
-                result = await generateText({
+            case "text": {
+                const result: any = await generateText({
                     model: "openai/gpt-4o",
-                    output: Output.object({ schema: textContentSchema }),
+                    output: Output.object({ schema: textContentSchema as any }),
                     prompt: `${basePrompt}
 
 Generate comprehensive lesson content in HTML format. Include:
@@ -147,16 +145,18 @@ Generate comprehensive lesson content in HTML format. Include:
 - Practical examples where relevant
 - Summary or key takeaways at the end
 
-The HTML should use semantic tags like <h2>, <h3>, <p>, <ul>, <ol>, <li>, <strong>, <em>.
+The HTML should use semantic tags like <h2>, <h3>, <p>, <ul>, <ol>, <li>, <strong>, <em> and be returned minified on one single line.
 Do NOT include <html>, <head>, <body> tags - just the content.`,
                     maxOutputTokens: 4000,
                 })
-                break
 
-            case "quiz":
-                result = await generateText({
+                return NextResponse.json({ content: result.output })
+            }
+
+            case "quiz": {
+                const result: any = await generateText({
                     model: "openai/gpt-4o",
-                    output: Output.object({ schema: quizContentSchema }),
+                    output: Output.object({ schema: quizContentSchema as any }),
                     prompt: `${basePrompt}
 
 Generate 5-8 multiple choice quiz questions to test understanding of this topic.
@@ -170,12 +170,14 @@ Each question should:
 Generate unique IDs for each question using timestamps (e.g., "q_1", "q_2", etc.).`,
                     maxOutputTokens: 4000,
                 })
-                break
 
-            case "flashcards":
-                result = await generateText({
+                return NextResponse.json({ content: result.output })
+            }
+
+            case "flashcards": {
+                const result: any = await generateText({
                     model: "openai/gpt-4o",
-                    output: Output.object({ schema: flashcardsContentSchema }),
+                    output: Output.object({ schema: flashcardsContentSchema as any }),
                     prompt: `${basePrompt}
 
 Generate 10-15 flashcards for studying this topic.
@@ -187,13 +189,15 @@ Cover key terminology, important facts, formulas, procedures, and concepts.
 Generate unique IDs for each card using timestamps (e.g., "card_1", "card_2", etc.).`,
                     maxOutputTokens: 3000,
                 })
-                break
 
-            case "exercise":
+                return NextResponse.json({ content: result.output })
+            }
+
+            case "exercise": {
                 if (exerciseType === "matching") {
-                    result = await generateText({
+                    const result: any = await generateText({
                         model: "openai/gpt-4o",
-                        output: Output.object({ schema: exerciseMatchingSchema }),
+                        output: Output.object({ schema: exerciseMatchingSchema as any }),
                         prompt: `${basePrompt}
 
 Generate a matching exercise with 6-8 pairs.
@@ -205,10 +209,12 @@ These should test the student's understanding of key terminology and concepts re
 Generate unique IDs for each pair (e.g., "pair_1", "pair_2", etc.).`,
                         maxOutputTokens: 2000,
                     })
+
+                    return NextResponse.json({ content: result.output })
                 } else if (exerciseType === "ordering") {
-                    result = await generateText({
+                    const result: any = await generateText({
                         model: "openai/gpt-4o",
-                        output: Output.object({ schema: exerciseOrderingSchema }),
+                        output: Output.object({ schema: exerciseOrderingSchema as any }),
                         prompt: `${basePrompt}
 
 Generate an ordering exercise with 5-8 steps/items.
@@ -217,11 +223,13 @@ Each item should have text describing one step and its correct order number (sta
 Generate unique IDs for each item (e.g., "item_1", "item_2", etc.).`,
                         maxOutputTokens: 2000,
                     })
+
+                    return NextResponse.json({ content: result.output })
                 } else {
                     // Default to steps
-                    result = await generateText({
+                    const result: any = await generateText({
                         model: "openai/gpt-4o",
-                        output: Output.object({ schema: exerciseStepsSchema }),
+                        output: Output.object({ schema: exerciseStepsSchema as any }),
                         prompt: `${basePrompt}
 
 Generate a step-by-step guide or procedure exercise with 5-8 steps.
@@ -233,14 +241,14 @@ This could be a procedure, checklist, or systematic approach related to the topi
 Generate unique IDs for each step (e.g., "step_1", "step_2", etc.).`,
                         maxOutputTokens: 3000,
                     })
+
+                    return NextResponse.json({ content: result.output })
                 }
-                break
+            }
 
             default:
                 return NextResponse.json({ error: "Invalid content type" }, { status: 400 })
         }
-
-        return NextResponse.json({ content: result.output })
     } catch (error) {
         console.error("Failed to generate content:", error)
         return NextResponse.json(
