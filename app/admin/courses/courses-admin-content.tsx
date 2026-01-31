@@ -141,7 +141,7 @@ export default function CoursesAdminContent() {
   }
 
   const subjects = getSubjectsByLicense(selectedLicense as any)
-  const availableLicenses = LICENSE_TYPES.filter(l => l.available)
+  const availableLicenses = LICENSE_TYPES/*.filter(l => l.available)*/
 
   return (
     <div className="space-y-6">
