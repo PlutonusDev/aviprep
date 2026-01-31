@@ -174,7 +174,7 @@ export const SUBJECTS: RawSubject[] = [
   },
   {
     id: "ppl-operations",
-    name: "PPL Aircraft Systems",
+    name: "PPL Operations, Performance & Planning (A)",
     code: "POPA",
     licenseType: "ppl" as LicenseType,
     description: "Aircraft performance and flight planning",
@@ -252,7 +252,7 @@ export const SUBJECTS: RawSubject[] = [
   },
   {
     id: "cpl-flight-planning",
-    name: "CPL Flight Planning (A)",
+    name: "CPL Operations, Performance & Planning (A)",
     code: "COPA",
     licenseType: "cpl" as LicenseType,
     description: "Weight & balance, performance calculations",
