@@ -28,7 +28,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { useUser } from "@lib/user-context"
-import { theorySubjects as allSubjects } from "@lib/mock-data"
+import { SUBJECTS as allSubjects } from "@lib/subjects"
 import type React from "react"
 import { useMemo } from "react"
 
