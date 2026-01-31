@@ -8,7 +8,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 8001",
-    "build": "next build",
+    "build": "cross-env NODE_OPTIONS='--max-old-space-size=8192' next build",
     "start": "next start -p 8001",
     "prime": "npx prisma generate"
   },
@@ -19,6 +19,7 @@
     "@types/react": "^19.2.7",
     "@types/three": "^0.182.0",
     "autoprefixer": "^10.4.23",
+    "cross-env": "^10.1.0",
     "eslint": "^9.39.2",
     "eslint-config-next": "^16.1.1",
     "postcss": "^8.5.6",

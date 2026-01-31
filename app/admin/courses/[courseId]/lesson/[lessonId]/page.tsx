@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   ArrowLeft,
@@ -21,11 +22,14 @@ import {
   Video,
   CheckCircle2,
   Loader2,
+  Sparkles,
+  Wand2,
 } from "lucide-react"
 import Link from "next/link"
 import RichTextEditor from "@/components/forum/rich-text-editor"
 import { toast } from "sonner"
 import { cn } from "@lib/utils"
+import { SUBJECTS } from "@lib/subjects"
 
 interface Lesson {
   id: string
@@ -38,6 +42,7 @@ interface Lesson {
     course: {
       id: string
       title: string
+      subjectId: string
     }
   }
 }
@@ -186,7 +191,12 @@ export default function LessonEditorPage({
 
       {/* Content Editors */}
       {contentType === "text" && (
-        <TextEditor content={content} setContent={setContent} />
+        <TextEditor 
+          content={content} 
+          setContent={setContent} 
+          lessonTitle={lesson.title}
+          subjectId={lesson.module.course.subjectId}
+        />
       )}
 
       {contentType === "media" && (
@@ -194,31 +204,117 @@ export default function LessonEditorPage({
       )}
 
       {contentType === "quiz" && (
-        <QuizEditor content={content} setContent={setContent} />
+        <QuizEditor 
+          content={content} 
+          setContent={setContent}
+          lessonTitle={lesson.title}
+          subjectId={lesson.module.course.subjectId}
+        />
       )}
 
       {contentType === "flashcards" && (
-        <FlashcardsEditor content={content} setContent={setContent} />
+        <FlashcardsEditor 
+          content={content} 
+          setContent={setContent}
+          lessonTitle={lesson.title}
+          subjectId={lesson.module.course.subjectId}
+        />
       )}
 
       {contentType === "exercise" && (
-        <ExerciseEditor content={content} setContent={setContent} />
+        <ExerciseEditor 
+          content={content} 
+          setContent={setContent}
+          lessonTitle={lesson.title}
+          subjectId={lesson.module.course.subjectId}
+        />
       )}
     </div>
   )
 }
 
 // Text Editor
-function TextEditor({ content, setContent }: { content: any; setContent: (c: any) => void }) {
+function TextEditor({ 
+  content, 
+  setContent,
+  lessonTitle,
+  subjectId,
+}: { 
+  content: any
+  setContent: (c: any) => void
+  lessonTitle: string
+  subjectId: string
+}) {
+  const [generating, setGenerating] = useState(false)
+  const [topic, setTopic] = useState("")
+
+  const handleGenerate = async () => {
+    setGenerating(true)
+    try {
+      const res = await fetch("/api/admin/courses/generate-content", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contentType: "text",
+          subjectId,
+          topic: topic || lessonTitle,
+          lessonTitle,
+        }),
+      })
+      
+      if (res.ok) {
+        const data = await res.json()
+        setContent({ ...content, html: data.content.html })
+        toast.success("Content generated successfully!")
+      } else {
+        toast.error("Failed to generate content")
+      }
+    } catch {
+      toast.error("Failed to generate content")
+    } finally {
+      setGenerating(false)
+    }
+  }
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Text Content</CardTitle>
-        <CardDescription>
-          Write your lesson content using the rich text editor
-        </CardDescription>
+        <div className="flex items-start justify-between">
+          <div>
+            <CardTitle>Text Content</CardTitle>
+            <CardDescription>
+              Write your lesson content using the rich text editor
+            </CardDescription>
+          </div>
+        </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
+        {/* AI Generation Section */}
+        <Card className="border-dashed border-primary/50 bg-primary/5">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles className="h-5 w-5 text-primary" />
+              <span className="font-medium">AI Content Generator</span>
+            </div>
+            <div className="flex gap-3">
+              <Input
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+                placeholder={`Topic (defaults to "${lessonTitle}")`}
+                className="flex-1"
+              />
+              <Button onClick={handleGenerate} disabled={generating}>
+                {generating ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Wand2 className="mr-2 h-4 w-4" />
+                )}
+                {generating ? "Generating..." : "Generate Content"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         <RichTextEditor
           content={content.html || ""}
           onChange={(html) => setContent({ ...content, html })}
@@ -372,8 +468,48 @@ function MediaEditor({ content, setContent }: { content: any; setContent: (c: an
 }
 
 // Quiz Editor
-function QuizEditor({ content, setContent }: { content: any; setContent: (c: any) => void }) {
+function QuizEditor({ 
+  content, 
+  setContent,
+  lessonTitle,
+  subjectId,
+}: { 
+  content: any
+  setContent: (c: any) => void
+  lessonTitle: string
+  subjectId: string
+}) {
+  const [generating, setGenerating] = useState(false)
+  const [topic, setTopic] = useState("")
   const questions = content.questions || []
+
+  const handleGenerate = async () => {
+    setGenerating(true)
+    try {
+      const res = await fetch("/api/admin/courses/generate-content", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contentType: "quiz",
+          subjectId,
+          topic: topic || lessonTitle,
+          lessonTitle,
+        }),
+      })
+      
+      if (res.ok) {
+        const data = await res.json()
+        setContent({ ...content, questions: data.content.questions })
+        toast.success("Quiz questions generated successfully!")
+      } else {
+        toast.error("Failed to generate quiz")
+      }
+    } catch {
+      toast.error("Failed to generate quiz")
+    } finally {
+      setGenerating(false)
+    }
+  }
 
   const addQuestion = () => {
     const newQuestion = {
@@ -418,6 +554,31 @@ function QuizEditor({ content, setContent }: { content: any; setContent: (c: any
         </Button>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* AI Generation Section */}
+        <Card className="border-dashed border-primary/50 bg-primary/5">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles className="h-5 w-5 text-primary" />
+              <span className="font-medium">AI Quiz Generator</span>
+            </div>
+            <div className="flex gap-3">
+              <Input
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+                placeholder={`Topic (defaults to "${lessonTitle}")`}
+                className="flex-1"
+              />
+              <Button onClick={handleGenerate} disabled={generating}>
+                {generating ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Wand2 className="mr-2 h-4 w-4" />
+                )}
+                {generating ? "Generating..." : "Generate Quiz"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
         {questions.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-xl">
             No questions yet. Click "Add Question" to get started.
@@ -495,8 +656,48 @@ function QuizEditor({ content, setContent }: { content: any; setContent: (c: any
 }
 
 // Flashcards Editor
-function FlashcardsEditor({ content, setContent }: { content: any; setContent: (c: any) => void }) {
+function FlashcardsEditor({ 
+  content, 
+  setContent,
+  lessonTitle,
+  subjectId,
+}: { 
+  content: any
+  setContent: (c: any) => void
+  lessonTitle: string
+  subjectId: string
+}) {
+  const [generating, setGenerating] = useState(false)
+  const [topic, setTopic] = useState("")
   const cards = content.cards || []
+
+  const handleGenerate = async () => {
+    setGenerating(true)
+    try {
+      const res = await fetch("/api/admin/courses/generate-content", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contentType: "flashcards",
+          subjectId,
+          topic: topic || lessonTitle,
+          lessonTitle,
+        }),
+      })
+      
+      if (res.ok) {
+        const data = await res.json()
+        setContent({ ...content, cards: data.content.cards })
+        toast.success("Flashcards generated successfully!")
+      } else {
+        toast.error("Failed to generate flashcards")
+      }
+    } catch {
+      toast.error("Failed to generate flashcards")
+    } finally {
+      setGenerating(false)
+    }
+  }
 
   const addCard = () => {
     const newCard = {
@@ -532,7 +733,33 @@ function FlashcardsEditor({ content, setContent }: { content: any; setContent: (
           Add Card
         </Button>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
+        {/* AI Generation Section */}
+        <Card className="border-dashed border-primary/50 bg-primary/5">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles className="h-5 w-5 text-primary" />
+              <span className="font-medium">AI Flashcard Generator</span>
+            </div>
+            <div className="flex gap-3">
+              <Input
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+                placeholder={`Topic (defaults to "${lessonTitle}")`}
+                className="flex-1"
+              />
+              <Button onClick={handleGenerate} disabled={generating}>
+                {generating ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Wand2 className="mr-2 h-4 w-4" />
+                )}
+                {generating ? "Generating..." : "Generate Flashcards"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         {cards.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-xl">
             No flashcards yet. Click "Add Card" to get started.
@@ -579,8 +806,49 @@ function FlashcardsEditor({ content, setContent }: { content: any; setContent: (
 }
 
 // Exercise Editor
-function ExerciseEditor({ content, setContent }: { content: any; setContent: (c: any) => void }) {
+function ExerciseEditor({ 
+  content, 
+  setContent,
+  lessonTitle,
+  subjectId,
+}: { 
+  content: any
+  setContent: (c: any) => void
+  lessonTitle: string
+  subjectId: string
+}) {
+  const [generating, setGenerating] = useState(false)
+  const [topic, setTopic] = useState("")
   const exerciseType = content.type || "steps"
+
+  const handleGenerate = async () => {
+    setGenerating(true)
+    try {
+      const res = await fetch("/api/admin/courses/generate-content", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contentType: "exercise",
+          subjectId,
+          topic: topic || lessonTitle,
+          lessonTitle,
+          exerciseType,
+        }),
+      })
+      
+      if (res.ok) {
+        const data = await res.json()
+        setContent(data.content)
+        toast.success("Exercise generated successfully!")
+      } else {
+        toast.error("Failed to generate exercise")
+      }
+    } catch {
+      toast.error("Failed to generate exercise")
+    } finally {
+      setGenerating(false)
+    }
+  }
 
   return (
     <Card>
@@ -590,19 +858,45 @@ function ExerciseEditor({ content, setContent }: { content: any; setContent: (c:
           Create interactive exercises for students
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="space-y-2">
-          <Label>Exercise Type</Label>
-          <Select 
-            value={exerciseType} 
-            onValueChange={(value) => setContent({ ...content, type: value })}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="steps">Step-by-Step Guide</SelectItem>
-              <SelectItem value="matching">Matching Exercise</SelectItem>
+<CardContent className="space-y-6">
+  {/* AI Generation Section */}
+  <Card className="border-dashed border-primary/50 bg-primary/5">
+    <CardContent className="p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Sparkles className="h-5 w-5 text-primary" />
+        <span className="font-medium">AI Exercise Generator</span>
+      </div>
+      <div className="flex gap-3">
+        <Input
+          value={topic}
+          onChange={(e) => setTopic(e.target.value)}
+          placeholder={`Topic (defaults to "${lessonTitle}")`}
+          className="flex-1"
+        />
+        <Button onClick={handleGenerate} disabled={generating}>
+          {generating ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Wand2 className="mr-2 h-4 w-4" />
+          )}
+          {generating ? "Generating..." : "Generate Exercise"}
+        </Button>
+      </div>
+    </CardContent>
+  </Card>
+
+  <div className="space-y-2">
+    <Label>Exercise Type</Label>
+    <Select
+      value={exerciseType}
+      onValueChange={(value) => setContent({ ...content, type: value })}
+    >
+      <SelectTrigger>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="steps">Step-by-Step Guide</SelectItem>
+        <SelectItem value="matching">Matching Exercise</SelectItem>
               <SelectItem value="ordering">Ordering Exercise</SelectItem>
             </SelectContent>
           </Select>
