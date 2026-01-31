@@ -7,7 +7,7 @@ import { MongoClient } from "mongodb"
 
 // Schema for text content
 const textContentSchema = z.object({
-    html: z.string().describe("HTML content for the lesson, including headings, paragraphs, lists, and formatting"),
+    html: z.string().describe("HTML content for the lesson, including headings, paragraphs, lists, and formatting. Keep the entire output on one line."),
 })
 
 // Schema for quiz questions
