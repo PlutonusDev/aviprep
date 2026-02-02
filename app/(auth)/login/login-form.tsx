@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -16,6 +16,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { tenant, isWhitelabeled } = useTenant()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -54,7 +55,8 @@ export default function LoginPage() {
         return
       }
 
-      router.push("/dashboard")
+      const redirectUrl = searchParams.get("redirect") || "/dashboard"
+      router.push(redirectUrl)
     } catch {
       setError("An unexpected error occurred. Please try again.")
       setIsLoading(false)
