@@ -2,15 +2,44 @@ import { Metadata, Viewport } from "next";
 import "../components/globals.css";
 import CaptchaProvider from "@/components/meta/recaptcha-provider";
 import { ThemeProvider } from "@/components/meta/theme-provider";
+import { TenantProvider } from "@lib/tenant-context";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://aviprep.com.au"),
   alternates: {
     canonical: "/",
   },
-  title: "AviPrep",
+  title: {
+    default: "AviPrep | Master Your Flight Theory with Confidence",
+    template: "%s | AviPrep",
+  },
   description:
-    "Australia's #1 CPL exam preparation platform. 5,000+ practice questions across 7 theory subjects, AI-powered insights, and detailed analytics. Join 500+ pilots on the waitlist.",
+    "Australia's most comprehensive CPL exam preparation platform. AI-powered insights, thousands of practice questions, and detailed analytics to help you pass first time.",
+  keywords: [
+    "CPL exam",
+    "CASA CPL",
+    "Commercial Pilot License",
+    "pilot theory exam",
+    "aviation exam Australia",
+    "CPL practice test",
+    "CASA theory exam",
+    "pilot training Australia",
+    "aerodynamics exam",
+    "meteorology exam",
+    "air law exam",
+    "navigation exam",
+    "human factors exam",
+    "flight planning exam",
+    "aircraft systems exam",
+  ],
+  authors: [{ name: "AviPrep" }],
+  creator: "AviPrep",
+  publisher: "AviPrep",
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
   openGraph: {
     type: "website",
     locale: "en_AU",
@@ -33,6 +62,7 @@ export const metadata: Metadata = {
     creator: "@AviPrep_AU",
   },
   manifest: "/site.webmanifest",
+  category: "Education"
 }
 
 export const viewport: Viewport = {
@@ -149,9 +179,11 @@ export default ({ children }: { children: React.ReactNode }) => {
           enableSystem
           disableTransitionOnChange
         >
-          <CaptchaProvider>
-            {children}
-          </CaptchaProvider>
+          <TenantProvider>
+            <CaptchaProvider>
+              {children}
+            </CaptchaProvider>
+          </TenantProvider>
         </ThemeProvider>
       </body>
     </html>

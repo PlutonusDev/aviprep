@@ -48,40 +48,50 @@ model User {
 }
 
 model FlightSchool {
-  id            String    @id @default(auto()) @map("_id") @db.ObjectId
-  name          String
-  slug          String    @unique
-  email         String    @unique
-  phone         String?
-  address       String?
-  city          String?
-  state         String?
-  postcode      String?
-  website       String?
-  logo          String?
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  name            String
+  slug            String    @unique
+  email           String    @unique
+  phone           String?
+  address         String?
+  city            String?
+  state           String?
+  postcode        String?
+  website         String?
+  logo            String?
 
-  adminId       String    @unique @db.ObjectId
-  admin         User      @relation("FlightSchoolAdmin", fields: [adminId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  adminId         String    @unique @db.ObjectId
+  admin           User      @relation("FlightSchoolAdmin", fields: [adminId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
-  isActive      Boolean   @default(true)
-  maxStudents   Int       @default(50)
+  isActive        Boolean   @default(true)
+  maxStudents     Int       @default(50)
 
-  apiKey        String?   @unique
-  apiEnabled    Boolean   @default(true)
-  webhookUrl    String?
-  webhookSecret String?
+  subdomain       String?   @unique
+  customDomain    String?   @unique
+  primaryColour   String    @default("#0ea5e9")
+  accentColour    String    @default("#f97316")
+  favicon         String?
+  loginBackground String?
+  welcomeMessage  String?
+  footerText      String?
+  hideBranding    Boolean @default(false)
+
+  apiKey          String?   @unique
+  apiEnabled      Boolean   @default(true)
+  webhookUrl      String?
+  webhookSecret   String?
 
   subscriptionTier    String  @default("basic")
   subscriptionExpiry  DateTime?
 
-  students      User[]    @relation("FlightSchoolStudents")
+  students        User[]    @relation("FlightSchoolStudents")
 
-  studentGroups StudentGroup[]
+  studentGroups   StudentGroup[]
 
   schoolPurchases SchoolPurchase[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 model StudentGroup {

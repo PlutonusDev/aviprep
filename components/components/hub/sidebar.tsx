@@ -8,6 +8,9 @@ import { IoBarChart, IoSettings, IoSparkles } from "react-icons/io5";
 import { SlSpeech } from "react-icons/sl";
 import { useUser } from "@lib/user-context";
 import { useEffect, useState } from "react";
+import { useTenant } from "@lib/tenant-context";
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+import { Building2 } from "lucide-react";
 
 const navigation = [
     {
@@ -69,6 +72,7 @@ export default () => {
     const { logout } = useUser();
     const pathname = usePathname();
     const [pendingPathname, setPendingPathname] = useState<string | null>(null);
+    const { tenant, isWhitelabeled } = useTenant();
 
     useEffect(() => {
         const handleStart = (e: any) => {
@@ -86,7 +90,22 @@ export default () => {
     return (
         <aside className="fixed inset-y-0 left-0 z-50 hidden w-64 flex-col border-r border-border bg-sidebar lg:flex">
             <div className="flex h-16 items-center gap-2 border-b border-border px-6 justify-center">
-                <img className="h-14" src="/img/AviPrep-logo.png" />
+                {isWhitelabeled && tenant ? (
+                    <>
+                        <Avatar className="h-14 w-14">
+                            <AvatarImage src={tenant.logo || undefined} />
+                            <AvatarFallback className="bg-primary/10">
+                                <Building2 className="h-5 w-5 text-primary" />
+                            </AvatarFallback>
+                        </Avatar>
+                        <div className="flex flex-col">
+                            <span className="text-sm font-semibold text-sidebar-foreground truncate max-w-[140px]">{tenant.name}</span>
+                            <span className="text-xs text-muted-foreground">Training Portal</span>
+                        </div>
+                    </>
+                ) : (
+                    <img className="h-14" src="/img/AviPrep-logo.png" />
+                )}
             </div>
 
             <nav className="flex-1 space-y-1 px-3 py-4">

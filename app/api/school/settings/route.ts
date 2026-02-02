@@ -48,6 +48,16 @@ export async function GET() {
       subscriptionTier: school.subscriptionTier,
       subscriptionExpiry: school.subscriptionExpiry,
       maxStudents: school.maxStudents,
+      // Branding fields
+      subdomain: school.subdomain,
+      customDomain: school.customDomain,
+      primaryColour: school.primaryColour,
+      accentColour: school.accentColour,
+      favicon: school.favicon,
+      loginBackground: school.loginBackground,
+      welcomeMessage: school.welcomeMessage,
+      footerText: school.footerText,
+      hideBranding: school.hideBranding,
     })
   } catch (error) {
     console.error("Get school settings error:", error)
@@ -78,11 +88,35 @@ export async function PATCH(request: Request) {
     const updates: Record<string, unknown> = {}
 
     // Only allow updating certain fields
-    const allowedFields = ["name", "phone", "address", "city", "state", "postcode", "website", "logo"]
+    const allowedFields = [
+      "name", "phone", "address", "city", "state", "postcode", "website", "logo",
+      // Branding fields
+      "subdomain", "primaryColour", "accentColour", "favicon", 
+      "loginBackground", "welcomeMessage", "footerText", "hideBranding"
+    ]
     for (const field of allowedFields) {
       if (body[field] !== undefined) {
         updates[field] = body[field]
       }
+    }
+
+    // Validate subdomain if provided
+    if (updates.subdomain) {
+      const subdomain = String(updates.subdomain).toLowerCase().replace(/[^a-z0-9-]/g, "")
+      if (subdomain.length < 3) {
+        return NextResponse.json({ error: "Subdomain must be at least 3 characters" }, { status: 400 })
+      }
+      // Check if subdomain is taken by another school
+      const existing = await prisma.flightSchool.findFirst({
+        where: {
+          subdomain,
+          NOT: { id: school.id }
+        }
+      })
+      if (existing) {
+        return NextResponse.json({ error: "This subdomain is already taken" }, { status: 400 })
+      }
+      updates.subdomain = subdomain
     }
 
     const updated = await prisma.flightSchool.update({
@@ -103,6 +137,16 @@ export async function PATCH(request: Request) {
       subscriptionTier: updated.subscriptionTier,
       subscriptionExpiry: updated.subscriptionExpiry,
       maxStudents: updated.maxStudents,
+      // Branding fields
+      subdomain: updated.subdomain,
+      customDomain: updated.customDomain,
+      primaryColour: updated.primaryColour,
+      accentColour: updated.accentColour,
+      favicon: updated.favicon,
+      loginBackground: updated.loginBackground,
+      welcomeMessage: updated.welcomeMessage,
+      footerText: updated.footerText,
+      hideBranding: updated.hideBranding,
     })
   } catch (error) {
     console.error("Update school settings error:", error)
