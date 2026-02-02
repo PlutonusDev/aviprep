@@ -70,8 +70,8 @@ function applyBrandingStyles(tenant: TenantBranding) {
     const primaryHSL = hexToHSL(tenant.primaryColour);
     const accentHSL = hexToHSL(tenant.accentColour);
 
-    if(primaryHSL) root.style.setProperty("--primary", `${primaryHSL.h} ${primaryHSL.s}% ${primaryHSL.l}%`);
-    if(accentHSL) root.style.setProperty("--accent", `${accentHSL.h} ${accentHSL.s}% ${accentHSL.l}%`);
+    if(primaryHSL) root.style.setProperty("--primary", `hsl(${primaryHSL.h} ${primaryHSL.s}% ${primaryHSL.l}%)`);
+    if(accentHSL) root.style.setProperty("--accent", `hsl(${accentHSL.h} ${accentHSL.s}% ${accentHSL.l}%)`);
 
     if(tenant.favicon) {
         const existingFavicon = document.querySelector('link[rel="icon"]');
