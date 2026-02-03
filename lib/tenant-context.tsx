@@ -73,6 +73,10 @@ function applyBrandingStyles(tenant: TenantBranding) {
     if(primaryHSL) root.style.setProperty("--primary", `hsl(${primaryHSL.h} ${primaryHSL.s}% ${primaryHSL.l}%)`);
     if(accentHSL) root.style.setProperty("--accent", `hsl(${accentHSL.h} ${accentHSL.s}% ${accentHSL.l}%)`);
 
+    if(tenant.name) {
+        document.title = `${tenant.name} | Training Portal`;
+    }
+    
     if(tenant.favicon) {
         const existingFavicon = document.querySelector('link[rel="icon"]');
         if(existingFavicon) {
@@ -83,8 +87,6 @@ function applyBrandingStyles(tenant: TenantBranding) {
             link.href = tenant.favicon;
             document.head.appendChild(link);
         }
-
-        document.title = `${tenant.name} | Training Portal`;
     }
 }
 
