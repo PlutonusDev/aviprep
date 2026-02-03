@@ -1,8 +1,8 @@
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "AviPrep | Terms of Service",
-  description: "Terms of Service for AviPrep - Australia's CPL theory exam preparation platform.",
+  title: "Terms of Service",
+  description: "Terms of Service for AviPrep - Australia's theory exam preparation platform.",
 }
 
 export default function TermsOfServicePage() {

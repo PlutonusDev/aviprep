@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import DashboardContent from "./dashboard-content"
 
 export const metadata: Metadata = {
-  title: "AviPrep | Dashboard",
+  title: "Dashboard",
   description: "Your AviPrep dashboard - view your subjects, recent exams, and study progress.",
 }
 

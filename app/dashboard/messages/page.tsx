@@ -3,7 +3,7 @@ import { Suspense } from "react"
 import MessagesContent from "./messages-content"
 
 export const metadata: Metadata = {
-  title: "AviPrep | Messages",
+  title: "Messages",
   description: "Private messages with other members.",
 }
 

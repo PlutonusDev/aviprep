@@ -3,7 +3,7 @@ import { Suspense } from "react"
 import SettingsContent from "./settings-content"
 
 export const metadata: Metadata = {
-  title: "AviPrep | Settings",
+  title: "Settings",
   description:
     "Manage your AviPrep account settings, profile information, notifications, and subscription details.",
 }

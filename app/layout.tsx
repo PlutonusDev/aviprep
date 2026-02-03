@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     template: "AviPrep | %s",
   },
   description:
-    "Australia's most comprehensive CPL exam preparation platform. AI-powered insights, thousands of practice questions, and detailed analytics to help you pass first time.",
+    "Australia's most comprehensive exam preparation platform. AI-powered insights, thousands of practice questions, and detailed analytics to help you pass first time.",
   keywords: [
     "CPL exam",
     "CASA CPL",
@@ -46,7 +46,7 @@ export const metadata: Metadata = {
     url: "https://aviprep.com.au/",
     title: "AviPrep | Master Your Flight Theory with Confidence",
     description:
-      "Australia's most comprehensive CPL exam preparation platform. AI-powered insights, thousands of practice questions, and detailed analytics to help you pass first time.",
+      "Australia's most comprehensive exam preparation platform. AI-powered insights, thousands of practice questions, and detailed analytics to help you pass first time.",
     images: [
       {
         url: "/img/AviPrep-logo.png",
@@ -57,7 +57,7 @@ export const metadata: Metadata = {
   twitter: {
     title: "AviPrep | Master Your Flight Theory with Confidence",
     description:
-      "Australia's most comprehensive CPL exam preparation platform. AI-powered insights, thousands of practice questions, and detailed analytics to help you pass first time.",
+      "Australia's most comprehensive exam preparation platform. AI-powered insights, thousands of practice questions, and detailed analytics to help you pass first time.",
     images: ["/img/AviPrep-logo.png"],
     creator: "@AviPrep_AU",
   },

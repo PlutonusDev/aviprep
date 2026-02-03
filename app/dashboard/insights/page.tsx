@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import InsightsContent from "./insights-content"
 
 export const metadata: Metadata = {
-  title: "AviPrep | Insights",
+  title: "Insights",
   description:
     "View AI-powered personalized study recommendations, weak point analysis, and performance insights for your CPL exam preparation.",
 }

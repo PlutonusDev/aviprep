@@ -3,9 +3,9 @@ import { UserProvider } from "@lib/user-context";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "AviPrep | Dashboard",
+  title: "Dashboard",
   description:
-    "Australia's #1 CASA CPL exam preparation platform. 5,000+ practice questions across 7 theory subjects, AI-powered insights, and detailed analytics. Join 500+ pilots on the waitlist.",
+    "Australia's most comprehensive exam preparation platform. AI-powered insights, thousands of practice questions, and detailed analytics to help you pass first time.",
   openGraph: {
     title: "AviPrep | Master Your Flight Theory with Confidence",
     description:

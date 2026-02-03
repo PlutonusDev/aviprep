@@ -2,9 +2,9 @@ import type { Metadata } from "next"
 import ExamsContent from "./exams-content"
 
 export const metadata: Metadata = {
-  title: "AviPrep | Practice Exams",
+  title: "Practice Exams",
   description:
-    "Access your CASA CPL theory practice exams across all 7 subjects including Aerodynamics, Meteorology, Navigation, Air Law, and more.",
+    "Australia's most comprehensive exam preparation platform. AI-powered insights, thousands of practice questions, and detailed analytics to help you pass first time.",
 }
 
 export default function ExamsPage() {

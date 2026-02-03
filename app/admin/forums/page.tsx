@@ -3,7 +3,7 @@ import { Suspense } from "react"
 import ForumsAdminContent from "./forums-admin-content"
 
 export const metadata: Metadata = {
-  title: "Forums Management | Admin",
+  title: "Forums",
   description: "Manage forum categories and forums.",
 }
 

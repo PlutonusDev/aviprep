@@ -3,9 +3,9 @@ import HistoryContent from "./history-content"
 import { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "AviPrep | History",
+  title: "History",
   description:
-    "View your CPL exam history, study time analytics, and performance insights.",
+    "View your exam history, study time analytics, and performance insights.",
 }
 
 export default function HistoryPage() {

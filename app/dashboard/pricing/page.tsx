@@ -4,7 +4,7 @@ import PricingContent from "./pricing-content"
 import { Loader2 } from "lucide-react"
 
 export const metadata: Metadata = {
-  title: "AviPrep | Pricing",
+  title: "AviPrep",
   description:
     "Get access to AviPrep pilot exam preparation. Choose from RPL, PPL, and CPL courses with individual subjects or complete bundle subscriptions.",
   openGraph: {

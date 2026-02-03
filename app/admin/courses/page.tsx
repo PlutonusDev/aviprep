@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import CoursesAdminContent from "./courses-admin-content"
 
 export const metadata: Metadata = {
-  title: "Course Management | Admin",
+  title: "Course Management",
   description: "Manage learning courses and lessons",
 }
 
