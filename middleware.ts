@@ -9,15 +9,17 @@ const authRoutes = ["/login", "/register"]
 
 const mainDomains = [
   "aviprep.com.au",
-  "www.aviprep.com.au"
+  "www.aviprep.com.au",
+  "localhost"
 ]
 
-function getSubdomain(host: string): string | null {
+/*function getSubdomain(host: string): string | null {
   const hostWithoutPort = host.split(":")[0];
   if(mainDomains.some(d => hostWithoutPort === d || hostWithoutPort.endsWith(`.${d}`))) {
     const domainMatch = hostWithoutPort.match(/^([^.]+)\.aviprep\.com\.au$/)
-    if(domainMatch && domainMatch[1] !== "www") {
-      return domainMatch[1];
+    const localMatch = hostWithoutPort.match(/^([^.]+)\.localhost$/)
+    if((domainMatch && domainMatch[1] !== "www") || (localMatch && localMatch[1] !== "")) {
+      return domainMatch ? domainMatch[1] : localMatch[1];
     }
 
     const aviprepMatch = hostWithoutPort.match(/^([^.]+)\.aviprep\.com\.au$/)
@@ -29,6 +31,22 @@ function getSubdomain(host: string): string | null {
   }
 
   // custom domain perhaps?
+  return null;
+}*/
+
+function getSubdomain(host: string): string | null {
+  const hostWithoutPort = host.split(":")[0];
+
+  for (const domain of mainDomains) {
+    if (hostWithoutPort.endsWith(`.${domain}`)) {
+      const subdomain = hostWithoutPort.split(`.${domain}`)[0];
+
+      if (subdomain && subdomain !== "www") {
+        return subdomain;
+      }
+    }
+  }
+
   return null;
 }
 

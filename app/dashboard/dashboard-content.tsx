@@ -31,6 +31,7 @@ import { useUser } from "@lib/user-context"
 import { SUBJECTS as allSubjects } from "@lib/subjects"
 import type React from "react"
 import { useMemo } from "react"
+import { useTenant } from "@lib/tenant-context"
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Plane,
@@ -44,6 +45,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 
 export default function DashboardContent() {
   const { user, purchases, examAttempts, stats, isLoading, hasAccessToSubject } = useUser()
+  const { tenant } = useTenant()
 
   // Aggregate exam stats per subject
   const subjectStats = useMemo(() => {
@@ -122,12 +124,16 @@ export default function DashboardContent() {
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Welcome back, {user?.firstName || "Pilot"}</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-foreground">Welcome back, {user?.firstName || "Pilot"}.</h1>
+              {tenant && <Badge variant="outline">{tenant.name} {user?.isFlightSchoolAdmin ? "Admin" : "Student"}</Badge>}
+            </div>
             <p className="text-muted-foreground">
               {purchasedSubjects.length > 0
-                ? "Continue your CPL journey. You're making great progress!"
+                ? "Continue your flight theory journey. You're making great progress!"
                 : "Get started by purchasing access to your first subject."}
             </p>
+            {tenant && tenant.welcomeMessage && <p className="text-muted-foreground">{tenant.welcomeMessage}</p>}
           </div>
           <Link href={purchasedSubjects.length > 0 ? "/dashboard/exams" : "/dashboard/pricing"}>
             <Button className="gap-2">

@@ -10,7 +10,7 @@ export interface TenantBranding {
     accentColour: string;
     loginBackground: string | null;
     logo: string | null;
-    favicon: string;
+    favicon: string | null;
     welcomeMessage: string | null;
     footerText: string | null;
     hideBranding: boolean;

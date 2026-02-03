@@ -51,28 +51,28 @@ export async function GET() {
 function getSubdomain(host: string): string | null {
   const hostWithoutPort = host.split(":")[0]
   
-  if (hostWithoutPort === "localhost" || hostWithoutPort === "127.0.0.1") {
+  /*if (hostWithoutPort === "localhost" || hostWithoutPort === "127.0.0.1") {
     return null
-  }
+  }*/
   
   const mainDomains = [
     "aviprep.com.au",
     "www.aviprep.com.au",
+    "localhost"
   ]
   
   if (mainDomains.includes(hostWithoutPort)) {
     return null
   }
   
-  // Extract subdomain from aviprep.com.au or cplexamhub.com.au
-  const aviPrepMatch = hostWithoutPort.match(/^([^.]+)\.aviprep\.com\.au$/)
-  if (aviPrepMatch && aviPrepMatch[1] !== "www") {
-    return aviPrepMatch[1]
-  }
-  
-  const cplMatch = hostWithoutPort.match(/^([^.]+)\.cplexamhub\.com\.au$/)
-  if (cplMatch && cplMatch[1] !== "www") {
-    return cplMatch[1]
+  for (const domain of mainDomains) {
+    if (hostWithoutPort.endsWith(`.${domain}`)) {
+      const subdomain = hostWithoutPort.split(`.${domain}`)[0];
+
+      if (subdomain && subdomain !== "www") {
+        return subdomain;
+      }
+    }
   }
   
   return null

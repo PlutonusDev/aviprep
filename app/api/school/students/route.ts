@@ -16,7 +16,7 @@ async function getSchoolForAdmin(userId: string) {
 
   return prisma.flightSchool.findUnique({
     where: { adminId: userId },
-    select: { id: true, name: true, maxStudents: true },
+    select: { id: true, name: true, maxStudents: true, slug: true },
   })
 }
 
@@ -170,7 +170,12 @@ export async function POST(request: Request) {
           data: { flightSchoolId: school.id, enrolledAt: new Date() },
         })
 
-        const html = `<p>Hi ${existingUser.firstName},</p><p>You have been enrolled in ${school.name} on AviPrep.</p>`
+        const html = `
+        <p>Hi ${existingUser.firstName},</p>
+        <p><strong>${school.name}</strong> now manages your account on AviPrep.
+        <br/>
+        <p>You can log in to your account at <a href="https://${school.slug}aviprep.com.au/login">https://${school.slug}aviprep.com.au/login</a>
+        </p>`
 
         // Send notification email
         sendEmailWelcome({
@@ -218,13 +223,13 @@ export async function POST(request: Request) {
 
     const html = `
         <p>Hi ${firstName},</p>
-        <p>You have been enrolled in ${school.name} on AviPrep.</p>
+        <p>You have been enrolled with <strong>${school.name}</strong> on AviPrep.</p>
         <p>Your temporary login credentials:</p>
         <ul>
           <li>Email: ${email}</li>
           <li>Password: <strong>${tempPassword}</strong></li>
         </ul>
-        <p>Please log in and change your password immediately.</p>
+        <p>Please log in and change your password immediately at <a href="https://${school.slug}aviprep.com.au/login">https://${school.slug}aviprep.com.au/login</a>.</p>
       `
 
     // Send welcome email with temporary password

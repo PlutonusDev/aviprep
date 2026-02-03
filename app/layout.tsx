@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   },
   title: {
     default: "AviPrep | Master Your Flight Theory with Confidence",
-    template: "%s | AviPrep",
+    template: "AviPrep | %s",
   },
   description:
     "Australia's most comprehensive CPL exam preparation platform. AI-powered insights, thousands of practice questions, and detailed analytics to help you pass first time.",

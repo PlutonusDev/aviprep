@@ -13,6 +13,7 @@ interface User {
   phone: string
   arn: string
   isAdmin: boolean
+  isFlightSchoolAdmin: boolean
   hasBundle: boolean
   bundleExpiry: string | null
   createdAt: string

@@ -69,7 +69,7 @@ const bottomNav = [
 ]
 
 export default () => {
-    const { logout } = useUser();
+    const { user, logout } = useUser();
     const pathname = usePathname();
     const [pendingPathname, setPendingPathname] = useState<string | null>(null);
     const { tenant, isWhitelabeled } = useTenant();
@@ -92,14 +92,14 @@ export default () => {
             <div className="flex h-16 items-center gap-2 border-b border-border px-6 justify-center">
                 {isWhitelabeled && tenant ? (
                     <>
-                        <Avatar className="h-14 w-14">
+                        <Avatar className="h-12 w-12">
                             <AvatarImage src={tenant.logo || undefined} />
                             <AvatarFallback className="bg-primary/10">
                                 <Building2 className="h-5 w-5 text-primary" />
                             </AvatarFallback>
                         </Avatar>
                         <div className="flex flex-col">
-                            <span className="text-sm font-semibold text-sidebar-foreground truncate max-w-[140px]">{tenant.name}</span>
+                            <span className="text-sm font-semibold text-sidebar-foreground truncate max-w-[170px]">{tenant.name}</span>
                             <span className="text-xs text-muted-foreground">Training Portal</span>
                         </div>
                     </>
@@ -132,10 +132,19 @@ export default () => {
                     </Link>
                 ))}
 
-                <Link href="/admin" className="cursor-pointer flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground">
-                    <GiPlaneWing className="text-lg" />
-                    Admin Panel
-                </Link>
+                {user && user.isFlightSchoolAdmin && (
+                    <Link href="/school" className="cursor-pointer flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground">
+                        <GiPlaneWing className="text-lg" />
+                        Manage Flight School
+                    </Link>
+                )}
+
+                {user && user.isAdmin && (
+                    <Link href="/admin" className="cursor-pointer flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground">
+                        <GiPlaneWing className="text-lg" />
+                        Admin Panel
+                    </Link>
+                )}
 
                 <button onClick={logout} className="cursor-pointer flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground">
                     <FaDoorClosed className="text-lg" />
