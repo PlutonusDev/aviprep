@@ -6,6 +6,7 @@ export interface TenantBranding {
     id: string;
     name: string;
     slug: string;
+    subdomain: string;
     primaryColour: string;
     accentColour: string;
     loginBackground: string | null;

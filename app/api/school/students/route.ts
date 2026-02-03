@@ -16,7 +16,7 @@ async function getSchoolForAdmin(userId: string) {
 
   return prisma.flightSchool.findUnique({
     where: { adminId: userId },
-    select: { id: true, name: true, maxStudents: true, slug: true },
+    select: { id: true, name: true, maxStudents: true, subdomain: true },
   })
 }
 
@@ -174,7 +174,7 @@ export async function POST(request: Request) {
         <p>Hi ${existingUser.firstName},</p>
         <p><strong>${school.name}</strong> now manages your account on AviPrep.
         <br/>
-        <p>You can log in to your account at <a href="https://${school.slug}aviprep.com.au/login">https://${school.slug}aviprep.com.au/login</a>
+        <p>You can log in to your account at <a href="https://${school.subdomain}.aviprep.com.au/login">https://${school.subdomain}.aviprep.com.au/login</a>
         </p>`
 
         // Send notification email
@@ -229,7 +229,7 @@ export async function POST(request: Request) {
           <li>Email: ${email}</li>
           <li>Password: <strong>${tempPassword}</strong></li>
         </ul>
-        <p>Please log in and change your password immediately at <a href="https://${school.slug}aviprep.com.au/login">https://${school.slug}aviprep.com.au/login</a>.</p>
+        <p>Please log in and change your password immediately at <a href="https://${school.subdomain}.aviprep.com.au/login">https://${school.subdomain}.aviprep.com.au/login</a>.</p>
       `
 
     // Send welcome email with temporary password
