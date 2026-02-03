@@ -323,7 +323,7 @@ export default function MessagesContent() {
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <p className="truncate text-sm text-muted-foreground">{conv.lastMessage.content}</p>
+                        <p className="truncate max-w-64 text-sm text-muted-foreground">{conv.lastMessage.content}</p>
                         {conv.unreadCount > 0 && (
                           <Badge variant="default" className="ml-2">
                             {conv.unreadCount}

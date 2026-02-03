@@ -63,7 +63,7 @@ export function LessonSidebar({ course, currentLessonId }: LessonSidebarProps) {
       <div className="flex items-center justify-between border-b px-4 h-12">
         <div className="flex items-center gap-2">
           <GraduationCap className="h-5 w-5 text-primary" />
-          <span className="font-semibold text-sm truncate">{course.title}</span>
+          <span className="font-semibold text-sm truncate max-w-64">{course.title}</span>
         </div>
       </div>
 
@@ -88,7 +88,7 @@ export function LessonSidebar({ course, currentLessonId }: LessonSidebarProps) {
                 <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs font-medium">
                   {moduleIndex + 1}
                 </div>
-                <h3 className="text-sm font-medium truncate">{module.title}</h3>
+                <h3 className="text-sm font-medium truncate max-w-64">{module.title}</h3>
               </div>
 
               <div className="ml-3 border-l pl-4 space-y-1">
@@ -113,7 +113,7 @@ export function LessonSidebar({ course, currentLessonId }: LessonSidebarProps) {
                         <Circle className="h-4 w-4 shrink-0" />
                       )}
                       <Icon className="h-3 w-3 shrink-0 opacity-50" />
-                      <span className="truncate flex-1">{lesson.title}</span>
+                      <span className="truncate max-w-48 flex-1">{lesson.title}</span>
                       <span className="text-xs opacity-50">{lesson.estimatedMins}m</span>
                     </Link>
                   )
