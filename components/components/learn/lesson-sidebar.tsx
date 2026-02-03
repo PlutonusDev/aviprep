@@ -113,7 +113,7 @@ export function LessonSidebar({ course, currentLessonId }: LessonSidebarProps) {
                         <Circle className="h-4 w-4 shrink-0" />
                       )}
                       <Icon className="h-3 w-3 shrink-0 opacity-50" />
-                      <span className="truncate max-w-48 flex-1">{lesson.title}</span>
+                      <span className="truncate max-w-42 flex-1">{lesson.title}</span>
                       <span className="text-xs opacity-50">{lesson.estimatedMins}m</span>
                     </Link>
                   )
