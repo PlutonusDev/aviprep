@@ -1,449 +1,544 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Textarea } from "@/components/ui/textarea"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Search, Edit, Plus, ChevronLeft, ChevronRight, Loader2, Trash2, Sparkles } from "lucide-react"
-import { SUBJECTS } from "@lib/products"
-import Link from "@/components/meta/link"
+import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
+  Plus,
+  Search,
+  Pencil,
+  Trash2,
+  ArrowLeft,
+  FileText,
+  Copy,
+} from "lucide-react"
+import { SUBJECTS } from "@lib/subjects"
+import { cn } from "@lib/utils"
+import { effectiveStatus, type QuestionStatus } from "@lib/question-validation"
+import QuestionEditor, { type EditableQuestion } from "./question-editor"
 
-interface Question {
-  id: string
-  subjectId: string
-  topic: string
-  difficulty: string
-  questionText: string
-  options: string[]
-  correctIndex: number
-  explanation: string
+interface SubjectCounts {
+  total: number
+  draft: number
+  review: number
+  published: number
 }
 
-interface PaginationInfo {
-  page: number
-  pageSize: number
+interface TopicRow {
+  topic: string
   total: number
-  totalPages: number
+  draft: number
+  review: number
+  published: number
+}
+
+interface QuestionRow extends EditableQuestion {
+  id: string
+}
+
+const STATUS_STYLES: Record<QuestionStatus, string> = {
+  draft: "bg-muted text-muted-foreground",
+  review: "bg-warning/15 text-warning",
+  published: "bg-success/15 text-success",
+}
+
+const BLANK: EditableQuestion = {
+  subjectId: "",
+  topic: "",
+  difficulty: "medium",
+  questionText: "",
+  options: ["", "", "", ""],
+  correctIndex: 0,
+  explanation: "",
+  reference: "",
+  status: "draft",
 }
 
 export function QuestionsContent() {
-  const [questions, setQuestions] = useState<Question[]>([])
-  const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState("")
-  const [filterSubject, setFilterSubject] = useState("")
-  const [pagination, setPagination] = useState<PaginationInfo>({
-    page: 1,
-    pageSize: 10,
-    total: 0,
-    totalPages: 0,
-  })
-  const [editQuestion, setEditQuestion] = useState<Question | null>(null)
-  const [isNewQuestion, setIsNewQuestion] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [deleting, setDeleting] = useState(false)
+  const [subjectId, setSubjectId] = useState("")
+  const [subjectQuery, setSubjectQuery] = useState("")
+  const [counts, setCounts] = useState<Record<string, SubjectCounts>>({})
+  const [loadingCounts, setLoadingCounts] = useState(true)
+  const [topics, setTopics] = useState<TopicRow[]>([])
+  const [totals, setTotals] = useState({ total: 0, draft: 0, review: 0, published: 0 })
+  const [activeTopic, setActiveTopic] = useState<string>("all")
+  const [questions, setQuestions] = useState<QuestionRow[]>([])
+  const [loadingTopics, setLoadingTopics] = useState(false)
+  const [loadingQuestions, setLoadingQuestions] = useState(false)
 
-  const fetchQuestions = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams({
-        page: pagination.page.toString(),
-        pageSize: pagination.pageSize.toString(),
-        ...(search && { search }),
-        ...(filterSubject && { subjectId: filterSubject }),
+  const [editing, setEditing] = useState<EditableQuestion | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [serverErrors, setServerErrors] = useState<Record<string, string> | undefined>()
+  const [deleteId, setDeleteId] = useState<string | null>(null)
+
+  const subject = SUBJECTS.find((s) => s.id === subjectId)
+
+  const filteredSubjects = useMemo(() => {
+    const q = subjectQuery.trim().toLowerCase()
+    if (!q) return SUBJECTS
+    return SUBJECTS.filter((s) => `${s.name} ${s.code} ${s.licenseType}`.toLowerCase().includes(q))
+  }, [subjectQuery])
+
+  // Bank sizes for every subject, so the chooser shows what exists up front.
+  useEffect(() => {
+    let cancelled = false
+    fetch("/api/admin/questions/counts")
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("counts"))))
+      .then((d) => {
+        if (!cancelled) setCounts(d.counts ?? {})
       })
-      const res = await fetch(`/api/admin/questions?${params}`)
-      if (res.ok) {
-        const data = await res.json()
-        setQuestions(data.questions)
-        setPagination((prev) => ({ ...prev, total: data.total, totalPages: data.totalPages }))
-      }
-    } catch (error) {
-      console.error("Failed to fetch questions:", error)
-    } finally {
-      setLoading(false)
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLoadingCounts(false)
+      })
+    return () => {
+      cancelled = true
     }
-  }, [pagination.page, pagination.pageSize, search, filterSubject])
+  }, [])
+
+  const loadTopics = useCallback(async (id: string) => {
+    setLoadingTopics(true)
+    try {
+      const res = await fetch(`/api/admin/questions/topics?subjectId=${encodeURIComponent(id)}`)
+      const data = await res.json()
+      setTopics(data.topics ?? [])
+      setTotals(data.totals ?? { total: 0, draft: 0, review: 0, published: 0 })
+    } finally {
+      setLoadingTopics(false)
+    }
+  }, [])
+
+  const loadQuestions = useCallback(async (id: string, topic: string) => {
+    setLoadingQuestions(true)
+    try {
+      const params = new URLSearchParams({ subjectId: id, pageSize: "100" })
+      if (topic !== "all") params.set("topic", topic)
+      const res = await fetch(`/api/admin/questions?${params}`)
+      const data = await res.json()
+      setQuestions(data.questions ?? [])
+    } finally {
+      setLoadingQuestions(false)
+    }
+  }, [])
 
   useEffect(() => {
-    const debounce = setTimeout(fetchQuestions, 300)
-    return () => clearTimeout(debounce)
-  }, [fetchQuestions])
+    if (!subjectId) return
+    loadTopics(subjectId)
+    loadQuestions(subjectId, activeTopic)
+  }, [subjectId, activeTopic, loadTopics, loadQuestions])
 
-  const handleNewQuestion = () => {
-    setIsNewQuestion(true)
-    setEditQuestion({
-      id: "",
-      subjectId: "",
-      topic: "",
-      difficulty: "medium",
-      questionText: "",
-      options: ["", "", "", ""],
-      correctIndex: 0,
-      explanation: "",
-    })
-  }
-
-  const handleSaveQuestion = async () => {
-    if (!editQuestion) return
+  async function handleSave(status: string, addAnother: boolean) {
+    if (!editing) return
     setSaving(true)
+    setServerErrors(undefined)
+
+    const payload = { ...editing, status, subjectId: editing.subjectId || subjectId }
+    const isNew = !editing.id
+
     try {
-      const url = isNewQuestion ? "/api/admin/questions" : `/api/admin/questions/${editQuestion.id}`
-      const method = isNewQuestion ? "POST" : "PATCH"
+      const res = await fetch(
+        isNew ? "/api/admin/questions" : `/api/admin/questions/${editing.id}`,
+        {
+          method: isNew ? "POST" : "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        },
+      )
+      const data = await res.json()
 
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editQuestion),
-      })
-
-      if (res.ok) {
-        setEditQuestion(null)
-        setIsNewQuestion(false)
-        fetchQuestions()
+      if (!res.ok) {
+        setServerErrors(data.fieldErrors ?? { questionText: data.error || "Save failed" })
+        return
       }
-    } catch (error) {
-      console.error("Failed to save question:", error)
+
+      await Promise.all([loadTopics(subjectId), loadQuestions(subjectId, activeTopic)])
+
+      // Keeping the topic and difficulty makes writing a run of questions quick.
+      setEditing(
+        addAnother
+          ? { ...BLANK, subjectId, topic: payload.topic, difficulty: payload.difficulty }
+          : null,
+      )
     } finally {
       setSaving(false)
     }
   }
 
-  const handleDeleteQuestion = async () => {
-    if (!editQuestion?.id) return
-    setDeleting(true)
-    try {
-      const res = await fetch(`/api/admin/questions/${editQuestion.id}`, {
-        method: "DELETE",
-      })
-      if (res.ok) {
-        setEditQuestion(null)
-        fetchQuestions()
-      }
-    } catch (error) {
-      console.error("Failed to delete question:", error)
-    } finally {
-      setDeleting(false)
-    }
+  async function handleDelete() {
+    if (!deleteId) return
+    await fetch(`/api/admin/questions/${deleteId}`, { method: "DELETE" })
+    setDeleteId(null)
+    await Promise.all([loadTopics(subjectId), loadQuestions(subjectId, activeTopic)])
   }
 
-  const updateOption = (index: number, value: string) => {
-    if (!editQuestion) return
-    const newOptions = [...editQuestion.options]
-    newOptions[index] = value
-    setEditQuestion({ ...editQuestion, options: newOptions })
-  }
+  // --- Subject chooser -----------------------------------------------------
+  if (!subjectId) {
+    return (
+      <div className="mx-auto w-full max-w-6xl space-y-8 p-4 lg:p-8">
+        <header className="space-y-1.5">
+          <h1 className="text-display-3 font-bold text-foreground">Question bank</h1>
+          <p className="text-muted-foreground">
+            Pick a subject to see its topics and write questions.
+          </p>
+        </header>
 
-  const difficultyColor = {
-    easy: "bg-green-500/10 text-green-500",
-    medium: "bg-yellow-500/10 text-yellow-500",
-    hard: "bg-red-500/10 text-red-500",
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Questions</h2>
-          <p className="text-muted-foreground">Manage exam questions and answers</p>
+        <div className="relative max-w-md">
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <Label htmlFor="subject-search" className="sr-only">
+            Search subjects
+          </Label>
+          <Input
+            id="subject-search"
+            value={subjectQuery}
+            onChange={(e) => setSubjectQuery(e.target.value)}
+            placeholder="Search subjects..."
+            className="h-11 pl-9"
+          />
         </div>
-        <div className="flex gap-2">
-          <Button className="cursor-pointer" variant="outline" asChild>
-            <Link href="/admin/questions/generate">
-              <Sparkles className="mr-2 h-4 w-4" />
-              AI Generate
-            </Link>
-          </Button>
-          <Button className="cursor-pointer" onClick={handleNewQuestion}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Question
-          </Button>
+
+        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {filteredSubjects.map((s) => (
+            <li key={s.id}>
+              <button
+                type="button"
+                onClick={() => setSubjectId(s.id)}
+                className="flex w-full items-start gap-3 rounded-lg border border-border p-4 text-left transition-colors hover:border-primary/40 hover:bg-muted/40"
+              >
+                <FileText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium text-foreground">{s.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {s.licenseType.toUpperCase()} · {s.code}
+                  </p>
+
+                  {loadingCounts ? (
+                    <Skeleton className="mt-2 h-4 w-24" />
+                  ) : (
+                    (() => {
+                      const c = counts[s.id] ?? { total: 0, draft: 0, review: 0, published: 0 }
+                      return (
+                        <div className="mt-2 space-y-1">
+                          <p className="text-sm text-foreground" data-tabular>
+                            <span className="font-semibold">{c.published}</span>
+                            <span className="text-muted-foreground">
+                              {" "}
+                              published of {s.totalQuestions} planned
+                            </span>
+                          </p>
+                          {(c.draft > 0 || c.review > 0) && (
+                            <p className="text-xs text-muted-foreground" data-tabular>
+                              {c.review > 0 && <span className="text-warning">{c.review} in review</span>}
+                              {c.review > 0 && c.draft > 0 && " · "}
+                              {c.draft > 0 && <span>{c.draft} draft</span>}
+                            </p>
+                          )}
+                          {/* Coverage against the planned bank size. */}
+                          <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
+                            <div
+                              className={cn(
+                                "h-full rounded-full",
+                                c.published >= s.totalQuestions ? "bg-success" : "bg-primary",
+                              )}
+                              style={{
+                                width: `${Math.min(100, s.totalQuestions > 0 ? (c.published / s.totalQuestions) * 100 : 0)}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )
+                    })()
+                  )}
+                </div>
+              </button>
+            </li>
+          ))}
+        </ul>
+        {filteredSubjects.length === 0 && (
+          <p className="text-sm text-muted-foreground">No subjects match that search.</p>
+        )}
+      </div>
+    )
+  }
+
+  // --- Editor --------------------------------------------------------------
+  if (editing) {
+    return (
+      <div className="mx-auto w-full max-w-4xl space-y-6 p-4 lg:p-8">
+        <Button
+          variant="ghost"
+          onClick={() => setEditing(null)}
+          className="h-9 gap-1.5 text-muted-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          Back to {subject?.code}
+        </Button>
+
+        <header className="space-y-1.5">
+          <h1 className="text-display-3 font-bold text-foreground">
+            {editing.id ? "Edit question" : "New question"}
+          </h1>
+          <p className="text-muted-foreground">{subject?.name}</p>
+        </header>
+
+        <Card className="shadow-e1">
+          <CardContent className="p-5 lg:p-6">
+            <QuestionEditor
+              value={editing}
+              onChange={setEditing}
+              onSave={handleSave}
+              onCancel={() => setEditing(null)}
+              saving={saving}
+              serverErrors={serverErrors}
+              knownTopics={topics.map((t) => t.topic)}
+            />
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  // --- Subject workspace ---------------------------------------------------
+  return (
+    <div className="mx-auto w-full max-w-6xl space-y-6 p-4 lg:p-8">
+      <Button
+        variant="ghost"
+        onClick={() => {
+          setSubjectId("")
+          setActiveTopic("all")
+        }}
+        className="h-9 gap-1.5 text-muted-foreground"
+      >
+        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+        All subjects
+      </Button>
+
+      <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div className="space-y-1.5">
+          <h1 className="text-display-3 font-bold text-foreground">{subject?.name}</h1>
+          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <span data-tabular>{totals.total} questions</span>
+            <span aria-hidden="true">·</span>
+            <span className="text-success">{totals.published} published</span>
+            <span aria-hidden="true">·</span>
+            <span className="text-warning">{totals.review} in review</span>
+            <span aria-hidden="true">·</span>
+            <span>{totals.draft} draft</span>
+          </div>
+        </div>
+
+        <Button
+          onClick={() => {
+            setServerErrors(undefined)
+            setEditing({
+              ...BLANK,
+              subjectId,
+              topic: activeTopic === "all" ? "" : activeTopic,
+            })
+          }}
+          className="h-11 shrink-0 gap-2"
+        >
+          <Plus className="h-4 w-4" aria-hidden="true" />
+          New question
+        </Button>
+      </header>
+
+      <div className="grid gap-6 lg:grid-cols-[16rem_minmax(0,1fr)]">
+        {/* Topic coverage */}
+        <aside className="space-y-2">
+          <p className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Topics
+          </p>
+          {loadingTopics ? (
+            <div className="space-y-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-9 rounded-md" />
+              ))}
+            </div>
+          ) : (
+            <nav aria-label="Topics" className="space-y-0.5">
+              <button
+                type="button"
+                onClick={() => setActiveTopic("all")}
+                aria-current={activeTopic === "all" ? "true" : undefined}
+                className={cn(
+                  "flex w-full items-center justify-between rounded-md px-3 py-2 text-sm transition-colors",
+                  activeTopic === "all"
+                    ? "bg-primary/10 font-medium text-foreground"
+                    : "text-muted-foreground hover:bg-muted",
+                )}
+              >
+                All topics
+                <span data-tabular>{totals.total}</span>
+              </button>
+
+              {topics.map((t) => (
+                <button
+                  key={t.topic}
+                  type="button"
+                  onClick={() => setActiveTopic(t.topic)}
+                  aria-current={activeTopic === t.topic ? "true" : undefined}
+                  className={cn(
+                    "flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors",
+                    activeTopic === t.topic
+                      ? "bg-primary/10 font-medium text-foreground"
+                      : "text-muted-foreground hover:bg-muted",
+                  )}
+                >
+                  <span className="min-w-0 truncate">{t.topic}</span>
+                  {/* Thin topics are the ones an author should fill next. */}
+                  <span
+                    className={cn(
+                      "shrink-0 tabular-nums",
+                      t.published < 10 && "text-warning",
+                    )}
+                    data-tabular
+                  >
+                    {t.total}
+                  </span>
+                </button>
+              ))}
+
+              {topics.length === 0 && (
+                <p className="px-3 py-6 text-sm text-muted-foreground">
+                  No questions yet. Write the first one.
+                </p>
+              )}
+            </nav>
+          )}
+        </aside>
+
+        {/* Questions */}
+        <div className="min-w-0 space-y-3">
+          {loadingQuestions ? (
+            <div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-24 rounded-lg" />
+              ))}
+            </div>
+          ) : questions.length === 0 ? (
+            <Card className="border-dashed shadow-none">
+              <CardContent className="p-10 text-center">
+                <p className="mb-2 font-medium text-foreground">No questions here yet</p>
+                <p className="mb-5 text-sm text-muted-foreground">
+                  {activeTopic === "all"
+                    ? "This subject has no questions."
+                    : `No questions under "${activeTopic}".`}
+                </p>
+                <Button
+                  onClick={() =>
+                    setEditing({
+                      ...BLANK,
+                      subjectId,
+                      topic: activeTopic === "all" ? "" : activeTopic,
+                    })
+                  }
+                  className="h-10"
+                >
+                  Write a question
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <ul className="space-y-3">
+              {questions.map((q) => {
+                const status = effectiveStatus(q.status)
+                return (
+                  <li key={q.id}>
+                    <Card className="shadow-e1 transition-shadow hover:shadow-e2">
+                      <CardContent className="space-y-3 p-4">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge className={cn("text-xs", STATUS_STYLES[status])}>
+                            {status === "review" ? "In review" : status}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            {q.difficulty}
+                          </Badge>
+                          <span className="truncate text-xs text-muted-foreground">{q.topic}</span>
+                        </div>
+
+                        <p className="line-clamp-2 text-sm text-foreground">{q.questionText}</p>
+
+                        <p className="line-clamp-1 text-xs text-muted-foreground">
+                          Answer: {q.options?.[q.correctIndex] ?? "—"}
+                        </p>
+
+                        <div className="flex items-center gap-1 pt-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-9 gap-1.5"
+                            onClick={() => {
+                              setServerErrors(undefined)
+                              setEditing(q)
+                            }}
+                          >
+                            <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                            Edit
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-9 gap-1.5"
+                            onClick={() => {
+                              setServerErrors(undefined)
+                              const { id, ...rest } = q
+                              setEditing({ ...rest, status: "draft" })
+                            }}
+                          >
+                            <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+                            Duplicate
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setDeleteId(q.id)}
+                            className="ml-auto h-9 gap-1.5 text-muted-foreground hover:text-destructive"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                            Delete
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <CardTitle>Question Bank</CardTitle>
-              <CardDescription>{pagination.total} total questions</CardDescription>
-            </div>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Select
-                value={filterSubject}
-                onValueChange={(v) => {
-                  setFilterSubject(v)
-                  setPagination((prev) => ({ ...prev, page: 1 }))
-                }}
-              >
-                <SelectTrigger className="w-full sm:w-40">
-                  <SelectValue placeholder="All subjects" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All subjects</SelectItem>
-                  {SUBJECTS.map((subject) => (
-                    <SelectItem key={subject.id} value={subject.id}>
-                      {subject.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <div className="relative w-full sm:w-64">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Search questions..."
-                  value={search}
-                  onChange={(e) => {
-                    setSearch(e.target.value)
-                    setPagination((prev) => ({ ...prev, page: 1 }))
-                  }}
-                  className="pl-9"
-                />
-              </div>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[300px]">Question</TableHead>
-                  <TableHead>Subject</TableHead>
-                  <TableHead>Topic</TableHead>
-                  <TableHead>Difficulty</TableHead>
-                  <TableHead className="w-[80px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
-                      <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
-                    </TableCell>
-                  </TableRow>
-                ) : questions.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                      No questions found
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  questions.map((question) => {
-                    const subject = SUBJECTS.find((s) => s.id === question.subjectId)
-                    return (
-                      <TableRow key={question.id}>
-                        <TableCell>
-                          <p className="line-clamp-2 text-sm">{question.questionText}</p>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{subject?.code || question.subjectId}</Badge>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">{question.topic}</TableCell>
-                        <TableCell>
-                          <Badge className={difficultyColor[question.difficulty as keyof typeof difficultyColor]}>
-                            {question.difficulty}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Button className="cursor-pointer"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              setIsNewQuestion(false)
-                              setEditQuestion(question)
-                            }}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </div>
-
-          {/* Pagination */}
-          <div className="flex items-center justify-between pt-4">
-            <p className="text-sm text-muted-foreground">
-              Showing {Math.min((pagination.page - 1) * pagination.pageSize + 1, pagination.total)} to{" "}
-              {Math.min(pagination.page * pagination.pageSize, pagination.total)} of {pagination.total}
-            </p>
-            <div className="flex items-center gap-2">
-              <Button className="cursor-pointer"
-                variant="outline"
-                size="sm"
-                onClick={() => setPagination((prev) => ({ ...prev, page: prev.page - 1 }))}
-                disabled={pagination.page === 1}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="text-sm">
-                Page {pagination.page} of {pagination.totalPages || 1}
-              </span>
-              <Button className="cursor-pointer"
-                variant="outline"
-                size="sm"
-                onClick={() => setPagination((prev) => ({ ...prev, page: prev.page + 1 }))}
-                disabled={pagination.page === pagination.totalPages || pagination.totalPages === 0}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Edit/Add Question Dialog */}
-      <Dialog
-        open={!!editQuestion}
-        onOpenChange={() => {
-          setEditQuestion(null)
-          setIsNewQuestion(false)
-        }}
-      >
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{isNewQuestion ? "Add Question" : "Edit Question"}</DialogTitle>
-            <DialogDescription>
-              {isNewQuestion ? "Create a new exam question" : "Update the question details"}
-            </DialogDescription>
-          </DialogHeader>
-          {editQuestion && (
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="subject">Subject</Label>
-                  <Select
-                    value={editQuestion.subjectId}
-                    onValueChange={(v) => setEditQuestion({ ...editQuestion, subjectId: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select subject" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SUBJECTS.map((subject) => (
-                        <SelectItem key={subject.id} value={subject.id}>
-                          {subject.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="difficulty">Difficulty</Label>
-                  <Select
-                    value={editQuestion.difficulty}
-                    onValueChange={(v) => setEditQuestion({ ...editQuestion, difficulty: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="easy">Easy</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="hard">Hard</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="topic">Topic</Label>
-                <Input
-                  id="topic"
-                  value={editQuestion.topic}
-                  onChange={(e) => setEditQuestion({ ...editQuestion, topic: e.target.value })}
-                  placeholder="e.g., Bernoulli's Principle"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="questionText">Question</Label>
-                <Textarea
-                  id="questionText"
-                  value={editQuestion.questionText}
-                  onChange={(e) => setEditQuestion({ ...editQuestion, questionText: e.target.value })}
-                  placeholder="Enter the question text..."
-                  rows={3}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Answer Options</Label>
-                <p className="text-xs text-muted-foreground">Select the correct answer by clicking the radio button</p>
-                {editQuestion.options.map((option, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      name="correctAnswer"
-                      checked={editQuestion.correctIndex === index}
-                      onChange={() => setEditQuestion({ ...editQuestion, correctIndex: index })}
-                      className="h-4 w-4"
-                    />
-                    <Input
-                      value={option}
-                      onChange={(e) => updateOption(index, e.target.value)}
-                      placeholder={`Option ${String.fromCharCode(65 + index)}`}
-                    />
-                  </div>
-                ))}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="explanation">Explanation</Label>
-                <Textarea
-                  id="explanation"
-                  value={editQuestion.explanation}
-                  onChange={(e) => setEditQuestion({ ...editQuestion, explanation: e.target.value })}
-                  placeholder="Explain why the correct answer is correct..."
-                  rows={3}
-                />
-              </div>
-            </div>
-          )}
-          <DialogFooter className="flex justify-between">
-            <div>
-              {!isNewQuestion && (
-                <Button className="cursor-pointer" variant="destructive" onClick={handleDeleteQuestion} disabled={deleting}>
-                  {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
-                </Button>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <Button className="cursor-pointer"
-                variant="outline"
-                onClick={() => {
-                  setEditQuestion(null)
-                  setIsNewQuestion(false)
-                }}
-              >
-                Cancel
-              </Button>
-              <Button className="cursor-pointer" onClick={handleSaveQuestion} disabled={saving}>
-                {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isNewQuestion ? "Create" : "Save"}
-              </Button>
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this question?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This cannot be undone. Past exam results that referenced it are unaffected.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep it</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

@@ -65,15 +65,29 @@ const SchoolContext = createContext<SchoolContextType>({
 
 export const useSchool = () => useContext(SchoolContext)
 
-const navigation = [
-  { name: "Dashboard", href: "/school", icon: LayoutDashboard },
-  { name: "Students", href: "/school/students", icon: Users },
-  { name: "Groups", href: "/school/groups", icon: FolderKanban },
-  { name: "Progress", href: "/school/progress", icon: BarChart3 },
-  { name: "Purchases", href: "/school/purchases", icon: ShoppingCart },
-  { name: "API Integration", href: "/school/api", icon: Key },
-  { name: "Settings", href: "/school/settings", icon: Settings },
+/** Grouped to match the student sidebar, which reads far better than one list. */
+const navGroups = [
+  {
+    label: "School",
+    items: [
+      { name: "Dashboard", href: "/school", icon: LayoutDashboard },
+      { name: "Students", href: "/school/students", icon: Users },
+      { name: "Groups", href: "/school/groups", icon: FolderKanban },
+      { name: "Progress", href: "/school/progress", icon: BarChart3 },
+    ],
+  },
+  {
+    label: "Setup",
+    items: [
+      { name: "Purchases", href: "/school/purchases", icon: ShoppingCart },
+      { name: "API integration", href: "/school/api", icon: Key },
+      { name: "Settings", href: "/school/settings", icon: Settings },
+    ],
+  },
 ]
+
+const linkBase =
+  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
 
 export default function SchoolLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -135,71 +149,107 @@ export default function SchoolLayout({ children }: { children: React.ReactNode }
         {/* Sidebar */}
         <aside
           className={cn(
-            "fixed inset-y-0 left-0 z-50 w-64 bg-card border-r transform transition-transform duration-200 lg:translate-x-0",
+            "fixed inset-y-0 left-0 z-50 w-64 transform border-r border-border bg-sidebar transition-transform duration-200 lg:translate-x-0",
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
           )}
         >
-          <div className="flex flex-col h-full">
-            {/* Logo */}
-            <div className="flex items-center gap-3 px-4 py-5 border-b">
-              <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10">
-                <Building2 className="h-5 w-5 text-primary" />
+          <div className="flex h-full flex-col">
+            <div className="flex h-16 shrink-0 items-center gap-2.5 border-b border-border px-5">
+              {/* The school's own mark when they have one. */}
+              {school.logo ? (
+                <img
+                  src={school.logo}
+                  alt=""
+                  className="h-9 w-9 shrink-0 rounded-lg object-contain"
+                />
+              ) : (
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                  <Building2 className="h-4 w-4 text-primary" aria-hidden="true" />
+                </span>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-sidebar-foreground">{school.name}</p>
+                <p className="text-xs capitalize text-muted-foreground">
+                  {school.subscriptionTier} plan
+                </p>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold truncate">{school.name}</p>
-                <p className="text-xs text-muted-foreground capitalize">{school.subscriptionTier} Plan</p>
-              </div>
-              <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(false)}>
-                <X className="h-5 w-5" />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="lg:hidden"
+                onClick={() => setSidebarOpen(false)}
+                aria-label="Close navigation"
+              >
+                <X className="h-5 w-5" aria-hidden="true" />
               </Button>
             </div>
 
-            {/* Navigation */}
-            <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-              {navigation.map((item) => {
-                const isActive = pathname === item.href || (item.href !== "/school" && pathname.startsWith(item.href))
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className={cn(
-                      "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                      isActive
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                    )}
-                    onClick={() => setSidebarOpen(false)}
-                  >
-                    <item.icon className="h-5 w-5" />
-                    {item.name}
-                  </Link>
-                )
-              })}
+            <nav aria-label="School" className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
+              {navGroups.map((group) => (
+                <div key={group.label}>
+                  <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                    {group.label}
+                  </p>
+                  <div className="space-y-0.5">
+                    {group.items.map((item) => {
+                      // "/school" is exact-only, or it would light up everywhere.
+                      const isActive =
+                        item.href === "/school"
+                          ? pathname === "/school"
+                          : pathname === item.href || pathname.startsWith(`${item.href}/`)
+                      return (
+                        <Link
+                          key={item.name}
+                          href={item.href}
+                          aria-current={isActive ? "page" : undefined}
+                          onClick={() => setSidebarOpen(false)}
+                          className={cn(
+                            linkBase,
+                            isActive
+                              ? "bg-sidebar-accent text-sidebar-foreground"
+                              : "text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                          )}
+                        >
+                          {/* A bar, not just colour, marks the current section. */}
+                          <span
+                            aria-hidden="true"
+                            className={cn(
+                              "-ml-3 h-5 w-0.5 rounded-full",
+                              isActive ? "bg-primary" : "bg-transparent"
+                            )}
+                          />
+                          <item.icon className="h-4.5 w-4.5 shrink-0" aria-hidden="true" />
+                          <span className="truncate">{item.name}</span>
+                        </Link>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
             </nav>
 
-            {/* Student count */}
-            <div className="px-4 py-3 border-t">
+            <div className="shrink-0 border-t border-border px-5 py-3">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Students</span>
-                <span className="font-medium">
+                <span className="font-medium text-sidebar-foreground" data-tabular>
                   {studentCount} / {school.maxStudents}
                 </span>
               </div>
-              <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
                 <div
-                  className="h-full bg-primary rounded-full transition-all"
+                  className="h-full rounded-full bg-primary transition-all"
                   style={{ width: `${Math.min((studentCount / school.maxStudents) * 100, 100)}%` }}
                 />
               </div>
             </div>
 
-            {/* Back to AviPrep */}
-            <div className="px-3 py-3 border-t">
+            <div className="shrink-0 border-t border-border px-3 py-3">
               <Link
                 href="/dashboard"
-                className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                className={cn(linkBase, "text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground")}
               >
-                <GraduationCap className="h-5 w-5" />
+                <span aria-hidden="true" className="-ml-3 h-5 w-0.5" />
+                <GraduationCap className="h-4.5 w-4.5 shrink-0" aria-hidden="true" />
                 Back to AviPrep
               </Link>
             </div>

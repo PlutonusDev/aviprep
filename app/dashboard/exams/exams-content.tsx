@@ -2,13 +2,21 @@
 
 import { useEffect, useState } from "react"
 import SubjectCard from "@/components/hub/subject-card"
+import { QuickActions, type QuickAction } from "@/components/hub/quick-actions"
+import { useTenant } from "@lib/tenant-context"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
-import { BookOpen, Shuffle, Clock, Target } from "lucide-react"
+import { BookOpen, Shuffle, Target, Timer } from "lucide-react"
 import Link from "@/components/meta/link"
 import type { SubjectData } from "@lib/types"
+
+const EXAM_ACTIONS: QuickAction[] = [
+  { href: "/dashboard/exams/mixed", icon: Shuffle, title: "Mixed exam", hint: "Across every subject" },
+  { href: "/dashboard/exams/timed", icon: Timer, title: "Timed exam", hint: "Real exam conditions" },
+  { href: "/dashboard/insights", icon: Target, title: "Weak points", hint: "Work on what needs it", feature: "insights" },
+]
 
 export default function ExamsContent() {
   const [subjects, setSubjects] = useState<SubjectData[]>([])
@@ -31,12 +39,16 @@ export default function ExamsContent() {
     fetchSubjects()
   }, [])
 
+  const { isWhitelabeled } = useTenant()
+
   const purchasedSubjects = subjects.filter((s) => s.isPurchased)
-  const lockedSubjects = subjects.filter((s) => !s.isPurchased)
+  // On a school portal there is nothing for a student to unlock themselves, so
+  // subjects they have not been assigned are simply not shown.
+  const lockedSubjects = isWhitelabeled ? [] : subjects.filter((s) => !s.isPurchased)
 
   if (loading) {
     return (
-      <div className="p-4 lg:p-6 space-y-6">
+      <div className="mx-auto w-full max-w-6xl space-y-8 p-4 lg:p-8">
         <div>
           <Skeleton className="h-8 w-48 mb-2" />
           <Skeleton className="h-4 w-96" />
@@ -69,65 +81,40 @@ export default function ExamsContent() {
   }
 
   return (
-    <div className="p-4 lg:p-6 space-y-6">
+    <div className="mx-auto w-full max-w-6xl space-y-8 p-4 lg:p-8">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Practice Exams</h1>
+        <h1 className="text-display-3 font-bold text-foreground">Practice Exams</h1>
         <p className="text-muted-foreground">Select a subject to start practicing or try a mixed exam</p>
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="hover:border-primary/50 transition-colors cursor-pointer">
-          <Link href="/dashboard/exams/mixed">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-                  <Shuffle className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-foreground">Mixed Exam</h3>
-                  <p className="text-sm text-muted-foreground">Questions from all subjects</p>
-                </div>
-              </div>
-            </CardContent>
-          </Link>
-        </Card>
+      <QuickActions actions={EXAM_ACTIONS} label="Exam modes" />
 
-        <Card className="hover:border-primary/50 transition-colors cursor-pointer">
-          <Link href="/dashboard/exams/timed">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-orange-500/10">
-                  <Clock className="h-6 w-6 text-orange-500" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-foreground">Timed Exam</h3>
-                  <p className="text-sm text-muted-foreground">Simulate real exam conditions</p>
-                </div>
-              </div>
-            </CardContent>
-          </Link>
-        </Card>
-
-        <Card className="hover:border-primary/50 transition-colors cursor-pointer">
-          <Link href="/dashboard/insights">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-green-500/10">
-                  <Target className="h-6 w-6 text-green-500" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-foreground">Weak Points</h3>
-                  <p className="text-sm text-muted-foreground">Focus on areas to improve</p>
-                </div>
-              </div>
-            </CardContent>
-          </Link>
-        </Card>
-      </div>
-
-      {/* Subjects Tabs */}
+      {isWhitelabeled ? (
+        <section aria-label="Your subjects" className="space-y-4">
+          <h2 className="text-base font-semibold text-foreground">
+            Your subjects ({purchasedSubjects.length})
+          </h2>
+          {purchasedSubjects.length > 0 ? (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {purchasedSubjects.map((subject) => (
+                <SubjectCard key={subject.id} subject={subject} />
+              ))}
+            </div>
+          ) : (
+            <Card className="border-dashed shadow-none">
+              <CardContent className="flex flex-col items-center justify-center py-14 text-center">
+                <BookOpen className="mb-4 h-10 w-10 text-muted-foreground" aria-hidden="true" />
+                <p className="font-medium text-foreground">No subjects assigned yet</p>
+                <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+                  Your school hasn&apos;t assigned you any subjects. They&apos;ll appear here once
+                  they do.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </section>
+      ) : (
       <Tabs defaultValue="purchased" className="space-y-4">
         <TabsList className="bg-secondary">
           <TabsTrigger value="purchased">My Subjects ({purchasedSubjects.length})</TabsTrigger>
@@ -173,6 +160,7 @@ export default function ExamsContent() {
           )}
         </TabsContent>
       </Tabs>
+      )}
 
       {/* Exam Types Info */}
       <Card>

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { getSession, getUserWithPurchases, getUserStats } from "@lib/auth"
+import { getSchoolGrantedSubjectIds } from "@lib/school-access"
 
 export async function GET() {
   try {
@@ -9,8 +10,11 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const user = await getUserWithPurchases(session.id)
-    const stats = await getUserStats(session.id)
+    const [user, stats, schoolGrants] = await Promise.all([
+      getUserWithPurchases(session.id),
+      getUserStats(session.id),
+      getSchoolGrantedSubjectIds(session.id),
+    ])
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
@@ -30,8 +34,11 @@ export async function GET() {
         hasBundle: user.hasBundle,
         bundleExpiry: user.bundleExpiry,
         createdAt: user.createdAt,
+        onboardedAt: user.onboardedAt,
       },
       purchases: user.purchases,
+      // Subjects the student's school opened up, individually or via a group.
+      schoolGrants,
       examAttempts: user.examAttempts,
       weakPoints: user.weakPoints,
       stats,

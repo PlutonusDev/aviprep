@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress"
 import {
   CheckCircle2,
   ChevronLeft,
+  ArrowLeft,
   ChevronRight,
   Loader2,
   PanelLeftOpen,
@@ -179,7 +180,7 @@ export default function LessonPage({
   const totalLessons = getAllLessons().length
 
   return (
-    <div className="relative flex h-[calc(100vh-4rem)] overflow-hidden bg-background">
+    <div className="relative flex h-dvh overflow-hidden bg-background">
       {/* Sidebar Logic:
           - Mobile: Fixed position, slides over content.
           - Desktop (lg): Relative position, occupies space (w-80) when open, w-0 when closed.
@@ -226,6 +227,18 @@ export default function LessonPage({
               {sidebarOpen ? <PanelLeftClose className="h-5 w-5" /> : <PanelLeftOpen className="h-5 w-5" />}
             </Button>
 
+            <Button
+              variant="ghost"
+              size="icon"
+              asChild
+              className="shrink-0"
+              title="Back to course overview"
+            >
+              <Link href={`/dashboard/learn/${courseId}`} aria-label="Back to course overview">
+                <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            </Button>
+
             <div className="h-4 w-[1px] bg-border mx-1 hidden sm:block" />
 
             <h1 className="text-sm font-semibold truncate text-foreground">
@@ -241,8 +254,8 @@ export default function LessonPage({
               <Progress value={course.progress} className="w-20 h-1.5" />
             </div>
             {isCompleted && (
-              <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                <CheckCircle2 className="h-3.5 w-3.5" />
+              <div className="flex items-center gap-1.5 rounded-full bg-success/10 px-2 py-1 text-success">
+                <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
                 <span className="text-[10px] font-bold uppercase">Completed</span>
               </div>
             )}
@@ -251,7 +264,7 @@ export default function LessonPage({
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto">
-          <div className="max-w-4xl mx-auto p-6 lg:p-10">
+          <div className="mx-auto max-w-[68ch] px-5 py-8 lg:px-8 lg:py-12">
             <LessonContent 
               lesson={lesson} 
               onComplete={handleComplete}

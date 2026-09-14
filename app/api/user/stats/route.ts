@@ -27,8 +27,9 @@ export async function GET() {
         studySessions: {
           orderBy: { startedAt: "desc" },
         },
+        // Priority is a string, so ordering by it was alphabetical ("high" < "low" < "medium").
         weakPoints: {
-          orderBy: { priority: "asc" },
+          orderBy: { accuracy: "asc" },
         },
       },
     })
@@ -53,14 +54,25 @@ export async function GET() {
     const totalStudyMins = user.studySessions.reduce((acc, s) => acc + s.durationMins, 0)
     const totalStudyHours = Math.round(totalStudyMins / 60)
 
-    // Get performance over time (last 30 days)
-    const thirtyDaysAgo = new Date()
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+    // Weekly averages over the last 12 weeks. 30 days gave at most five points.
+    const twelveWeeksAgo = new Date()
+    twelveWeeksAgo.setDate(twelveWeeksAgo.getDate() - 84)
 
-    const recentAttempts = user.examAttempts.filter((a) => new Date(a.completedAt) >= thirtyDaysAgo)
+    const recentAttempts = user.examAttempts.filter((a) => new Date(a.completedAt) >= twelveWeeksAgo)
 
-    // Group by week for chart data
     const performanceData = groupByWeek(recentAttempts)
+
+    // Every recent sitting as its own point, oldest first, for the score trend.
+    const recentScores = user.examAttempts
+      .slice(0, 30)
+      .reverse()
+      .map((a) => ({
+        id: a.id,
+        completedAt: a.completedAt,
+        score: a.score,
+        passed: a.passed,
+        subjectName: a.subjectName,
+      }))
 
     // Study time by day of week
     const studyTimeData = getStudyTimeByDay(user.studySessions)
@@ -77,6 +89,7 @@ export async function GET() {
         totalStudyHours,
       },
       performanceData,
+      recentScores,
       studyTimeData,
       weakPoints: user.weakPoints,
     })
@@ -126,51 +139,63 @@ function calculateStudyStreak(examAttempts: { completedAt: Date }[], studySessio
 }
 
 function groupByWeek(attempts: { completedAt: Date; score: number }[]) {
-  const weeks: { date: string; score: number; count: number }[] = []
   const grouped = new Map<string, { total: number; count: number }>()
 
   attempts.forEach((attempt) => {
-    const date = new Date(attempt.completedAt)
-    const weekStart = new Date(date)
-    weekStart.setDate(date.getDate() - date.getDay())
-    const key = weekStart.toISOString().split("T")[0]
+    const weekStart = new Date(attempt.completedAt)
+    weekStart.setHours(0, 0, 0, 0)
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay())
+    const key = localDateKey(weekStart)
 
     const existing = grouped.get(key) || { total: 0, count: 0 }
-    grouped.set(key, {
-      total: existing.total + attempt.score,
-      count: existing.count + 1,
-    })
+    grouped.set(key, { total: existing.total + attempt.score, count: existing.count + 1 })
   })
 
-  grouped.forEach((value, key) => {
-    const date = new Date(key)
-    weeks.push({
-      date: date.toLocaleDateString("en-AU", { month: "short", day: "numeric" }),
-      score: Math.round(value.total / value.count),
-      count: value.count,
+  // Sorted on the ISO key. It used to sort the formatted label ("12 Mar"), which
+  // new Date() can't parse reliably, so the chart could run backwards.
+  return Array.from(grouped)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, value]) => {
+      const [y, m, d] = key.split("-").map(Number)
+      return {
+        weekStart: key,
+        date: new Date(y, m - 1, d).toLocaleDateString("en-AU", { month: "short", day: "numeric" }),
+        score: Math.round(value.total / value.count),
+        count: value.count,
+      }
     })
-  })
-
-  return weeks.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
 }
 
+function localDateKey(date: Date) {
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
+
+/**
+ * Hours studied on each of the last seven days, oldest first and ending today.
+ * It used to be bucketed Sun-Sat, so today could sit in the middle of the chart
+ * and last week's Tuesday blended into this week's.
+ */
 function getStudyTimeByDay(sessions: { startedAt: Date; durationMins: number }[]) {
-  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-  const dayTotals = new Array(7).fill(0)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
 
-  // Only count last 7 days
-  const sevenDaysAgo = new Date()
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const date = new Date(today)
+    date.setDate(today.getDate() - (6 - i))
+    return { key: localDateKey(date), date }
+  })
+  const totals = new Map(days.map((d) => [d.key, 0]))
 
-  sessions
-    .filter((s) => new Date(s.startedAt) >= sevenDaysAgo)
-    .forEach((session) => {
-      const dayIndex = new Date(session.startedAt).getDay()
-      dayTotals[dayIndex] += session.durationMins / 60
-    })
+  for (const session of sessions) {
+    const key = localDateKey(new Date(session.startedAt))
+    if (totals.has(key)) totals.set(key, totals.get(key)! + session.durationMins)
+  }
 
-  return days.map((day, index) => ({
-    day,
-    hours: Math.round(dayTotals[index] * 10) / 10,
+  return days.map(({ key, date }, i) => ({
+    date: key,
+    day: i === 6 ? "Today" : date.toLocaleDateString("en-AU", { weekday: "short" }),
+    minutes: totals.get(key)!,
+    hours: Math.round((totals.get(key)! / 60) * 10) / 10,
   }))
 }

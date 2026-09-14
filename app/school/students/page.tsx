@@ -47,9 +47,16 @@ import {
   AlertTriangle,
   Download,
   Upload,
+  BookOpen,
 } from "lucide-react"
+import { SubjectPicker } from "@/components/school/subject-picker"
 import Link from "next/link"
 import { formatDistanceToNow } from "date-fns"
+
+interface SubjectGrants {
+  individual: string[]
+  group: string[]
+}
 
 interface Student {
   id: string
@@ -77,6 +84,40 @@ export default function StudentsPage() {
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [showRemoveDialog, setShowRemoveDialog] = useState(false)
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
+  const [subjectsFor, setSubjectsFor] = useState<Student | null>(null)
+  const [grants, setGrants] = useState<SubjectGrants>({ individual: [], group: [] })
+  const [grantDraft, setGrantDraft] = useState<string[]>([])
+  const [grantsLoading, setGrantsLoading] = useState(false)
+  const [grantsSaving, setGrantsSaving] = useState(false)
+
+  async function openSubjects(student: Student) {
+    setSubjectsFor(student)
+    setGrantsLoading(true)
+    try {
+      const res = await fetch(`/api/school/students/${student.id}/subjects`)
+      const data = await res.json()
+      const next = { individual: data.individual ?? [], group: data.group ?? [] }
+      setGrants(next)
+      setGrantDraft(next.individual)
+    } finally {
+      setGrantsLoading(false)
+    }
+  }
+
+  async function saveSubjects() {
+    if (!subjectsFor) return
+    setGrantsSaving(true)
+    try {
+      await fetch(`/api/school/students/${subjectsFor.id}/subjects`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subjectIds: grantDraft }),
+      })
+      setSubjectsFor(null)
+    } finally {
+      setGrantsSaving(false)
+    }
+  }
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [addForm, setAddForm] = useState({ email: "", firstName: "", lastName: "", arn: "", phone: "" })
   const [error, setError] = useState("")
@@ -290,6 +331,10 @@ export default function StudentsPage() {
                                   View Progress
                                 </Link>
                               </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openSubjects(student)}>
+                                <BookOpen className="mr-2 h-4 w-4" />
+                                Manage subjects
+                              </DropdownMenuItem>
                               <DropdownMenuItem>
                                 <Mail className="mr-2 h-4 w-4" />
                                 Send Message
@@ -344,6 +389,40 @@ export default function StudentsPage() {
         </Card>
 
         {/* Add Student Dialog */}
+        <Dialog open={!!subjectsFor} onOpenChange={(open) => !open && setSubjectsFor(null)}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>
+                Subjects for {subjectsFor?.firstName} {subjectsFor?.lastName}
+              </DialogTitle>
+              <DialogDescription>
+                Choose what this student can see. Subjects marked &ldquo;via group&rdquo; are
+                already granted by a group they belong to.
+              </DialogDescription>
+            </DialogHeader>
+
+            {grantsLoading ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">Loading...</p>
+            ) : (
+              <SubjectPicker
+                selected={grantDraft}
+                onChange={setGrantDraft}
+                coveredByGroup={grants.group}
+                idPrefix="student-subjects"
+              />
+            )}
+
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setSubjectsFor(null)}>
+                Cancel
+              </Button>
+              <Button onClick={saveSubjects} disabled={grantsSaving || grantsLoading}>
+                {grantsSaving ? "Saving..." : "Save subjects"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
           <DialogContent>
             <DialogHeader>

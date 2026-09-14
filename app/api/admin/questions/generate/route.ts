@@ -82,7 +82,6 @@ CONTENT: ${r.text}
 
     const { output } = await generateText({
       model: "openai/gpt-4o",
-      // @ts-expect-error: Complex Zod/Prisma type recursion is too deep for TS to resolve
       output: Output.object({
         schema: questionSchema,
       }),
@@ -115,7 +114,6 @@ Instructions for References:
 Generate ${count} unique, high-quality exam questions.`,
     })
 
-    // @ts-expect-error: TODO
     const questionsWithMetadata = output.questions.map((q) => ({
       ...q,
       subjectId,

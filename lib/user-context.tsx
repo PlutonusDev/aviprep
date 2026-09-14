@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { createContext, useContext, useState, useCallback } from "react"
+import { createContext, useContext, useState, useCallback, useMemo } from "react"
 import useSWR from "swr"
 
 interface User {
@@ -17,6 +17,8 @@ interface User {
   hasBundle: boolean
   bundleExpiry: string | null
   createdAt: string
+  /** Null until the welcome tour has been finished or skipped. */
+  onboardedAt: string | null
 }
 
 interface Purchase {
@@ -77,6 +79,10 @@ interface UserContextType {
 
 const UserContext = createContext<UserContextType | null>(null)
 
+const EMPTY_PURCHASES: Purchase[] = []
+const EMPTY_ATTEMPTS: ExamAttempt[] = []
+const EMPTY_WEAK_POINTS: WeakPoint[] = []
+
 const fetcher = (url: string) =>
   fetch(url).then((res) => {
     if (!res.ok) throw new Error("Failed to fetch")
@@ -106,6 +112,12 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         if (expiry > new Date()) return true
       }
 
+      // Granted by the student's school, directly or through a group.
+      const grants = data.schoolGrants
+      if (grants?.individual?.includes(subjectId) || grants?.group?.includes(subjectId)) {
+        return true
+      }
+
       // Check individual purchases
       const purchase = data.purchases?.find((p: Purchase) => p.subjectId === subjectId)
       if (purchase) {
@@ -118,18 +130,23 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     [data],
   )
 
-  const value: UserContextType = {
-    user: data?.user || null,
-    purchases: data?.purchases || [],
-    examAttempts: data?.examAttempts || [],
-    weakPoints: data?.weakPoints || [],
-    stats: data?.stats || null,
-    isLoading: isLoading || isLoggingOut,
-    error: error || null,
-    refresh: () => mutate(),
-    logout,
-    hasAccessToSubject,
-  }
+  // Without this the provider handed every consumer a new object on each render,
+  // re-rendering the whole dashboard tree even when nothing had changed.
+  const value: UserContextType = useMemo(
+    () => ({
+      user: data?.user || null,
+      purchases: data?.purchases || EMPTY_PURCHASES,
+      examAttempts: data?.examAttempts || EMPTY_ATTEMPTS,
+      weakPoints: data?.weakPoints || EMPTY_WEAK_POINTS,
+      stats: data?.stats || null,
+      isLoading: isLoading || isLoggingOut,
+      error: error || null,
+      refresh: () => mutate(),
+      logout,
+      hasAccessToSubject,
+    }),
+    [data, isLoading, isLoggingOut, error, mutate, logout, hasAccessToSubject],
+  )
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>
 }

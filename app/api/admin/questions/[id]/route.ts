@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@lib/prisma"
 import { verifyAdmin } from "app/api/admin/middleware"
+import { validateQuestion, isValid } from "@lib/question-validation"
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const adminCheck = await verifyAdmin()
@@ -12,6 +13,14 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const body = await request.json()
 
   try {
+    const errors = validateQuestion(body)
+    if (!isValid(errors)) {
+      return NextResponse.json(
+        { error: "This question is not ready to save.", fieldErrors: errors },
+        { status: 422 },
+      )
+    }
+
     const question = await prisma.question.update({
       where: { id },
       data: {
@@ -22,6 +31,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         options: body.options,
         correctIndex: body.correctIndex,
         explanation: body.explanation,
+        // Previously omitted, so every edit silently wiped the citation.
+        reference: body.reference || "",
+        status: body.status || undefined,
+        authorNote: body.authorNote ?? undefined,
+        reviewedById: body.status === "published" ? adminCheck.userId : undefined,
       },
     })
 

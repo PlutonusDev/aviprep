@@ -2,7 +2,6 @@
 
 import { AdminHeader } from "@/components/admin/header"
 import { AdminSidebar } from "@/components/admin/sidebar"
-import PageTransition from "@/components/meta/page-transition"
 import { BackgroundBeams } from "@/ui/background-beams"
 
 export default ({ children }: { children: React.ReactNode }) => {
@@ -12,7 +11,6 @@ export default ({ children }: { children: React.ReactNode }) => {
             <div className="lg:pl-64">
                 <AdminHeader />
                 <div className="relative overflow-hidden">
-                    <PageTransition />
                     <main>{children}</main>
                 </div>
             </div>

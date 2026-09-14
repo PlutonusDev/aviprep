@@ -82,7 +82,7 @@ export default function SuccessContent() {
     }
 
     return (
-        <div className="p-4 lg:p-6 space-y-6">
+        <div className="mx-auto w-full max-w-6xl space-y-8 p-4 lg:p-8">
             <div className="flex-col items-center justify-center">
 
                 <div className="space-y-2">

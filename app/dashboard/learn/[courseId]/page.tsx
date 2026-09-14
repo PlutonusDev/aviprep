@@ -145,7 +145,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
   const nextLesson = getNextLesson()
 
   return (
-    <div className="p-4 lg:p-6 space-y-6">
+    <div className="mx-auto w-full max-w-6xl space-y-8 p-4 lg:p-8">
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
@@ -154,7 +154,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
           </Link>
         </Button>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold tracking-tight">{course.title}</h1>
+          <h1 className="text-display-3 font-bold text-foreground">{course.title}</h1>
           <p className="text-muted-foreground">{course.description}</p>
         </div>
       </div>

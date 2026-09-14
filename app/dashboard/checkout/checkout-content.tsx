@@ -76,7 +76,7 @@ export default function CheckoutContent() {
 
   if (selectedProducts.length === 0) {
     return (
-      <div className="space-y-6 p-4 lg:p-6">
+      <div className="mx-auto w-full max-w-6xl space-y-8 p-4 lg:p-8">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" asChild>
             <Link href="/dashboard/pricing">
@@ -84,7 +84,7 @@ export default function CheckoutContent() {
             </Link>
           </Button>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Checkout</h1>
+            <h1 className="text-display-3 font-bold text-foreground">Checkout</h1>
             <p className="text-muted-foreground">Complete your purchase to start studying</p>
           </div>
         </div>
@@ -104,7 +104,7 @@ export default function CheckoutContent() {
   }
 
   return (
-    <div className="space-y-6 p-4 lg:p-6">
+    <div className="mx-auto w-full max-w-6xl space-y-8 p-4 lg:p-8">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
           <Link href="/dashboard/pricing">
@@ -112,7 +112,7 @@ export default function CheckoutContent() {
           </Link>
         </Button>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Checkout</h1>
+          <h1 className="text-display-3 font-bold text-foreground">Checkout</h1>
           <p className="text-muted-foreground">Complete your purchase to start studying</p>
         </div>
       </div>

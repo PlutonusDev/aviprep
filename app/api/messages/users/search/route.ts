@@ -24,13 +24,20 @@ export async function GET(request: Request) {
       return NextResponse.json([])
     }
 
+    // Names match partially; email only matches exactly. Partial email search
+    // let anyone enumerate every member's address a few letters at a time.
+    const terms = query.trim().split(/\s+/).slice(0, 3)
+    const nameMatch = terms.map((t) => ({
+      OR: [
+        { firstName: { contains: t, mode: "insensitive" as const } },
+        { lastName: { contains: t, mode: "insensitive" as const } },
+      ],
+    }))
+
     const users = await prisma.user.findMany({
       where: {
-            OR: [
-              { firstName: { contains: query, mode: "insensitive" } },
-              { lastName: { contains: query, mode: "insensitive" } },
-              { email: { contains: query, mode: "insensitive" } },
-            ],
+        id: { not: payload.userId },
+        OR: [{ AND: nameMatch }, { email: { equals: query.trim(), mode: "insensitive" } }],
       },
       select: {
         id: true,

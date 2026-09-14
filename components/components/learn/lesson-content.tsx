@@ -26,6 +26,7 @@ import {
   Check,
 } from "lucide-react"
 import { cn } from "@lib/utils"
+import { RichTextContent } from "@/components/forum/rich-text-content"
 
 interface LessonContentProps {
   lesson: {
@@ -62,12 +63,8 @@ export function LessonContent({ lesson, onComplete, isCompleted }: LessonContent
 // Text Lesson Component
 function TextLesson({ lesson }: { lesson: any }) {
   return (
-    <div className="prose prose-slate dark:prose-invert max-w-none">
-      <div
-        dangerouslySetInnerHTML={{ __html: lesson.content.html || "" }}
-        className="tiptap-content"
-      />
-    </div>
+    // Same renderer and stylesheet as the editor, so lessons read the way they were written.
+    <RichTextContent html={lesson.content?.html || ""} className="rich-text-lg max-w-[70ch]" />
   )
 }
 

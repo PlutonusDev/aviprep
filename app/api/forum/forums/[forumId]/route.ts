@@ -2,16 +2,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@lib/prisma"
 import { verifyToken } from "@lib/auth"
 import { cookies } from "next/headers"
-
-async function checkForumAccess(userId: string) {
-  const purchases = await prisma.purchase.count({
-    where: {
-      userId,
-      expiresAt: { gt: new Date() },
-    },
-  })
-  return purchases > 0
-}
+import { FORUM_ACCESS_ERROR, hasForumAccess } from "@lib/forum-access"
 
 export async function GET(request: Request, { params }: { params: Promise<{ forumId: string }> }) {
   try {
@@ -28,9 +19,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ foru
       return NextResponse.json({ error: "Invalid token" }, { status: 401 })
     }
 
-    const hasAccess = await checkForumAccess(payload.userId)
-    if (!hasAccess) {
-      return NextResponse.json({ error: "Forum access requires at least one active subject purchase" }, { status: 403 })
+    if (!(await hasForumAccess(payload.userId))) {
+      return NextResponse.json({ error: FORUM_ACCESS_ERROR }, { status: 403 })
     }
 
     const { searchParams } = new URL(request.url)
@@ -82,7 +72,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ foru
           },
         },
       }),
-      prisma.thread.count({ where: { forumId: forum.id } }),
+      prisma.thread.count({ where: { forumId: forum.id, NOT: { deleted: true } } }),
     ])
 
     return NextResponse.json({

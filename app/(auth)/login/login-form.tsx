@@ -2,13 +2,13 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, AlertCircle, Eye, EyeOff, Building2 } from "lucide-react"
 import { useTenant } from "@lib/tenant-context"
@@ -21,6 +21,11 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
+  const errorRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (error) errorRef.current?.focus()
+  }, [error])
 
   const [formData, setFormData] = useState({
     email: "",
@@ -78,19 +83,25 @@ export default function LoginPage() {
             <span className="text-xl font-bold text-foreground">{tenant.name}</span>
           </>
         ) : (
-          <img className="h-32" src="/img/AviPrep-logo.png" />
+          <img
+            className="h-16 w-auto"
+            src="/img/AviPrep-logo.png"
+            alt="AviPrep"
+            width={256}
+            height={64}
+          />
         )}
       </div>
 
-      {isWhitelabeled && tenant?.welcomeMessage && (
+      {/*isWhitelabeled && tenant?.welcomeMessage && (
         <div className="mb-6 p-4 rounded-lg bg-primary/5 border border-primary/10 text-center">
           <p className="text-sm text-muted-foreground">{tenant.welcomeMessage}</p>
         </div>
-      )}
+      )*/}
 
-      <Card className="border-0 shadow-none lg:border lg:shadow-sm bg-transparent lg:bg-card">
-        <CardHeader className="space-y-1 px-0 lg:px-6">
-          <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
+      <Card className="border-0 bg-transparent shadow-none lg:rounded-xl lg:border lg:bg-card lg:p-2 lg:shadow-e3">
+        <CardHeader className="space-y-1.5 px-0 pb-6 lg:px-6">
+          <h1 className="text-display-3 font-bold">Welcome back</h1>
           <CardDescription>
             {isWhitelabeled && tenant 
               ? `Sign in to ${tenant.name} training portal`
@@ -99,10 +110,10 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="px-0 lg:px-6">
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
+              <Alert variant="destructive" ref={errorRef} tabIndex={-1}>
+                <AlertCircle className="h-4 w-4" aria-hidden="true" />
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
@@ -113,7 +124,9 @@ export default function LoginPage() {
                 id="email"
                 name="email"
                 type="email"
+                autoComplete="email"
                 placeholder="pilot@example.com"
+                className="h-11"
                 value={formData.email}
                 onChange={handleChange}
                 required
@@ -133,24 +146,31 @@ export default function LoginPage() {
                   id="password"
                   name="password"
                   type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
                   placeholder="Enter your password"
                   value={formData.password}
                   onChange={handleChange}
                   required
                   disabled={isLoading}
-                  className="pr-10"
+                  className="h-11 pr-11"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  aria-pressed={showPassword}
+                  className="absolute right-1 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" aria-hidden="true" />
+                  ) : (
+                    <Eye className="h-4 w-4" aria-hidden="true" />
+                  )}
                 </button>
               </div>
             </div>
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" size="lg" className="h-11 w-full cursor-pointer" disabled={isLoading}>
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -162,7 +182,7 @@ export default function LoginPage() {
             </Button>
           </form>
         </CardContent>
-        <CardFooter className="px-0 lg:px-6">
+        <CardFooter className="mt-6 border-t border-border px-0 pt-6 lg:px-6">
           <p className="text-center text-sm text-muted-foreground w-full">
             Don't have an account?{" "}
             <Link href="/register" className="text-primary hover:underline font-medium">

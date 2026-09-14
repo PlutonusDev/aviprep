@@ -122,18 +122,27 @@ export default () => {
 
     return (
         <div className="min-h-screen bg-background text-foreground">
-            {/* Header */}
-            <motion.header
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, ease: "easeOut" }}
-                className="border-b border-border/50 bg-background/80 backdrop-blur-sm sticky top-0 z-50"
+            <a
+                href="#main"
+                className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-100 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground focus:shadow-e3"
             >
-                <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center gap-2">
-                    <img className="h-12" src="/img/AviPrep-logo.png" alt="AviPrep logo" />
-                </nav>
-            </motion.header>
+                Skip to main content
+            </a>
 
+            {/* Header */}
+            <header className="border-b border-border/50 bg-background/80 backdrop-blur-sm sticky top-0 z-50">
+                <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center gap-2">
+                    <img
+                        className="h-12 w-auto"
+                        src="/img/AviPrep-logo.png"
+                        alt="AviPrep"
+                        width={192}
+                        height={48}
+                    />
+                </nav>
+            </header>
+
+            <main id="main">
             {/* Hero Section */}
             <section className="relative overflow-hidden">
                 <div className="relative">
@@ -146,24 +155,19 @@ export default () => {
 
                 <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 py-32 items-center">
                     <div className="max-w-4xl mx-auto text-center">
-                        <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }} className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-balance leading-[1.1]">
+                        {/* The LCP element renders immediately - no opacity gate, no JS dependency. */}
+                        <h1 className="text-display-1 font-bold text-balance">
                             CASA-Aligned Flight Theory
                             <span className="block text-primary mt-2">Preparation Platform</span>
-                        </motion.h1>
+                        </h1>
 
-                        <motion.p 
-                            initial={{ opacity: 0, y: 30 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.8, delay: 0.4, ease: "easeOut" }}
-                            className="mt-8 text-lg sm:text-xl text-foreground/90 max-w-6xl mx-auto text-pretty leading-relaxed">
-                            Precision-engineered examination preparation mapped directly to the CASA Part 61 Manual of Standards. From RPL through to CPL and IREX, AviPrep delivers the quantitative assessment and high-fidelity simulation required for confident, first-time success within the Australian FIR.
-                        </motion.p>
+                        <p className="mt-8 text-lead text-foreground/90 max-w-2xl mx-auto text-pretty">
+                            Exam preparation mapped directly to the CASA Part 61 Manual of Standards. From RPL
+                            through to CPL and IREX &mdash; practise in a faithful PEXO environment, see exactly
+                            which KDRs are letting you down, and walk in ready to pass first time.
+                        </p>
 
-                        <motion.div 
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.8, delay: 0.6, ease: "easeOut" }}
-                            className="mt-12 flex flex-wrap justify-center gap-5 text-sm text-muted-foreground">
+                        <div className="mt-12 flex flex-wrap justify-center gap-5 text-sm text-muted-foreground">
                             <div className="flex items-center gap-2">
                                 <CheckCircle2 className="h-4 w-4 text-primary" />
                                 <span>CASA Part 61 MOS Aligned</span>
@@ -176,34 +180,59 @@ export default () => {
                                 <CheckCircle2 className="h-4 w-4 text-primary" />
                                 <span>PEXO Environment Simulation</span>
                             </div>
-                        </motion.div>
+                        </div>
 
-                        <motion.div 
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.8, delay: 0.6, ease: "easeOut" }}
-                            className="mt-10 max-w-md mx-auto">
+                        <div className="mt-10 max-w-md mx-auto">
                             {!isSubmitted ? (
                                 <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3">
-                                    <div className="flex-1">
-                                        <Input type="email" placeholder="Enter your email" value={email} onChange={e => setEmail(e.target.value)} className="h-12 bg-secondary border-border px-4" required />
+                                    <div className="flex-1 text-left">
+                                        <Label htmlFor="waitlist-email" className="sr-only">
+                                            Email address
+                                        </Label>
+                                        <Input
+                                            id="waitlist-email"
+                                            type="email"
+                                            name="email"
+                                            autoComplete="email"
+                                            placeholder="you@example.com"
+                                            value={email}
+                                            onChange={e => setEmail(e.target.value)}
+                                            aria-describedby={error ? "waitlist-error" : undefined}
+                                            aria-invalid={error ? true : undefined}
+                                            className="h-12 bg-secondary border-border px-4"
+                                            required
+                                        />
                                     </div>
                                     <Button type="submit" size="lg" className="cursor-pointer h-12 px-6" disabled={isSubmitting}>
-                                        {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <>
-                                            Notify Me
-                                            <ArrowRight className="ml-2 h-4 w-4" />
-                                        </>}
+                                        {isSubmitting ? (
+                                            <>
+                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                                                Joining...
+                                            </>
+                                        ) : (
+                                            <>
+                                                Notify Me
+                                                <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+                                            </>
+                                        )}
                                     </Button>
                                 </form>
                             ) : (
-                                <div className="flex items-center justify-center gap-3 p-4 rounded-lg bg-accent/10 border border-accent/20">
-                                    <CheckCircle2 className="h-5 w-5 text-accent" />
-                                    <span className="text-accent font-medium">
-                                        You&apos;re on the list! We'll notify you at launch.
+                                <div
+                                    role="status"
+                                    className="flex items-center justify-center gap-3 p-4 rounded-lg bg-success/10 border border-success/30"
+                                >
+                                    <CheckCircle2 className="h-5 w-5 text-success shrink-0" aria-hidden="true" />
+                                    <span className="text-foreground font-medium">
+                                        You&apos;re on the list &mdash; we&apos;ll email you at launch.
                                     </span>
                                 </div>
                             )}
-                            {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
+                            {error && (
+                                <p id="waitlist-error" role="alert" className="mt-2 text-sm text-destructive">
+                                    {error}
+                                </p>
+                            )}
 
                             <p className="mt-3 text-sm text-muted-foreground font-medium">
                                 Join the waitlist and receive early access and an exclusive 20% discount on all study hub digital products forever.
@@ -211,13 +240,13 @@ export default () => {
                             <p className="mt-3 text-xs text-muted-foreground">
                                 By signing up, you agree to our <Link href="/terms" className="underline">Terms of Service</Link> and <Link href="/privacy" className="underline">Privacy Policy</Link>. No spam - ever.
                             </p>
-                        </motion.div>
+                        </div>
                     </div>
                 </div>
             </section>
 
             {/* Platform Preview Section */}
-            <section className="py-24 lg:py-32 bg-gradient-to-b from-background to-card/30">
+            <section className="section-lg">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <motion.div 
                         initial="hidden"
@@ -226,7 +255,7 @@ export default () => {
                         transition={{ duration: 0.6 }}
                         variants={fadeInUp}
                         className="text-center mb-12">
-                        <h2 className="text-3xl sm:text-4xl font-bold text-balance">
+                        <h2 className="text-display-2 font-bold text-balance">
                             Experience the Platform
                         </h2>
                         <p className="mt-4 text-lg text-muted-foreground">
@@ -265,7 +294,7 @@ export default () => {
                                 <div>
                                     {/* Mock exam question */}
                                     <div className="flex items-center justify-between">
-                                        <h1 className="text-base font-semibold text-foreground">Aircraft General Knowledge</h1>
+                                        <p className="text-base font-semibold text-foreground">Aircraft General Knowledge</p>
                                         <Badge variant="secondary">11/40</Badge>
                                     </div>
                                     <div className="flex items-center gap-3 py-2">
@@ -313,20 +342,20 @@ export default () => {
                                                     </Label>
                                                 </div>
                                                 <div className="flex items-center space-x-2.5 rounded-md border p-3 border-green-500 bg-green-500/10">
-                                                    <RadioGroupItem checked disabled className="shrink-0" id="o-1" value="a" />
+                                                    <RadioGroupItem checked disabled className="shrink-0" id="o-2" value="a" />
                                                     <Label htmlFor="o-1" className="flex-1 text-sm leading-snug text-foreground">
                                                         Centrifugal twisting moment
                                                     </Label>
                                                     <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
                                                 </div>
                                                 <div className="flex items-center space-x-2.5 rounded-md border p-3 border-border opacity-60">
-                                                    <RadioGroupItem disabled className="shrink-0" id="o-1" value="a" />
+                                                    <RadioGroupItem disabled className="shrink-0" id="o-3" value="a" />
                                                     <Label htmlFor="o-1" className="flex-1 text-sm leading-snug text-foreground">
                                                         Governor spring tension
                                                     </Label>
                                                 </div>
                                                 <div className="flex items-center space-x-2.5 rounded-md border p-3 border-border opacity-60">
-                                                    <RadioGroupItem disabled className="shrink-0" id="o-1" value="a" />
+                                                    <RadioGroupItem disabled className="shrink-0" id="o-4" value="a" />
                                                     <Label htmlFor="o-1" className="flex-1 text-sm leading-snug text-foreground">
                                                         Engine torque load
                                                     </Label>
@@ -361,7 +390,7 @@ export default () => {
             </section>
 
             {/* Three Core Principles Section */}
-            <section className="border-y border-border bg-card/30 py-24 lg:py-32">
+            <section className="section section-raised">
                 <motion.div 
                         initial="hidden"
                         whileInView="visible"
@@ -370,7 +399,7 @@ export default () => {
                         variants={fadeInUp}
                         className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <motion.div variants={fadeInUp} transition={{ duration: 0.6 }} className="text-center mb-16">
-                        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-balance">
+                        <h2 className="text-display-2 font-bold text-balance">
                             Engineered for Aviation Excellence
                         </h2>
                         <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
@@ -389,7 +418,7 @@ export default () => {
                                 01
                             </div>
                             <div className="relative pl-8">
-                                <h3 className="text-2xl font-bold mb-4">Regulatory Alignment</h3>
+                                <h3 className="text-display-3 font-bold mb-4">Regulatory Alignment</h3>
                                 <p className="text-muted-foreground leading-relaxed">
                                     All modules are mapped directly to the CASA Part 61 Manual of Standards (MOS). We ensure that candidates are not merely "passing a test," but are building the fundamental knowledge required for safe and efficient flight operations within the Australian FIR.
                                 </p>
@@ -401,7 +430,7 @@ export default () => {
                                 02
                             </div>
                             <div className="relative pl-8">
-                                <h3 className="text-2xl font-bold mb-4">Quantitative Assessment</h3>
+                                <h3 className="text-display-3 font-bold mb-4">Quantitative Assessment</h3>
                                 <p className="text-muted-foreground leading-relaxed">
                                     Our diagnostic tools provide detailed KDR (Knowledge Deficiency Report) analytics. Identify specific syllabus weak points - from Constant Speed Units to Radio Navigation Errors - allowing for targeted remedial study and optimized training hours.
                                 </p>
@@ -413,7 +442,7 @@ export default () => {
                                 03
                             </div>
                             <div className="relative pl-8">
-                                <h3 className="text-2xl font-bold mb-4">High-Fidelity Simulation</h3>
+                                <h3 className="text-display-3 font-bold mb-4">High-Fidelity Simulation</h3>
                                 <p className="text-muted-foreground leading-relaxed">
                                     The AviPrep examination interface replicates the operational environment of official sittings. This reduces "exam-day friction" and ensures that the candidate's performance reflects their actual knowledge, unaffected by unfamiliarity with the testing platform.
                                 </p>
@@ -424,7 +453,7 @@ export default () => {
             </section>
 
             {/* KDR Analytics Preview */}
-            <section className="py-24 lg:py-32">
+            <section className="section">
                 <motion.div 
                         initial="hidden"
                         whileInView="visible"
@@ -437,7 +466,7 @@ export default () => {
                             <div className="inline-block px-3 py-1 bg-primary/10 text-primary rounded-full text-sm font-medium mb-4">
                                 Knowledge Deficiency Reports
                             </div>
-                            <h2 className="text-3xl sm:text-4xl font-bold mb-6">
+                            <h2 className="text-display-2 font-bold mb-6">
                                 <p>Precision Analytics for</p>
                                 <span className="text-primary">Targeted Study</span>
                             </h2>
@@ -524,7 +553,7 @@ export default () => {
             </section>
 
             {/* Course Offerings Section */}
-            <section className="py-24 lg:py-32">
+            <section className="section section-raised">
                 <motion.div 
                         initial="hidden"
                         whileInView="visible"
@@ -533,7 +562,7 @@ export default () => {
                         variants={fadeInUp}
                         className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="text-center mb-16">
-                        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-balance">
+                        <h2 className="text-display-2 font-bold text-balance">
                             Comprehensive Course Coverage
                         </h2>
                         <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
@@ -549,7 +578,7 @@ export default () => {
                                     <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
                                         <FaPlane className="text-primary text-xl" />
                                     </div>
-                                    <h3 className="text-2xl font-bold">Fixed Wing (A)</h3>
+                                    <h3 className="text-display-3 font-bold">Fixed Wing (A)</h3>
                                 </div>
                                 <p className="text-muted-foreground mb-6 leading-relaxed">
                                     Comprehensive coverage for CPL/ATPL theory blocks including Meteorology, Navigation, Air Law, and Aircraft Systems. Structured progression from RPL fundamentals through to commercial competency standards.
@@ -578,7 +607,7 @@ export default () => {
                                     <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
                                         <FaChartLine className="text-primary text-xl" />
                                     </div>
-                                    <h3 className="text-2xl font-bold">Instrument Rating (IREX)</h3>
+                                    <h3 className="text-display-3 font-bold">Instrument Rating (IREX)</h3>
                                 </div>
                                 <p className="text-muted-foreground mb-6 leading-relaxed">
                                     Intensive preparation for the Instrument Rating Exam, focusing on the latest AIP and Jeppesen chart updates. Real-world scenario-based questions aligned with operational IFR procedures.
@@ -604,7 +633,7 @@ export default () => {
             </section>
 
             {/* Detailed Feedback Preview */}
-            <section className="py-24 lg:py-32 border-y border-border bg-card/30">
+            <section className="section">
                 <motion.div 
                         initial="hidden"
                         whileInView="visible"
@@ -672,7 +701,7 @@ export default () => {
                             <div className="inline-block px-3 py-1 bg-primary/10 text-primary rounded-full text-sm font-medium mb-4">
                                 Comprehensive Feedback
                             </div>
-                            <h2 className="text-3xl sm:text-4xl font-bold mb-6">
+                            <h2 className="text-display-2 font-bold mb-6">
                                 Learn from Every Question
                             </h2>
                             <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
@@ -707,7 +736,7 @@ export default () => {
             </section>
 
             {/* Features Section */}
-            <section className="border-y border-border bg-card/30 py-24 lg:py-32">
+            <section className="section section-raised">
                 <motion.div 
                         initial="hidden"
                         whileInView="visible"
@@ -716,7 +745,7 @@ export default () => {
                         variants={fadeInUp}
                         className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="text-center mb-16">
-                        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-balance">
+                        <h2 className="text-display-2 font-bold text-balance">
                             Platform Capabilities
                         </h2>
                         <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
@@ -775,13 +804,13 @@ export default () => {
             </section>
 
             {/* 2026 Phase-One Intake Registration Section */}
-            <section className="py-24 lg:py-32">
+            <section className="section-lg">
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="relative rounded-2xl bg-gradient-to-br from-primary/20 via-primary/10 to-transparent border border-primary/20 p-8 sm:p-12 lg:p-16 overflow-hidden">
                         <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
 
                         <div className="relative text-center">
-                            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-balance">
+                            <h2 className="text-display-2 font-bold text-balance">
                                 Register for the 2026 Phase-One Intake
                             </h2>
                             <p className="mt-6 text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
@@ -845,36 +874,58 @@ export default () => {
                                     transition={{ duration: 0.6, delay: 0.4 }}
                                     className="mt-10 max-w-md mx-auto">
                                     <div className="flex flex-col sm:flex-row gap-3">
-                                        <Input
-                                            type="email"
-                                            placeholder="Enter your email"
-                                            value={email}
-                                            onChange={(e) => setEmail(e.target.value)}
-                                            className="h-12 bg-background border-border px-4"
-                                            data-testid="registration-email-input"
-                                            required
-                                        />
+                                        <div className="flex-1 text-left">
+                                            <Label htmlFor="register-email" className="sr-only">
+                                                Email address
+                                            </Label>
+                                            <Input
+                                                id="register-email"
+                                                type="email"
+                                                name="email"
+                                                autoComplete="email"
+                                                placeholder="you@example.com"
+                                                value={email}
+                                                onChange={(e) => setEmail(e.target.value)}
+                                                aria-describedby={error ? "register-error" : undefined}
+                                                aria-invalid={error ? true : undefined}
+                                                className="h-12 w-full bg-background border-border px-4"
+                                                data-testid="registration-email-input"
+                                                required
+                                            />
+                                        </div>
                                         <Button type="submit" size="lg" className="cursor-pointer h-12 px-6 whitespace-nowrap" disabled={isSubmitting} data-testid="registration-submit-button">
-                                            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <>
-                                                Register Interest
-                                                <ArrowRight className="ml-2 h-4 w-4" />
-                                            </>}
+                                            {isSubmitting ? (
+                                                <>
+                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                                                    Registering...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    Register Interest
+                                                    <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+                                                </>
+                                            )}
                                         </Button>
                                     </div>
-                                    {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
+                                    {error && (
+                                        <p id="register-error" role="alert" className="mt-2 text-sm text-destructive">
+                                            {error}
+                                        </p>
+                                    )}
                                     <p className="mt-4 text-xs text-muted-foreground text-center">
                                         By registering, you agree to our <Link href="/terms" className="underline">Terms of Service</Link> and <Link href="/privacy" className="underline">Privacy Policy</Link>.
                                     </p>
                                 </motion.form>
                             ) : (
-                                <motion.div 
-                                    data-testid="registration-success-message" 
+                                <motion.div
+                                    role="status"
+                                    data-testid="registration-success-message"
                                     initial={{ opacity: 0, scale: 0.9 }}
                                     animate={{ opacity: 1, scale: 1 }}
                                     transition={{ duration: 0.4 }}
-                                    className="mt-10 inline-flex items-center gap-3 px-6 py-3 rounded-lg bg-accent/10 border border-accent/20">
-                                    <CheckCircle2 className="h-5 w-5 text-accent" />
-                                    <span className="text-accent font-medium">Registration confirmed! We'll be in touch soon.</span>
+                                    className="mt-10 inline-flex items-center gap-3 px-6 py-3 rounded-lg bg-success/10 border border-success/30">
+                                    <CheckCircle2 className="h-5 w-5 text-success shrink-0" aria-hidden="true" />
+                                    <span className="text-foreground font-medium">Registration confirmed &mdash; we&apos;ll be in touch soon.</span>
                                 </motion.div>
                             )}
                         </div>
@@ -883,10 +934,10 @@ export default () => {
             </section>
 
             {/* RTO Partnership Section */}
-            <section className="border-y border-border bg-card/30 py-24 lg:py-32">
+            <section className="section section-raised">
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="text-center mb-12">
-                        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-balance">
+                        <h2 className="text-display-2 font-bold text-balance">
                             Registered Training Organisations
                         </h2>
                         <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
@@ -900,10 +951,12 @@ export default () => {
                                 <div className="grid sm:grid-cols-2 gap-6">
                                     <div>
                                         <label htmlFor="rto-name" className="block text-sm font-medium mb-2">
-                                            Contact Name <span className="text-red-500">*</span>
+                                            Contact Name <span aria-hidden="true" className="text-destructive">*</span>
                                         </label>
                                         <Input
                                             id="rto-name"
+                                            name="name"
+                                            autoComplete="name"
                                             type="text"
                                             placeholder="John Smith"
                                             value={rtoName}
@@ -915,10 +968,12 @@ export default () => {
                                     </div>
                                     <div>
                                         <label htmlFor="rto-organisation" className="block text-sm font-medium mb-2">
-                                            Organisation Name <span className="text-red-500">*</span>
+                                            Organisation Name <span aria-hidden="true" className="text-destructive">*</span>
                                         </label>
                                         <Input
                                             id="rto-organisation"
+                                            name="organisation"
+                                            autoComplete="organization"
                                             type="text"
                                             placeholder="Flight School Australia"
                                             value={rtoOrganisation}
@@ -932,10 +987,12 @@ export default () => {
                                 <div className="grid sm:grid-cols-2 gap-6">
                                     <div>
                                         <label htmlFor="rto-email" className="block text-sm font-medium mb-2">
-                                            Email Address <span className="text-red-500">*</span>
+                                            Email Address <span aria-hidden="true" className="text-destructive">*</span>
                                         </label>
                                         <Input
                                             id="rto-email"
+                                            name="email"
+                                            autoComplete="email"
                                             type="email"
                                             placeholder="contact@flightschool.com.au"
                                             value={rtoEmail}
@@ -951,6 +1008,8 @@ export default () => {
                                         </label>
                                         <Input
                                             id="rto-phone"
+                                            name="phone"
+                                            autoComplete="tel"
                                             type="tel"
                                             placeholder="+61 4XX XXX XXX"
                                             value={rtoPhone}
@@ -961,6 +1020,18 @@ export default () => {
                                     </div>
                                 </div>
 
+                                {/* Errors belong above the action that produced them, and must be
+                                    announced - previously this sat below the button, silent. */}
+                                {rtoError && (
+                                    <p
+                                        role="alert"
+                                        className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-foreground"
+                                    >
+                                        <Flag className="h-4 w-4 text-destructive shrink-0 mt-0.5" aria-hidden="true" />
+                                        <span>{rtoError}</span>
+                                    </p>
+                                )}
+
                                 <div className="pt-4">
                                     <Button
                                         type="submit"
@@ -970,21 +1041,23 @@ export default () => {
                                         data-testid="rto-submit-button"
                                     >
                                         {isRtoSubmitting ? (
-                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                            <>
+                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                                                Sending...
+                                            </>
                                         ) : (
                                             <>
-                                                <Phone className="mr-2 h-4 w-4" />
+                                                <Phone className="mr-2 h-4 w-4" aria-hidden="true" />
                                                 Request Partnership Information
                                             </>
                                         )}
                                     </Button>
                                 </div>
-                                {rtoError && <p className="text-sm text-red-500">{rtoError}</p>}
                             </form>
                         ) : (
-                            <div data-testid="rto-success-message" className="text-center py-8">
-                                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-accent/10 mb-4">
-                                    <CheckCircle2 className="h-8 w-8 text-accent" />
+                            <div role="status" data-testid="rto-success-message" className="text-center py-8">
+                                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-success/10 mb-4">
+                                    <CheckCircle2 className="h-8 w-8 text-success" aria-hidden="true" />
                                 </div>
                                 <h3 className="text-xl font-bold mb-2">Thank you for your interest</h3>
                                 <p className="text-muted-foreground">
@@ -1007,12 +1080,14 @@ export default () => {
                 </div>
             </section>
 
+            </main>
+
             {/* Professional Disclaimer Footer */}
             <footer className="border-t border-border bg-card/50 py-12">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="max-w-4xl mx-auto">
                         <div className="text-center mb-6">
-                            <img className="h-10 mx-auto mb-4 opacity-80" src="/img/AviPrep-logo.png" alt="AviPrep logo" />
+                            <img className="h-10 w-auto mx-auto mb-4 opacity-80" src="/img/AviPrep-logo.png" alt="" aria-hidden="true" width={160} height={40} />
                         </div>
                         <div className="text-sm text-muted-foreground text-center leading-relaxed space-y-4">
                             <p className="font-medium">

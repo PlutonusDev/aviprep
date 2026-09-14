@@ -8,41 +8,59 @@ import {
   Printer,
   BarChart3,
   BrainCircuit,
-  Clock,
-  ShieldCheck,
-  Plane,
-  Crown,
-  Loader2,
   BookOpen,
   FileText,
   Lock,
-  ChevronRight,
   GraduationCap,
+  Crown,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Switch } from "@/components/ui/switch"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
 import { cn } from "@lib/utils"
 import {
-  BUNDLES,
-  SUBJECT_PRODUCTS,
   ADDONS,
   getBundleByLicense,
   getSubjectProductsByLicense,
-  getTotalValueByLicense,
 } from "@lib/products"
 import { LICENSE_TYPES, getSubjectsByLicense, type LicenseType } from "@lib/subjects"
 
 const bundleFeatures = [
-  { icon: Check, text: "All subjects included" },
+  { icon: Check, text: "Every subject in this licence" },
   { icon: BookOpen, text: "Full learning content" },
   { icon: FileText, text: "Unlimited practice exams" },
   { icon: BrainCircuit, text: "AI-powered insights" },
   { icon: BarChart3, text: "Detailed statistics" },
   { icon: Printer, text: "Print exams & results" },
 ]
+
+const FAQ = [
+  {
+    q: "How long does access last?",
+    a: "Bundles are billed quarterly and renew until you cancel. Individual subjects are a one-off purchase with 12 months of access.",
+  },
+  {
+    q: "Can I start with one subject and upgrade later?",
+    a: "Yes. Buy any subject on its own, and move to the bundle whenever you want the rest of the licence.",
+  },
+  {
+    q: "What is the difference between Exams only and Exams + Learning?",
+    a: "Exams only gives you the question bank and practice exams. Exams + Learning adds the full course content — lessons, flash cards and quizzes — for the same subject.",
+  },
+  {
+    q: "Do I need the add-ons?",
+    a: "No. Printing and AI insights are optional extras; everything needed to prepare for the exam is included without them.",
+  },
+]
+
+const money = (cents: number) => `$${(cents / 100).toFixed(0)}`
 
 interface StripeProduct {
   id: string
@@ -66,72 +84,20 @@ export default function PricingContent() {
   const [loading, setLoading] = useState(true)
   const [stripeProducts, setStripeProducts] = useState<StripeProduct[]>([])
 
-  // Fetch Stripe products for live pricing
   useEffect(() => {
-    async function fetchStripeProducts() {
+    async function fetchProducts() {
       try {
         const res = await fetch("/api/products")
         if (res.ok) {
           const data = await res.json()
-          setStripeProducts(data.products || [])
+          setStripeProducts(data.products ?? [])
         }
-      } catch (error) {
-        console.error("Failed to fetch Stripe products:", error)
+      } catch {
+        // Local prices stand in when Stripe is unreachable.
       }
     }
-    fetchStripeProducts()
+    fetchProducts()
   }, [])
-
-  // Helper to get Stripe price for a product by matching name
-  const getStripePrice = (productName: string): number | null => {
-    const stripeProduct = stripeProducts.find(
-      (p) => p.name.toLowerCase() === productName.toLowerCase()
-    )
-    return stripeProduct?.priceInCents ?? null
-  }
-
-  // Get bundle with live Stripe price
-  const bundle = useMemo(() => {
-    const localBundle = getBundleByLicense(selectedLicense)
-    if (!localBundle) return null
-    const stripePrice = getStripePrice(localBundle.name)
-    return {
-      ...localBundle,
-      priceInCents: stripePrice ?? localBundle.priceInCents,
-    }
-  }, [selectedLicense, stripeProducts])
-
-  const licenseInfo = LICENSE_TYPES.find((l) => l.id === selectedLicense)
-  const subjects = getSubjectsByLicense(selectedLicense)
-
-  // Get subject products with live Stripe prices
-  const subjectProducts = useMemo(() => {
-    const localProducts = getSubjectProductsByLicense(selectedLicense).filter((p) => p.tier === selectedTier)
-    return localProducts.map((product) => {
-      // Try to find matching Stripe product by name
-      const stripePrice = getStripePrice(product.name)
-      return {
-        ...product,
-        priceInCents: stripePrice ?? product.priceInCents,
-      }
-    })
-  }, [selectedLicense, selectedTier, stripeProducts])
-
-  // Get addons with live Stripe prices
-  const printAddon = useMemo(() => {
-    const addon = ADDONS.find((a) => a.id === "addon-printing")!
-    const stripePrice = getStripePrice(addon.name) ?? getStripePrice("Print Pack Add-on")
-    return { ...addon, priceInCents: stripePrice ?? addon.priceInCents }
-  }, [stripeProducts])
-
-  const aiAddon = useMemo(() => {
-    const addon = ADDONS.find((a) => a.id === "addon-ai-insights")!
-    const stripePrice = getStripePrice(addon.name) ?? getStripePrice("AI Insights Add-on")
-    return { ...addon, priceInCents: stripePrice ?? addon.priceInCents }
-  }, [stripeProducts])
-
-  const totalIndividualValue = subjectProducts.reduce((sum, p) => sum + p.priceInCents, 0)
-  const bundleSavingsPercent = bundle ? Math.round((1 - bundle.priceInCents / totalIndividualValue) * 100) : 0
 
   useEffect(() => {
     async function fetchPurchases() {
@@ -139,8 +105,12 @@ export default function PricingContent() {
         const res = await fetch("/api/user/subjects")
         if (res.ok) {
           const data = await res.json()
+          // The API reports `isPurchased`; reading `hasAccess` meant this list
+          // was always empty and owned subjects were offered for sale again.
           const purchased =
-            data.subjects?.filter((s: { hasAccess: boolean }) => s.hasAccess)?.map((s: { id: string }) => s.id) || []
+            data.subjects
+              ?.filter((s: { isPurchased: boolean }) => s.isPurchased)
+              ?.map((s: { id: string }) => s.id) ?? []
           setPurchasedSubjectIds(purchased)
         }
       } catch (error) {
@@ -152,26 +122,76 @@ export default function PricingContent() {
     fetchPurchases()
   }, [])
 
-  // Reset selections when license changes
   useEffect(() => {
     setSelectedSubjects([])
-  }, [selectedLicense])
+  }, [selectedLicense, selectedTier])
 
-  const availableSubjects = subjectProducts.filter(
-    (s) => !purchasedSubjectIds.includes(s.subjectId || "") && !s.comingSoon
+  const getStripePrice = (name: string) =>
+    stripeProducts.find((p) => p.name.toLowerCase() === name.toLowerCase())?.priceInCents ?? null
+
+  const bundle = useMemo(() => {
+    const local = getBundleByLicense(selectedLicense)
+    if (!local) return null
+    return { ...local, priceInCents: getStripePrice(local.name) ?? local.priceInCents }
+  }, [selectedLicense, stripeProducts])
+
+  const licenseInfo = LICENSE_TYPES.find((l) => l.id === selectedLicense)
+  const subjects = getSubjectsByLicense(selectedLicense)
+
+  const subjectProducts = useMemo(
+    () =>
+      getSubjectProductsByLicense(selectedLicense)
+        .filter((p) => p.tier === selectedTier)
+        .map((p) => ({ ...p, priceInCents: getStripePrice(p.name) ?? p.priceInCents })),
+    [selectedLicense, selectedTier, stripeProducts],
   )
 
-  const toggleSubject = (id: string) => {
-    setSelectedSubjects((prev) => (prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]))
-  }
+  const printAddon = useMemo(() => {
+    const addon = ADDONS.find((a) => a.id === "addon-printing")!
+    return {
+      ...addon,
+      priceInCents:
+        getStripePrice(addon.name) ?? getStripePrice("Print Pack Add-on") ?? addon.priceInCents,
+    }
+  }, [stripeProducts])
+
+  const aiAddon = useMemo(() => {
+    const addon = ADDONS.find((a) => a.id === "addon-ai-insights")!
+    return {
+      ...addon,
+      priceInCents:
+        getStripePrice(addon.name) ?? getStripePrice("AI Insights Add-on") ?? addon.priceInCents,
+    }
+  }, [stripeProducts])
+
+  const availableSubjects = subjectProducts.filter(
+    (s) => !purchasedSubjectIds.includes(s.subjectId || "") && !s.comingSoon,
+  )
+
+  const totalIndividualValue = subjectProducts.reduce((sum, p) => sum + p.priceInCents, 0)
+  const bundleSaving = bundle ? totalIndividualValue - bundle.priceInCents : 0
+  const bundleSavingsPercent =
+    bundle && totalIndividualValue > 0
+      ? Math.round((1 - bundle.priceInCents / totalIndividualValue) * 100)
+      : 0
 
   const selectedTotal =
-    selectedSubjects.reduce((sum, id) => {
-      const product = subjectProducts.find((p) => p.id === id)
-      return sum + (product?.priceInCents || 0)
-    }, 0) +
+    selectedSubjects.reduce(
+      (sum, id) => sum + (subjectProducts.find((p) => p.id === id)?.priceInCents ?? 0),
+      0,
+    ) +
     (addPrinting ? printAddon.priceInCents : 0) +
     (addAI ? aiAddon.priceInCents : 0)
+
+  // Once the basket passes the bundle price, say so rather than letting someone
+  // spend more for less.
+  const bundleBeatsSelection =
+    !!bundle && selectedSubjects.length > 0 && selectedTotal >= bundle.priceInCents
+
+  const toggleSubject = (id: string) =>
+    setSelectedSubjects((prev) =>
+      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id],
+    )
 
   const handleBundlePurchase = () => {
     if (bundle?.comingSoon) return
@@ -188,328 +208,336 @@ export default function PricingContent() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="mx-auto w-full max-w-6xl space-y-8 p-4 lg:p-8">
+        <Skeleton className="mx-auto h-9 w-72" />
+        <Skeleton className="h-24 w-full rounded-lg" />
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Skeleton className="h-96 rounded-xl" />
+          <Skeleton className="h-96 rounded-xl" />
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="p-4 lg:p-6 space-y-6">
-      {/* Header */}
-      <div className="text-center max-w-2xl mx-auto">
-        <Badge variant="secondary" className="mb-4">
-          <GraduationCap className="h-3 w-3 mr-1" />
-          CASA Theory Exam Prep
+    <div className="mx-auto w-full max-w-6xl space-y-10 p-4 pb-28 lg:p-8 lg:pb-28">
+      <header className="mx-auto max-w-2xl space-y-3 text-center">
+        <Badge variant="secondary" className="gap-1">
+          <GraduationCap className="h-3 w-3" aria-hidden="true" />
+          CASA theory exam prep
         </Badge>
-        <h1 className="text-4xl font-bold text-foreground mb-2">Choose Your License</h1>
-      </div>
+        <h1 className="text-display-3 font-bold text-foreground">Choose your licence</h1>
+        <p className="text-muted-foreground">
+          Take the whole licence as a bundle, or buy the subjects you need.
+        </p>
+      </header>
 
-      <div className="mx-12 flex flex-wrap gap-4 justify-center">
-        {LICENSE_TYPES.map((license) => {
-          const licenseBundle = getBundleByLicense(license.id as LicenseType)
-          const licenseSubjects = getSubjectsByLicense(license.id as LicenseType)
-          return (
-            <div
-              key={license.id}
-              className={cn(
-                "p-4 rounded-lg border cursor-pointer transition-all flex-grow",
-                selectedLicense === license.id
-                  ? "border-primary bg-primary/5"
-                  : "border-border hover:border-primary/50"
-              )}
-              onClick={() => setSelectedLicense(license.id as LicenseType)}
-            >
-              <Badge className="mb-2">{license.name}</Badge>
-              <h4 className="font-medium text-foreground">{license.fullName}</h4>
-              <p className="text-xs text-muted-foreground mt-1 mb-3">{license.description}</p>
-              <div className="flex items-baseline gap-1">
-                <span className="text-lg font-bold text-foreground">
-                  ${((licenseBundle?.priceInCents || 0) / 100).toFixed(0)}
-                </span>
-                <span className="text-xs text-muted-foreground">/quarter</span>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {licenseSubjects.length} subjects included
-              </p>
-            </div>
-          )
-        })}
-      </div>
+      {/* Licence — a real radiogroup, so it works from the keyboard. */}
+      <fieldset>
+        <legend className="sr-only">Licence</legend>
+        <div className="flex gap-3 overflow-x-auto pb-2 lg:grid lg:grid-cols-5 lg:overflow-visible">
+          {LICENSE_TYPES.map((license) => {
+            const licenseBundle = getBundleByLicense(license.id as LicenseType)
+            const count = getSubjectsByLicense(license.id as LicenseType).length
+            const active = selectedLicense === license.id
+            return (
+              <label
+                key={license.id}
+                className={cn(
+                  "min-w-[13rem] shrink-0 cursor-pointer rounded-lg border p-4 transition-colors lg:min-w-0",
+                  active
+                    ? "border-primary bg-primary/5 ring-1 ring-primary"
+                    : "border-border hover:border-primary/40",
+                )}
+              >
+                <input
+                  type="radio"
+                  name="licence"
+                  value={license.id}
+                  checked={active}
+                  onChange={() => setSelectedLicense(license.id as LicenseType)}
+                  className="sr-only"
+                />
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-semibold text-foreground">{license.name}</span>
+                  {active && <Check className="h-4 w-4 text-primary" aria-hidden="true" />}
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">{license.fullName}</p>
+                <p className="mt-3 text-sm text-foreground">
+                  <span className="font-semibold">{money(licenseBundle?.priceInCents ?? 0)}</span>
+                  <span className="text-muted-foreground">/quarter</span>
+                </p>
+                <p className="text-xs text-muted-foreground" data-tabular>
+                  {count} subjects
+                </p>
+              </label>
+            )
+          })}
+        </div>
+      </fieldset>
 
-      {/* License Description */}
-      <div className="text-center max-w-xl mx-auto">
-        <h2 className="text-xl font-semibold text-foreground">{licenseInfo?.fullName}</h2>
-        <p className="text-sm text-muted-foreground mt-1">{licenseInfo?.description}</p>
-      </div>
-
-      {/* Coming Soon Message */}
       {licenseInfo?.comingSoon ? (
-        <Card className="max-w-lg mx-auto">
+        <Card className="mx-auto max-w-lg border-dashed shadow-none">
           <CardContent className="py-12 text-center">
-            <Lock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-foreground mb-2">Coming Soon</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              {licenseInfo.fullName} content is currently in development. Join our waitlist to be notified when it launches.
+            <Lock className="mx-auto mb-4 h-10 w-10 text-muted-foreground" aria-hidden="true" />
+            <h2 className="mb-2 text-lg font-semibold text-foreground">Coming soon</h2>
+            <p className="mb-5 text-sm text-muted-foreground">
+              {licenseInfo.fullName} content is in development. Join the waitlist and we&apos;ll let
+              you know when it launches.
             </p>
-            <Button variant="outline" onClick={() => router.push("/")}>
-              Join Waitlist
+            <Button variant="outline" onClick={() => router.push("/")} className="h-10">
+              Join waitlist
             </Button>
           </CardContent>
         </Card>
       ) : (
         <>
-          {/* Pricing Options */}
-          <Tabs defaultValue="bundle" className="space-y-6">
-            <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 bg-secondary">
-              <TabsTrigger value="bundle" className="gap-2">
-                <Crown className="h-4 w-4" />
-                Bundle
-              </TabsTrigger>
-              <TabsTrigger value="individual" className="gap-2">
-                <FileText className="h-4 w-4" />
-                Individual Subjects
-              </TabsTrigger>
-            </TabsList>
-
-            {/* Bundle Tab */}
-            <TabsContent value="bundle" className="space-y-6">
-              <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card className="border-primary relative overflow-hidden flex-grow">
-                  <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-xs font-medium px-3 py-1 rounded-bl-lg">
-                    Save {bundleSavingsPercent}%
-                  </div>
-                  <CardHeader className="text-center pb-2">
-                    <CardTitle className="text-2xl">{bundle?.name}</CardTitle>
-                    <CardDescription>{bundle?.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="text-center">
-                      <div className="flex items-baseline justify-center gap-1">
-                        <span className="text-4xl font-bold text-foreground">
-                          ${((bundle?.priceInCents || 0) / 100).toFixed(0)}
-                        </span>
-                        <span className="text-muted-foreground">/quarter</span>
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        <span className="line-through">${(totalIndividualValue / 100).toFixed(0)}</span> value
-                      </p>
-                    </div>
-
-                    <div className="space-y-3">
-                      {bundleFeatures.map((feature, index) => (
-                        <div key={index} className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                            <feature.icon className="h-4 w-4 text-primary" />
-                          </div>
-                          <span className="text-sm text-foreground">{feature.text}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                  <CardFooter>
-                    <Button className="w-full gap-2" size="lg" onClick={handleBundlePurchase}>
-                      <Sparkles className="h-4 w-4" />
-                      Get {licenseInfo?.name} Bundle
-                    </Button>
-                  </CardFooter>
-                </Card>
-
-                <Card className="max-w-2xl flex-grow">
-                  <CardHeader>
-                    <CardTitle className="text-lg">Included Subjects ({subjects.length})</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid gap-2 md:grid-cols-2">
-                      {subjects.map((subject) => (
-                        <div key={subject.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline">{subject.code}</Badge>
-                            <span className="text-sm font-medium text-foreground">{subject.name}</span>
-                          </div>
-                          <span className="text-xs text-muted-foreground">{subject.totalQuestions} Qs</span>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
+          {/* Both routes side by side rather than behind tabs, so the choice is
+              actually a comparison. */}
+          <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+            {/* Bundle */}
+            <Card className="relative overflow-hidden border-primary shadow-e3">
+              <div className="absolute right-0 top-0 rounded-bl-lg bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
+                Best value
               </div>
-            </TabsContent>
+              <CardContent className="space-y-6 p-6">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Crown className="h-5 w-5 text-primary" aria-hidden="true" />
+                    <h2 className="text-lg font-semibold text-foreground">{bundle?.name}</h2>
+                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground">{bundle?.description}</p>
+                </div>
 
-            {/* Individual Tab */}
-            <TabsContent value="individual" className="space-y-6">
-              {/* Tier Selection */}
-              <div className="max-w-2xl mx-auto">
-                <div className="grid grid-cols-2 gap-4">
-                  <Card
-                    className={cn(
-                      "cursor-pointer transition-all",
-                      selectedTier === "exams-only" ? "border-primary ring-2 ring-primary/20" : "hover:border-primary/50"
-                    )}
-                    onClick={() => setSelectedTier("exams-only")}
-                  >
-                    <CardContent className="p-4 text-center">
-                      <FileText className="h-8 w-8 mx-auto mb-2 text-primary" />
-                      <h3 className="font-semibold text-foreground">Exams Only</h3>
-                      <p className="text-xs text-muted-foreground mt-1">Practice questions and exams</p>
-                      <Badge variant="secondary" className="mt-2">Lower Price</Badge>
-                    </CardContent>
-                  </Card>
-                  <Card
-                    className={cn(
-                      "cursor-pointer transition-all",
-                      selectedTier === "with-learning" ? "border-primary ring-2 ring-primary/20" : "hover:border-primary/50"
-                    )}
-                    onClick={() => setSelectedTier("with-learning")}
-                  >
-                    <CardContent className="p-4 text-center">
-                      <BookOpen className="h-8 w-8 mx-auto mb-2 text-primary" />
-                      <h3 className="font-semibold text-foreground">Exams + Learning</h3>
-                      <p className="text-xs text-muted-foreground mt-1">Full course content included</p>
-                      <Badge variant="default" className="mt-2">Best Value</Badge>
-                    </CardContent>
-                  </Card>
+                <div>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="font-sans text-4xl font-semibold text-foreground">
+                      {money(bundle?.priceInCents ?? 0)}
+                    </span>
+                    <span className="text-muted-foreground">/quarter</span>
+                  </div>
+                  {bundleSaving > 0 && (
+                    <p className="mt-1.5 text-sm">
+                      <span className="text-muted-foreground line-through" data-tabular>
+                        {money(totalIndividualValue)}
+                      </span>{" "}
+                      <span className="font-medium text-success">
+                        save {money(bundleSaving)} ({bundleSavingsPercent}%)
+                      </span>
+                    </p>
+                  )}
+                </div>
+
+                <ul className="space-y-2.5">
+                  {bundleFeatures.map((feature) => (
+                    <li key={feature.text} className="flex items-center gap-2.5 text-sm">
+                      <feature.icon className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                      <span className="text-foreground">{feature.text}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <details className="rounded-lg border border-border">
+                  <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-foreground">
+                    {subjects.length} subjects included
+                  </summary>
+                  <ul className="space-y-1 border-t border-border px-4 py-3">
+                    {subjects.map((s) => (
+                      <li key={s.id} className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Badge variant="outline" className="shrink-0 text-xs">
+                          {s.code}
+                        </Badge>
+                        <span className="truncate">{s.name}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+
+                <Button onClick={handleBundlePurchase} size="lg" className="h-11 w-full gap-2">
+                  <Sparkles className="h-4 w-4" aria-hidden="true" />
+                  Get the {licenseInfo?.name} bundle
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Individual subjects */}
+            <Card className="shadow-e1">
+              <CardContent className="space-y-6 p-6">
+                <div>
+                  <h2 className="text-lg font-semibold text-foreground">Pick individual subjects</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    One-off purchase, 12 months of access each.
+                  </p>
+                </div>
+
+                <fieldset className="space-y-2">
+                  <legend className="mb-2 text-sm font-medium text-foreground">What&apos;s included</legend>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {[
+                      { id: "exams-only", label: "Exams only", hint: "Question bank and practice exams" },
+                      { id: "with-learning", label: "Exams + Learning", hint: "Adds the full course content" },
+                    ].map((tier) => {
+                      const active = selectedTier === tier.id
+                      return (
+                        <label
+                          key={tier.id}
+                          className={cn(
+                            "cursor-pointer rounded-lg border p-3 transition-colors",
+                            active
+                              ? "border-primary bg-primary/5 ring-1 ring-primary"
+                              : "border-border hover:border-primary/40",
+                          )}
+                        >
+                          <input
+                            type="radio"
+                            name="tier"
+                            value={tier.id}
+                            checked={active}
+                            onChange={() => setSelectedTier(tier.id as typeof selectedTier)}
+                            className="sr-only"
+                          />
+                          <span className="block text-sm font-medium text-foreground">{tier.label}</span>
+                          <span className="mt-0.5 block text-xs text-muted-foreground">{tier.hint}</span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                </fieldset>
+
+                {availableSubjects.length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-border p-8 text-center">
+                    <Check className="mx-auto mb-3 h-8 w-8 text-success" aria-hidden="true" />
+                    <p className="font-medium text-foreground">You already own every subject here</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Head to practice exams to start studying.
+                    </p>
+                  </div>
+                ) : (
+                  <fieldset className="space-y-2">
+                    <legend className="mb-2 text-sm font-medium text-foreground">Subjects</legend>
+                    {availableSubjects.map((product) => {
+                      const subject = subjects.find((s) => s.id === product.subjectId)
+                      const checked = selectedSubjects.includes(product.id)
+                      return (
+                        <label
+                          key={product.id}
+                          className={cn(
+                            "flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors",
+                            checked
+                              ? "border-primary bg-primary/5"
+                              : "border-border hover:border-primary/40",
+                          )}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleSubject(product.id)}
+                            className="h-4 w-4 shrink-0 accent-primary"
+                          />
+                          <span className="min-w-0 flex-1">
+                            <span className="flex items-center gap-2">
+                              <Badge variant="outline" className="shrink-0 text-xs">
+                                {subject?.code}
+                              </Badge>
+                              <span className="truncate text-sm font-medium text-foreground">
+                                {subject?.name}
+                              </span>
+                            </span>
+                          </span>
+                          <span className="shrink-0 text-sm font-semibold text-foreground" data-tabular>
+                            {money(product.priceInCents)}
+                          </span>
+                        </label>
+                      )
+                    })}
+                  </fieldset>
+                )}
+
+                {availableSubjects.length > 0 && (
+                  <fieldset className="space-y-2 border-t border-border pt-5">
+                    <legend className="mb-2 text-sm font-medium text-foreground">
+                      Optional extras
+                    </legend>
+                    {[
+                      { addon: printAddon, checked: addPrinting, set: setAddPrinting, icon: Printer },
+                      { addon: aiAddon, checked: addAI, set: setAddAI, icon: BrainCircuit },
+                    ].map(({ addon, checked, set, icon: Icon }) => (
+                      <label
+                        key={addon.id}
+                        className="flex cursor-pointer items-center gap-3 rounded-lg border border-border p-3 transition-colors hover:border-primary/40"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => set(e.target.checked)}
+                          className="h-4 w-4 shrink-0 accent-primary"
+                        />
+                        <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                        <span className="min-w-0 flex-1 text-sm text-foreground">{addon.name}</span>
+                        <span className="shrink-0 text-sm font-semibold text-foreground" data-tabular>
+                          {money(addon.priceInCents)}
+                        </span>
+                      </label>
+                    ))}
+                  </fieldset>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Objections, per the pricing pattern. */}
+          <section className="mx-auto max-w-3xl">
+            <h2 className="mb-4 text-lg font-semibold text-foreground">Common questions</h2>
+            <Accordion type="single" collapsible className="w-full">
+              {FAQ.map((item) => (
+                <AccordionItem key={item.q} value={item.q}>
+                  <AccordionTrigger className="text-left text-sm">{item.q}</AccordionTrigger>
+                  <AccordionContent className="text-sm text-muted-foreground">
+                    {item.a}
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </section>
+
+          {/* Running total stays put instead of scrolling away. */}
+          {selectedSubjects.length > 0 && (
+            <div
+              role="region"
+              aria-label="Your selection"
+              className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur lg:left-64"
+            >
+              <div className="mx-auto flex max-w-6xl flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between lg:px-8">
+                <div className="min-w-0">
+                  <p className="text-sm text-muted-foreground" data-tabular>
+                    {selectedSubjects.length}{" "}
+                    {selectedSubjects.length === 1 ? "subject" : "subjects"}
+                    {addPrinting || addAI ? " + extras" : ""}
+                  </p>
+                  <p className="font-sans text-2xl font-semibold text-foreground" data-tabular>
+                    {money(selectedTotal)}
+                  </p>
+                  {bundleBeatsSelection && (
+                    <p className="text-xs text-warning">
+                      The bundle costs {money(bundle!.priceInCents)} and covers every subject.
+                    </p>
+                  )}
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  {bundleBeatsSelection && (
+                    <Button variant="outline" onClick={handleBundlePurchase} className="h-11">
+                      Switch to bundle
+                    </Button>
+                  )}
+                  <Button onClick={handleIndividualPurchase} size="lg" className="h-11 flex-1 sm:flex-none">
+                    Continue to checkout
+                  </Button>
                 </div>
               </div>
-
-              {availableSubjects.length === 0 ? (
-                <Card className="max-w-lg mx-auto">
-                  <CardContent className="py-12 text-center">
-                    <Check className="h-12 w-12 text-emerald-500 mx-auto mb-4" />
-                    <p className="text-lg font-medium text-foreground">You have access to all subjects!</p>
-                    <p className="text-sm text-muted-foreground">Head to the exams page to start practicing.</p>
-                  </CardContent>
-                </Card>
-              ) : (
-                <>
-                  {/* Subject Selection */}
-                  <Card className="max-w-2xl mx-auto">
-                    <CardHeader>
-                      <CardTitle className="text-lg">Select Subjects</CardTitle>
-                      <CardDescription>
-                        {selectedTier === "exams-only" ? "Practice exams only" : "Full learning content + exams"} (12-month access)
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      {availableSubjects.map((product) => {
-                        const subject = subjects.find((s) => s.id === product.subjectId)
-                        const isSelected = selectedSubjects.includes(product.id)
-                        return (
-                          <div
-                            key={product.id}
-                            onClick={() => toggleSubject(product.id)}
-                            className={cn(
-                              "flex items-center justify-between p-4 rounded-lg border cursor-pointer transition-colors",
-                              isSelected ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
-                            )}
-                          >
-                            <div className="flex items-center gap-3">
-                              <div
-                                className={cn(
-                                  "h-5 w-5 rounded border flex items-center justify-center",
-                                  isSelected ? "bg-primary border-primary" : "border-muted-foreground"
-                                )}
-                              >
-                                {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
-                              </div>
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <Badge variant="outline">{subject?.code}</Badge>
-                                  <span className="font-medium text-foreground">{subject?.name}</span>
-                                </div>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  {subject?.totalQuestions} questions
-                                </p>
-                              </div>
-                            </div>
-                            <span className="font-bold text-foreground">${(product.priceInCents / 100).toFixed(0)}</span>
-                          </div>
-                        )
-                      })}
-                    </CardContent>
-                  </Card>
-
-                  {/* Add-ons */}
-                  <Card className="max-w-2xl mx-auto">
-                    <CardHeader>
-                      <CardTitle className="text-lg">Premium Add-ons</CardTitle>
-                      <CardDescription>Enhance your study experience</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="flex items-center justify-between p-4 rounded-lg border border-border">
-                        <div className="flex items-center gap-3">
-                          <Printer className="h-5 w-5 text-muted-foreground" />
-                          <div>
-                            <p className="font-medium text-foreground">{printAddon.name}</p>
-                            <p className="text-xs text-muted-foreground">{printAddon.description}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm font-medium text-foreground">
-                            +${(printAddon.priceInCents / 100).toFixed(0)}
-                          </span>
-                          <Switch checked={addPrinting} onCheckedChange={setAddPrinting} />
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between p-4 rounded-lg border border-border">
-                        <div className="flex items-center gap-3">
-                          <BrainCircuit className="h-5 w-5 text-muted-foreground" />
-                          <div>
-                            <p className="font-medium text-foreground">{aiAddon.name}</p>
-                            <p className="text-xs text-muted-foreground">{aiAddon.description}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm font-medium text-foreground">
-                            +${(aiAddon.priceInCents / 100).toFixed(0)}
-                          </span>
-                          <Switch checked={addAI} onCheckedChange={setAddAI} />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Summary & Checkout */}
-                  <Card className="max-w-2xl mx-auto sticky bottom-4 shadow-lg border-primary/20">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-muted-foreground">
-                            {selectedSubjects.length} subject{selectedSubjects.length !== 1 ? "s" : ""} selected
-                            {(addPrinting || addAI) && " + add-ons"}
-                          </p>
-                          <p className="text-2xl font-bold text-foreground">${(selectedTotal / 100).toFixed(2)}</p>
-                        </div>
-                        <Button
-                          size="lg"
-                          disabled={selectedSubjects.length === 0}
-                          onClick={handleIndividualPurchase}
-                          className="gap-2"
-                        >
-                          Continue
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </>
-              )}
-            </TabsContent>
-          </Tabs>
+            </div>
+          )}
         </>
       )}
-
-      {/* Pass Guarantee */}
-      <Card className="max-w-2xl mx-auto bg-secondary/30">
-        <CardContent className="p-6 text-center">
-          <ShieldCheck className="h-10 w-10 text-primary mx-auto mb-3" />
-          <h3 className="font-semibold text-foreground mb-2">Pass Guarantee</h3>
-          <p className="text-sm text-muted-foreground">
-            If you don't pass your CASA exam after completing all practice exams, we'll extend your access for free
-            until you do.
-          </p>
-        </CardContent>
-      </Card>
     </div>
   )
 }

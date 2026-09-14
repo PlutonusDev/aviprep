@@ -11,6 +11,17 @@ export async function PATCH(request: NextRequest) {
 
     const { profilePicture } = await request.json()
 
+    // Only our own uploads (or null to remove). Anything else let a user point
+    // their avatar - shown to everyone in the forums - at any URL they liked.
+    const valid =
+      profilePicture === null ||
+      (typeof profilePicture === "string" &&
+        profilePicture.length < 500 &&
+        (/^\/(?!\/)/.test(profilePicture) || /^https:\/\//.test(profilePicture)))
+    if (!valid) {
+      return NextResponse.json({ error: "Invalid image" }, { status: 400 })
+    }
+
     const user = await prisma.user.update({
       where: { id: session.id },
       data: { profilePicture },

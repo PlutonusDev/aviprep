@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@lib/prisma"
 import { verifyToken } from "@lib/auth"
 import { cookies } from "next/headers"
+import { FORUM_ACCESS_ERROR, hasForumAccess } from "@lib/forum-access"
 
 export async function GET(request: Request, { params }: { params: Promise<{ threadId: string }> }) {
   try {
@@ -18,27 +19,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ thre
       return NextResponse.json({ error: "Invalid token" }, { status: 401 })
     }
 
-    // Check forum access
-    const purchases = await prisma.purchase.count({
-      where: {
-        userId: payload.userId,
-        expiresAt: { gt: new Date() },
-      },
-    })
-
-    if (purchases === 0) {
-      return NextResponse.json({ error: "Forum access requires at least one active subject purchase" }, { status: 403 })
+    if (!(await hasForumAccess(payload.userId))) {
+      return NextResponse.json({ error: FORUM_ACCESS_ERROR }, { status: 403 })
     }
 
     const { searchParams } = new URL(request.url)
     const page = Number.parseInt(searchParams.get("page") || "1")
     const limit = 20
-
-    // Increment view count
-    await prisma.thread.update({
-      where: { slug: threadId },
-      data: { viewCount: { increment: 1 } },
-    })
 
     const thread = await prisma.thread.findUnique({
       where: { slug: threadId },
@@ -58,8 +45,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ thre
       },
     })
 
-    if (!thread) {
+    if (!thread || thread.deleted) {
       return NextResponse.json({ error: "Thread not found" }, { status: 404 })
+    }
+
+    // Count a view once per visit. Refetches after posting or reacting pass
+    // ?view=0, which used to inflate the count every time.
+    if (searchParams.get("view") !== "0") {
+      await prisma.thread.update({ where: { id: thread.id }, data: { viewCount: { increment: 1 } } })
     }
 
     const [posts, total] = await Promise.all([

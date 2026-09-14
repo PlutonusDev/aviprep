@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@lib/prisma"
 import { verifyToken } from "@lib/auth"
 import { cookies } from "next/headers"
+import { FORUM_ACCESS_ERROR, hasForumAccess } from "@lib/forum-access"
 
 function generateSlug(title: string): string {
   return title
@@ -38,16 +39,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Your forum posting privileges have been suspended" }, { status: 403 })
     }
 
-    // Check forum access
-    const purchases = await prisma.purchase.count({
-      where: {
-        userId: payload.userId,
-        expiresAt: { gt: new Date() },
-      },
-    })
-
-    if (purchases === 0) {
-      return NextResponse.json({ error: "Forum access requires at least one active subject purchase" }, { status: 403 })
+    if (!(await hasForumAccess(payload.userId))) {
+      return NextResponse.json({ error: FORUM_ACCESS_ERROR }, { status: 403 })
     }
 
     const { forumId, title, content } = await request.json()
@@ -62,14 +55,19 @@ export async function POST(request: Request) {
       }
     });
 
-    if(forum.protected || !user.isAdmin) return NextResponse.json({ error: "Forum is protected" }, { status: 403 });
+    if (!forum) return NextResponse.json({ error: "Forum not found" }, { status: 404 })
+    // Was `||`, which stopped everyone but admins starting a thread anywhere.
+    if (forum.protected && !user?.isAdmin) {
+      return NextResponse.json({ error: "Only moderators can post here" }, { status: 403 })
+    }
+    if (!title.trim() || title.trim().length > 150) {
+      return NextResponse.json({ error: "Titles need to be 1-150 characters" }, { status: 400 })
+    }
 
     // Generate unique slug
     let slug = generateSlug(title)
-    const existing = await prisma.thread.findFirst({
-      where: { forumId: forum.id, slug },
-    })
-    if (existing) {
+    const existing = await prisma.thread.findFirst({ where: { slug } })
+    if (existing || !slug) {
       slug = `${slug}-${Date.now()}`
     }
 
@@ -77,7 +75,7 @@ export async function POST(request: Request) {
     const thread = await prisma.$transaction(async (tx) => {
       const newThread = await tx.thread.create({
         data: {
-          title,
+          title: title.trim(),
           slug,
           forumId: forum.id,
           authorId: payload.userId,

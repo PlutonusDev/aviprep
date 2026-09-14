@@ -26,7 +26,7 @@ export async function PATCH(request: Request) {
     }
 
     if (newPassword.length < 8) {
-      return NextResponse.json({ error: "New password must be at least 8 characters" }, { status: 400 })
+      return NextResponse.json({ error: "Use at least 8 characters", field: "newPassword" }, { status: 400 })
     }
 
     // Find user
@@ -41,8 +41,13 @@ export async function PATCH(request: Request) {
     // Verify old password
     const isValid = await verifyPassword(oldPassword, user.passwordHash)
 
+    // 400, not 401: a wrong current password isn't an expired session.
     if (!isValid) {
-      return NextResponse.json({ error: "Invalid password" }, { status: 401 })
+      return NextResponse.json({ error: "Your current password is incorrect", field: "oldPassword" }, { status: 400 })
+    }
+
+    if (await verifyPassword(newPassword, user.passwordHash)) {
+      return NextResponse.json({ error: "Choose a password you haven't used here", field: "newPassword" }, { status: 400 })
     }
 
     const passwordHash = await hashPassword(newPassword)
@@ -63,7 +68,7 @@ export async function PATCH(request: Request) {
       },
     })
   } catch (error) {
-    console.error("Login error:", error)
-    return NextResponse.json({ error: "An error occurred during login" }, { status: 500 })
+    console.error("Update password error:", error)
+    return NextResponse.json({ error: "Couldn't update your password" }, { status: 500 })
   }
 }

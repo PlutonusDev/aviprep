@@ -18,6 +18,16 @@ export async function GET(request: Request, { params }: { params: Promise<{ part
       return NextResponse.json({ error: "Invalid token" }, { status: 401 })
     }
 
+    if (!/^[a-f0-9]{24}$/i.test(partnerId)) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 })
+    }
+
+    // ?after=<ISO date> returns only newer messages, so polling doesn't resend
+    // the whole conversation every few seconds.
+    const afterParam = new URL(request.url).searchParams.get("after")
+    const after = afterParam ? new Date(afterParam) : null
+    const since = after && !Number.isNaN(after.getTime()) ? after : null
+
     // Get partner info
     const partner = await prisma.user.findUnique({
       where: { id: partnerId },
@@ -28,21 +38,25 @@ export async function GET(request: Request, { params }: { params: Promise<{ part
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    // Get messages between users
-    const messages = await prisma.privateMessage.findMany({
+    // Get messages between users: the newest 300, returned oldest first.
+    const latest = await prisma.privateMessage.findMany({
       where: {
         OR: [
           { senderId: payload.userId, receiverId: partnerId },
           { senderId: partnerId, receiverId: payload.userId },
         ],
+        ...(since && { createdAt: { gt: since } }),
       },
-      orderBy: { createdAt: "asc" },
+      orderBy: { createdAt: "desc" },
+      take: 300,
       include: {
         sender: {
           select: { id: true, firstName: true, lastName: true, profilePicture: true },
         },
       },
     })
+
+    const messages = latest.reverse()
 
     // Mark received messages as read
     await prisma.privateMessage.updateMany({

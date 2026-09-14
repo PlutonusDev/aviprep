@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@lib/prisma"
 import { hashPassword, isValidAustralianPhone, isValidARN } from "@lib/auth"
 import { sendEmailWelcome } from "@lib/email"
-import { getCustomTemplate } from "@lib/email-templates"
+import { getSchoolWelcomeTemplate } from "@lib/email-school-welcome"
 
 async function authenticateApiKey(request: Request) {
   const authHeader = request.headers.get("Authorization")
@@ -18,6 +18,8 @@ async function authenticateApiKey(request: Request) {
       name: true,
       apiEnabled: true,
       maxStudents: true,
+      subdomain: true,
+      logo: true,
     },
   })
 
@@ -176,22 +178,21 @@ export async function POST(request: Request) {
       },
     })
 
-    const html = `
-        <p>Hi ${firstName},</p>
-        <p>You have been enrolled in ${school.name} on AviPrep.</p>
-        <p>Your temporary login credentials:</p>
-        <ul>
-          <li>Email: ${email}</li>
-          <li>Password: <strong>${tempPassword}</strong></li>
-        </ul>
-        <p>Please log in and change your password immediately.</p>
-      `
-
     // Send welcome email
     sendEmailWelcome({
       to: newUser.email,
-      subject: `Welcome to AviPrep - ${school.name}`,
-      html: getCustomTemplate(html, newUser.email),
+      subject: `Welcome to ${school.name} on AviPrep`,
+      html: getSchoolWelcomeTemplate({
+        firstName,
+        email: newUser.email,
+        schoolName: school.name,
+        schoolLogo: school.logo,
+        // Schools without a subdomain still sign in on the main site.
+        loginUrl: school.subdomain
+          ? `https://${school.subdomain}.aviprep.com.au/login`
+          : "https://aviprep.com.au/login",
+        tempPassword,
+      }),
     }).catch(console.error)
 
     return NextResponse.json({

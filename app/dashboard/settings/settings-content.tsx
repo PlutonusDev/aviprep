@@ -1,19 +1,28 @@
 "use client"
 
 import type React from "react"
-
-import { useState, useRef } from "react"
-import { useUser } from "@lib/user-context"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
-import { Separator } from "@/components/ui/separator"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { useEffect, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
+import Link from "next/link"
+import {
+  Camera,
+  Check,
+  Compass,
+  CreditCard,
+  ExternalLink,
+  Eye,
+  EyeOff,
+  KeyRound,
+  Loader2,
+  Mail,
+  ShieldCheck,
+  Trash2,
+  User,
+} from "lucide-react"
+import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
-import { User, Bell, Shield, CreditCard, Trash2, Camera, Loader2 } from "lucide-react"
-import { ImageCropper } from "@/components/hub/image-cropper"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
 import {
   Dialog,
   DialogContent,
@@ -21,451 +30,557 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
-import { toast } from "sonner"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { ImageCropper } from "@/components/hub/image-cropper"
+import { PageHeader, PageShell } from "@/components/hub/page-primitives"
+import { UserAvatar } from "@/components/forum/forum-ui"
+import { useTenant } from "@lib/tenant-context"
+import { useUser } from "@lib/user-context"
+import { cn } from "@lib/utils"
+
+const SUPPORT_EMAIL = "support@aviprep.com.au"
+
+const SECTIONS = [
+  { id: "profile", label: "Profile", icon: User },
+  { id: "billing", label: "Access & billing", icon: CreditCard },
+  { id: "security", label: "Security", icon: ShieldCheck },
+  { id: "help", label: "Help", icon: Compass },
+] as const
+
+const dateFmt = (d: string | Date) =>
+  new Date(d).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })
+
+function daysUntil(d: string | Date) {
+  return Math.ceil((new Date(d).getTime() - Date.now()) / 86_400_000)
+}
+
+/* --- Layout pieces ------------------------------------------------------------ */
+
+function Section({
+  id,
+  title,
+  description,
+  children,
+}: {
+  id: string
+  title: string
+  description?: string
+  children: React.ReactNode
+}) {
+  return (
+    <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-24">
+      <div className="mb-3">
+        <h2 id={`${id}-title`} className="text-base font-semibold text-foreground">
+          {title}
+        </h2>
+        {description && <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>}
+      </div>
+      <Card className="overflow-hidden shadow-e1">
+        <CardContent className="divide-y divide-border p-0">{children}</CardContent>
+      </Card>
+    </section>
+  )
+}
+
+/** One setting: label and detail on the left, value or action on the right. */
+function Row({
+  label,
+  detail,
+  children,
+}: {
+  label: string
+  detail?: React.ReactNode
+  children?: React.ReactNode
+}) {
+  return (
+    <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+      <div className="min-w-0">
+        <p className="font-medium text-foreground">{label}</p>
+        {detail && <div className="mt-0.5 text-sm text-muted-foreground [overflow-wrap:anywhere]">{detail}</div>}
+      </div>
+      {children && <div className="flex shrink-0 items-center gap-2">{children}</div>}
+    </div>
+  )
+}
+
+/* --- Page --------------------------------------------------------------------- */
 
 export default function SettingsContent() {
-  const { user, purchases, refresh } = useUser()
-  const [isUploading, setIsUploading] = useState(false)
-  const [uploadError, setUploadError] = useState<string | null>(null)
+  const { user } = useUser()
+  const [active, setActive] = useState<string>("profile")
+
+  // Highlight the section in view.
+  useEffect(() => {
+    const els = SECTIONS.map((s) => document.getElementById(s.id)).filter(Boolean) as HTMLElement[]
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)
+        if (visible[0]) setActive(visible[0].target.id)
+      },
+      { rootMargin: "-96px 0px -55% 0px" },
+    )
+    els.forEach((el) => observer.observe(el))
+    return () => observer.disconnect()
+  }, [user])
+
+  return (
+    <PageShell>
+      <PageHeader title="Settings" description="Your account, access and security." />
+
+      <div className="grid gap-8 lg:grid-cols-[13rem_1fr]">
+        <nav aria-label="Settings sections" className="lg:sticky lg:top-24 lg:self-start">
+          <ul className="flex gap-1 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">
+            {SECTIONS.map((s) => (
+              <li key={s.id} className="shrink-0">
+                <a
+                  href={`#${s.id}`}
+                  aria-current={active === s.id ? "true" : undefined}
+                  onClick={() => setActive(s.id)}
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    active === s.id
+                      ? "bg-muted font-medium text-foreground"
+                      : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                  )}
+                >
+                  <s.icon className="h-4 w-4" aria-hidden="true" />
+                  {s.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        <div className="min-w-0 max-w-3xl space-y-10">
+          <ProfileSection />
+          <BillingSection />
+          <SecuritySection />
+          <HelpSection />
+        </div>
+      </div>
+    </PageShell>
+  )
+}
+
+/* --- Profile -------------------------------------------------------------------- */
+
+function ProfileSection() {
+  const { user, refresh } = useUser()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [image, setImage] = useState<string | null>(null)
+  const [busy, setBusy] = useState<"upload" | "remove" | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
-  const [cropperOpen, setCropperOpen] = useState(false)
-  const [selectedImage, setSelectedImage] = useState<string | null>(null)
+  function pickFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ""
+    if (!file) return
+    if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)) {
+      return setError("Use a JPG, PNG, WebP or GIF.")
+    }
+    if (file.size > 5 * 1024 * 1024) return setError("That image is over 5MB.")
+    setError(null)
+    setImage(URL.createObjectURL(file))
+  }
 
-  const [passwordData, setPasswordData] = useState({
-    oldPassword: "",
-    newPassword: "",
-    confirmPassword: "",
-  })
-  const [isChangingPassword, setIsChangingPassword] = useState(false)
-  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false)
+  function closeCropper() {
+    if (image) URL.revokeObjectURL(image)
+    setImage(null)
+  }
 
-  const handlePasswordChange = async (e: React.FormEvent) => {
+  async function savePicture(profilePicture: string | null) {
+    const res = await fetch("/api/user/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ profilePicture }),
+    })
+    if (!res.ok) throw new Error()
+    await refresh()
+  }
+
+  async function upload(blob: Blob) {
+    closeCropper()
+    setBusy("upload")
+    setError(null)
+    try {
+      const form = new FormData()
+      form.append("file", new File([blob], "avatar.jpg", { type: "image/jpeg" }))
+      const res = await fetch("/api/upload", { method: "POST", body: form })
+      if (!res.ok) throw new Error()
+      const { url } = await res.json()
+      await savePicture(url)
+      toast.success("Photo updated")
+    } catch {
+      setError("Couldn't upload that photo. Try again.")
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function remove() {
+    setBusy("remove")
+    try {
+      await savePicture(null)
+      toast.success("Photo removed")
+    } catch {
+      setError("Couldn't remove your photo.")
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const changeRequest = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("Update my account details")}`
+
+  return (
+    <Section id="profile" title="Profile" description="Shown on your forum posts and messages.">
+      {image && <ImageCropper open onClose={closeCropper} imageSrc={image} onCropComplete={upload} />}
+
+      <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:p-5">
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={!!busy}
+          className="group relative h-20 w-20 shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          aria-label="Change photo"
+        >
+          <UserAvatar firstName={user?.firstName} lastName={user?.lastName} src={user?.profilePicture} className="h-20 w-20 text-xl" />
+          <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+            {busy === "upload" ? (
+              <Loader2 className="h-5 w-5 animate-spin text-white" aria-hidden="true" />
+            ) : (
+              <Camera className="h-5 w-5 text-white" aria-hidden="true" />
+            )}
+          </span>
+        </button>
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold text-foreground">
+            {user?.firstName} {user?.lastName}
+          </p>
+          <p className="text-sm text-muted-foreground">{user?.email}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" className="h-9" onClick={() => fileInputRef.current?.click()} disabled={!!busy}>
+              {busy === "upload" ? "Uploading..." : user?.profilePicture ? "Change photo" : "Add photo"}
+            </Button>
+            {user?.profilePicture && (
+              <Button variant="ghost" size="sm" className="h-9 text-muted-foreground" onClick={remove} disabled={!!busy}>
+                {busy === "remove" ? "Removing..." : "Remove"}
+              </Button>
+            )}
+          </div>
+          {error && (
+            <p role="alert" className="mt-2 text-sm text-destructive">
+              {error}
+            </p>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            onChange={pickFile}
+            className="sr-only"
+            tabIndex={-1}
+            aria-hidden="true"
+          />
+        </div>
+      </div>
+
+      <dl className="grid gap-x-6 gap-y-4 p-4 sm:grid-cols-2 sm:p-5">
+        {[
+          { label: "First name", value: user?.firstName },
+          { label: "Last name", value: user?.lastName },
+          { label: "Email", value: user?.email },
+          { label: "Phone", value: user?.phone },
+          { label: "ARN", value: user?.arn },
+          { label: "Member since", value: user?.createdAt ? dateFmt(user.createdAt) : undefined },
+        ].map((f) => (
+          <div key={f.label} className="min-w-0">
+            <dt className="text-xs font-medium text-muted-foreground">{f.label}</dt>
+            <dd className="mt-0.5 truncate text-sm text-foreground" title={f.value ?? undefined}>
+              {f.value || "—"}
+            </dd>
+          </div>
+        ))}
+      </dl>
+
+      <div className="flex items-center justify-between gap-3 bg-muted/30 px-4 py-3 text-sm text-muted-foreground sm:px-5">
+        <span>These are tied to your CASA details, so changes go through support.</span>
+        <a href={changeRequest} className="shrink-0 font-medium text-primary hover:underline">
+          Request a change
+        </a>
+      </div>
+    </Section>
+  )
+}
+
+/* --- Access & billing ------------------------------------------------------------ */
+
+function BillingSection() {
+  const { user, purchases } = useUser()
+  const { tenant, isWhitelabeled } = useTenant()
+  const [opening, setOpening] = useState(false)
+
+  const now = Date.now()
+  const bundleActive = !!(user?.hasBundle && user.bundleExpiry && new Date(user.bundleExpiry).getTime() > now)
+  const active = purchases
+    .filter((p) => new Date(p.expiresAt).getTime() > now)
+    .sort((a, b) => new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime())
+  const hasPaid = bundleActive || active.length > 0
+
+  async function openPortal() {
+    setOpening(true)
+    try {
+      const res = await fetch("/api/user/billing-portal", { method: "POST" })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.url) throw new Error(data.error)
+      window.location.assign(data.url)
+    } catch (err) {
+      toast.error(err instanceof Error && err.message ? err.message : "Couldn't open billing. Try again.")
+      setOpening(false)
+    }
+  }
+
+  return (
+    <Section id="billing" title="Access & billing">
+      {isWhitelabeled && (
+        <Row
+          label={`Provided by ${tenant?.name ?? "your school"}`}
+          detail="Your school chooses which subjects you can study."
+        >
+          <Button asChild variant="outline" size="sm" className="h-9">
+            <Link href="/dashboard/exams">View subjects</Link>
+          </Button>
+        </Row>
+      )}
+
+      {bundleActive && (
+        <Row
+          label="All-subject bundle"
+          detail={<ExpiryText date={user!.bundleExpiry!} />}
+        >
+          <Badge>Every subject</Badge>
+        </Row>
+      )}
+
+      {!bundleActive &&
+        active.map((p) => (
+          <Row key={p.id} label={p.subjectName} detail={<ExpiryText date={p.expiresAt} />}>
+            <Badge variant="outline">{p.subjectCode}</Badge>
+          </Row>
+        ))}
+
+      {!hasPaid && !isWhitelabeled && (
+        <Row label="No active subjects" detail="Pick a subject to unlock its lessons and exams.">
+          <Button asChild size="sm" className="h-9">
+            <Link href="/dashboard/pricing">See subjects</Link>
+          </Button>
+        </Row>
+      )}
+
+      {hasPaid && !isWhitelabeled && (
+        <Row label="Payment details" detail="Update your card, get invoices or cancel a subscription.">
+          <Button variant="outline" size="sm" className="h-9 gap-1.5" onClick={openPortal} disabled={opening}>
+            {opening ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />}
+            Manage billing
+          </Button>
+        </Row>
+      )}
+    </Section>
+  )
+}
+
+function ExpiryText({ date }: { date: string | Date }) {
+  const days = daysUntil(date)
+  if (days <= 14) {
+    return (
+      <span className="text-foreground">
+        <span className="font-medium text-warning">Ends in {days} {days === 1 ? "day" : "days"}</span> &middot; {dateFmt(date)}
+      </span>
+    )
+  }
+  return <>Access until {dateFmt(date)}</>
+}
+
+/* --- Security ------------------------------------------------------------------- */
+
+function SecuritySection() {
+  const [open, setOpen] = useState(false)
+  const closeRequest = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("Close my account")}`
+
+  return (
+    <Section id="security" title="Security">
+      <Row label="Password" detail="Use at least 8 characters.">
+        <Button variant="outline" size="sm" className="h-9 gap-1.5" onClick={() => setOpen(true)}>
+          <KeyRound className="h-3.5 w-3.5" aria-hidden="true" />
+          Change password
+        </Button>
+      </Row>
+      <Row label="Close account" detail="We'll delete your account and study history. This can't be undone.">
+        <Button asChild variant="ghost" size="sm" className="h-9 gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive">
+          <a href={closeRequest}>
+            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+            Request closure
+          </a>
+        </Button>
+      </Row>
+      <PasswordDialog open={open} onOpenChange={setOpen} />
+    </Section>
+  )
+}
+
+type PasswordField = "oldPassword" | "newPassword" | "confirmPassword"
+
+function PasswordDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+  const [values, setValues] = useState<Record<PasswordField, string>>({ oldPassword: "", newPassword: "", confirmPassword: "" })
+  const [errors, setErrors] = useState<Partial<Record<PasswordField, string>>>({})
+  const [show, setShow] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (!open) {
+      setValues({ oldPassword: "", newPassword: "", confirmPassword: "" })
+      setErrors({})
+      setShow(false)
+    }
+  }, [open])
+
+  const set = (field: PasswordField) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setValues((v) => ({ ...v, [field]: e.target.value }))
+    if (errors[field]) setErrors((er) => ({ ...er, [field]: undefined }))
+  }
+
+  async function submit(e: React.FormEvent) {
     e.preventDefault()
-
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      toast.error("New passwords do not match")
+    const next: typeof errors = {}
+    if (!values.oldPassword) next.oldPassword = "Enter your current password"
+    if (values.newPassword.length < 8) next.newPassword = "Use at least 8 characters"
+    if (values.confirmPassword !== values.newPassword) next.confirmPassword = "Passwords don't match"
+    setErrors(next)
+    if (Object.keys(next).length) {
+      document.getElementById(Object.keys(next)[0])?.focus()
       return
     }
 
-    setIsChangingPassword(true)
+    setSaving(true)
     try {
       const res = await fetch("/api/auth/update-password", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          oldPassword: passwordData.oldPassword,
-          newPassword: passwordData.newPassword,
-        }),
+        body: JSON.stringify({ oldPassword: values.oldPassword, newPassword: values.newPassword }),
       })
-
-      const data = await res.json()
-
-      if (!res.ok) throw new Error(data.message || "Failed to update password")
-
-      toast.success("Password updated successfully")
-      setPasswordDialogOpen(false)
-      setPasswordData({ oldPassword: "", newPassword: "", confirmPassword: "" })
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Something went wrong")
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        const field: PasswordField = data.field ?? "oldPassword"
+        setErrors({ [field]: data.error || "Couldn't update your password" })
+        document.getElementById(field)?.focus()
+        return
+      }
+      toast.success("Password changed")
+      onOpenChange(false)
+    } catch {
+      toast.error("Couldn't update your password. Check your connection.")
     } finally {
-      setIsChangingPassword(false)
+      setSaving(false)
     }
   }
 
-  const handleAvatarClick = () => {
-    fileInputRef.current?.click()
-  }
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    // Validate file type
-    if (!file.type.startsWith("image/")) {
-      setUploadError("Please select an image file")
-      return
-    }
-
-    // Validate file size (max 5MB for original before crop)
-    if (file.size > 5 * 1024 * 1024) {
-      setUploadError("Image must be less than 5MB")
-      return
-    }
-
-    setUploadError(null)
-
-    // Create a URL for the image and open the cropper
-    const imageUrl = URL.createObjectURL(file)
-    setSelectedImage(imageUrl)
-    setCropperOpen(true)
-
-    // Reset file input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ""
-    }
-  }
-
-  const handleCropComplete = async (croppedBlob: Blob) => {
-    setCropperOpen(false)
-    setIsUploading(true)
-    setUploadError(null)
-
-    try {
-      // Create file from blob
-      const file = new File([croppedBlob], "avatar.jpg", { type: "image/jpeg" })
-
-      // Upload the cropped image
-      const formData = new FormData()
-      formData.append("file", file)
-
-      const uploadRes = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      })
-
-      if (!uploadRes.ok) {
-        throw new Error("Failed to upload image")
-      }
-
-      const { url } = await uploadRes.json()
-
-      // Update user profile with new avatar URL
-      const updateRes = await fetch("/api/user/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ profilePicture: url }),
-      })
-
-      if (!updateRes.ok) {
-        throw new Error("Failed to update profile")
-      }
-
-      // Refresh user data
-      refresh()
-    } catch (error) {
-      setUploadError(error instanceof Error ? error.message : "Failed to upload")
-    } finally {
-      setIsUploading(false)
-      // Clean up the object URL
-      if (selectedImage) {
-        URL.revokeObjectURL(selectedImage)
-        setSelectedImage(null)
-      }
-    }
-  }
-
-  const handleCropperClose = () => {
-    setCropperOpen(false)
-    if (selectedImage) {
-      URL.revokeObjectURL(selectedImage)
-      setSelectedImage(null)
-    }
-  }
-
-  const initials = user ? `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.toUpperCase() : "?"
-
-  // Calculate subscription info
-  const hasBundle = user?.hasBundle && user?.bundleExpiry && new Date(user.bundleExpiry) > new Date()
-  const activePurchases = purchases.filter((p) => new Date(p.expiresAt) > new Date())
+  const field = (id: PasswordField, label: string, autoComplete: string) => (
+    <div className="space-y-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <Input
+        id={id}
+        type={show ? "text" : "password"}
+        autoComplete={autoComplete}
+        value={values[id]}
+        onChange={set(id)}
+        aria-invalid={!!errors[id]}
+        aria-describedby={errors[id] ? `${id}-error` : undefined}
+        className="h-10"
+      />
+      {errors[id] && (
+        <p id={`${id}-error`} className="text-sm text-destructive">
+          {errors[id]}
+        </p>
+      )}
+    </div>
+  )
 
   return (
-    <div className="p-4 lg:p-6 space-y-6">
-      {selectedImage && (
-        <ImageCropper
-          open={cropperOpen}
-          onClose={handleCropperClose}
-          imageSrc={selectedImage}
-          onCropComplete={handleCropComplete}
-        />
-      )}
-
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Settings</h1>
-        <p className="text-muted-foreground">Manage your account and preferences</p>
-      </div>
-
-      {/* Profile Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="h-5 w-5" />
-            Profile
-          </CardTitle>
-          <CardDescription>Your personal information</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Avatar Upload */}
-          <div className="flex items-center gap-4">
-            <div className="relative group">
-              <Avatar className="h-20 w-20">
-                <AvatarImage src={user?.profilePicture || undefined} alt={user?.firstName} />
-                <AvatarFallback className="bg-primary text-primary-foreground text-xl">{initials}</AvatarFallback>
-              </Avatar>
-              <button
-                onClick={handleAvatarClick}
-                disabled={isUploading}
-                className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer disabled:cursor-not-allowed"
-              >
-                {isUploading ? (
-                  <Loader2 className="h-6 w-6 text-white animate-spin" />
-                ) : (
-                  <Camera className="h-6 w-6 text-white" />
-                )}
-              </button>
-              <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
-            </div>
-            <div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="bg-transparent"
-                onClick={handleAvatarClick}
-                disabled={isUploading}
-              >
-                {isUploading ? "Uploading..." : "Change Photo"}
-              </Button>
-              {uploadError && <p className="text-sm text-destructive mt-1">{uploadError}</p>}
-              <p className="text-xs text-muted-foreground mt-1">JPG, PNG or GIF. Max 5MB.</p>
-            </div>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <form onSubmit={submit} noValidate>
+          <DialogHeader>
+            <DialogTitle>Change password</DialogTitle>
+            <DialogDescription>You&apos;ll stay signed in on this device.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-5">
+            {field("oldPassword", "Current password", "current-password")}
+            {field("newPassword", "New password", "new-password")}
+            {field("confirmPassword", "Confirm new password", "new-password")}
+            <button
+              type="button"
+              onClick={() => setShow((s) => !s)}
+              aria-pressed={show}
+              className="flex items-center gap-1.5 rounded text-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {show ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
+              {show ? "Hide passwords" : "Show passwords"}
+            </button>
           </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={saving} className="gap-2">
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Check className="h-4 w-4" aria-hidden="true" />}
+              Update password
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
-          <Separator />
+/* --- Help ----------------------------------------------------------------------- */
 
-          {/* Read-only user info */}
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="firstName">First Name</Label>
-              <Input id="firstName" value={user?.firstName || ""} className="bg-secondary/50 border-0" disabled />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="lastName">Last Name</Label>
-              <Input id="lastName" value={user?.lastName || ""} className="bg-secondary/50 border-0" disabled />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={user?.email || ""} className="bg-secondary/50 border-0" disabled />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone</Label>
-              <Input id="phone" value={user?.phone || ""} className="bg-secondary/50 border-0" disabled />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="arn">Aviation Reference Number (ARN)</Label>
-              <Input id="arn" value={user?.arn || ""} className="bg-secondary/50 border-0" disabled />
-            </div>
-          </div>
+function HelpSection() {
+  const router = useRouter()
+  const [starting, setStarting] = useState(false)
 
-          <p className="text-sm text-muted-foreground">Contact support to update your personal information.</p>
-        </CardContent>
-      </Card>
+  function replayTour() {
+    setStarting(true)
+    // Clear the local guard too, or it would block the replay even after the
+    // server flag is reset.
+    try {
+      window.localStorage?.removeItem("aviprep:toured")
+    } catch {
+      // Storage may be unavailable.
+    }
+    // The tour only mounts on the dashboard, so reset the flag and go there.
+    fetch("/api/user/onboarding", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reset: true }),
+    }).finally(() => router.push("/dashboard"))
+  }
 
-      {/* Notifications */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Bell className="h-5 w-5" />
-            Notifications
-          </CardTitle>
-          <CardDescription>Manage how you receive updates</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-foreground">Email Notifications</p>
-              <p className="text-sm text-muted-foreground">Receive study reminders and progress updates</p>
-            </div>
-            <Switch defaultChecked />
-          </div>
-          <Separator />
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-foreground">Weekly Progress Report</p>
-              <p className="text-sm text-muted-foreground">Get a summary of your weekly performance</p>
-            </div>
-            <Switch defaultChecked />
-          </div>
-          <Separator />
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-foreground">Marketing Emails</p>
-              <p className="text-sm text-muted-foreground">Receive news about new features and promotions</p>
-            </div>
-            <Switch />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Subscription */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CreditCard className="h-5 w-5" />
-            Subscription
-          </CardTitle>
-          <CardDescription>Manage your subscription and billing</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {hasBundle ? (
-            <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/50">
-              <div className="flex items-center gap-3">
-                <Badge variant="default" className="bg-primary">
-                  Bundle
-                </Badge>
-                <div>
-                  <p className="font-medium text-foreground">CPL Bundle</p>
-                  <p className="text-sm text-muted-foreground">
-                    All 7 subjects • Renews{" "}
-                    {new Date(user!.bundleExpiry!).toLocaleDateString("en-AU", {
-                      month: "long",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
-                  </p>
-                </div>
-              </div>
-              <p className="font-bold text-foreground">$79/quarter</p>
-            </div>
-          ) : activePurchases.length > 0 ? (
-            <div className="space-y-2">
-              {activePurchases.map((purchase) => (
-                <div key={purchase.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
-                  <div>
-                    <p className="font-medium text-foreground">{purchase.subjectName}</p>
-                    <p className="text-sm text-muted-foreground">
-                      Expires{" "}
-                      {new Date(purchase.expiresAt).toLocaleDateString("en-AU", {
-                        month: "long",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </p>
-                  </div>
-                  <Badge variant="outline">{purchase.subjectCode}</Badge>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-6 text-muted-foreground">
-              <p>No active subscriptions</p>
-              <Button className="mt-2" asChild>
-                <a href="/dashboard/pricing">Get Access</a>
-              </Button>
-            </div>
-          )}
-
-          {(hasBundle || activePurchases.length > 0) && (
-            <div className="flex gap-2">
-              <Button variant="outline" className="bg-transparent">
-                Update Payment Method
-              </Button>
-              {hasBundle && (
-                <Button variant="outline" className="bg-transparent text-destructive hover:text-destructive">
-                  Cancel Subscription
-                </Button>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Security */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            Security
-          </CardTitle>
-          <CardDescription>Protect your account</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-foreground">Password</p>
-              <p className="text-sm text-muted-foreground">Change your account password</p>
-            </div>
-
-            <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" className="bg-transparent">
-                  Change Password
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
-                <form onSubmit={handlePasswordChange}>
-                  <DialogHeader>
-                    <DialogTitle>Update Password</DialogTitle>
-                    <DialogDescription>
-                      Enter your current password and choose a new secure one.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="oldPassword">Current Password</Label>
-                      <Input
-                        id="oldPassword"
-                        type="password"
-                        required
-                        value={passwordData.oldPassword}
-                        onChange={(e) => setPasswordData({ ...passwordData, oldPassword: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="newPassword">New Password</Label>
-                      <Input
-                        id="newPassword"
-                        type="password"
-                        required
-                        value={passwordData.newPassword}
-                        onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                      <Input
-                        id="confirmPassword"
-                        type="password"
-                        required
-                        value={passwordData.confirmPassword}
-                        onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button type="submit" disabled={isChangingPassword}>
-                      {isChangingPassword && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Update Password
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Danger Zone */}
-      <Card className="border-destructive/50">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-destructive">
-            <Trash2 className="h-5 w-5" />
-            Danger Zone
-          </CardTitle>
-          <CardDescription>Irreversible actions</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-foreground">Delete Account</p>
-              <p className="text-sm text-muted-foreground">Permanently delete your account and all associated data</p>
-            </div>
-            <Button variant="destructive">Delete Account</Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+  return (
+    <Section id="help" title="Help">
+      <Row label="Product tour" detail="A quick walk through subjects, lessons, exams and results.">
+        <Button variant="outline" size="sm" className="h-9" onClick={replayTour} disabled={starting}>
+          {starting ? "Starting..." : "Replay tour"}
+        </Button>
+      </Row>
+      <Row label="Contact support" detail={SUPPORT_EMAIL}>
+        <Button asChild variant="outline" size="sm" className="h-9 gap-1.5">
+          <a href={`mailto:${SUPPORT_EMAIL}`}>
+            <Mail className="h-3.5 w-3.5" aria-hidden="true" />
+            Email us
+          </a>
+        </Button>
+      </Row>
+    </Section>
   )
 }

@@ -1,148 +1,204 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import type React from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import Link from "@/components/meta/link"
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Textarea } from "@/components/ui/textarea"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import Link from "next/link"
+import { format } from "date-fns"
 import {
-  ChevronLeft,
-  Pin,
-  Lock,
-  MoreHorizontal,
-  Trash2,
-  Shield,
-  Heart,
-  ThumbsUp,
+  Eye,
   Flame,
-  Sparkles,
-  Send,
+  Heart,
+  Link2,
+  Lock,
+  LockOpen,
   Mail,
-  Reply,
+  MessageSquare,
+  MoreHorizontal,
   Pencil,
+  Pin,
+  PinOff,
+  Reply,
+  Send,
+  Shield,
+  Sparkles,
+  ThumbsUp,
+  Trash2,
   X,
-  MoreVertical,
 } from "lucide-react"
-import { format, formatDistanceToNow } from "date-fns"
-import { useUser } from "@lib/user-context"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Skeleton } from "@/components/ui/skeleton"
+import { EmptyState, LoadError, PageShell } from "@/components/hub/page-primitives"
+import { ForumBreadcrumb, ForumLocked, Pagination, UserAvatar, fullName, timeAgo } from "@/components/forum/forum-ui"
+import { RichTextContent } from "@/components/forum/rich-text-content"
 import RichTextEditor, { type RichTextEditorRef } from "@/components/forum/rich-text-editor"
-import { FaFire, FaGem, FaHeart, FaThumbsUp } from "react-icons/fa6"
+import { htmlToText } from "@lib/sanitize-html"
+import { useUser } from "@lib/user-context"
+import { cn } from "@lib/utils"
 
 const REACTIONS = [
-  { type: "heart", icon: Heart, Emoji: FaHeart },
-  { type: "thumbsup", icon: ThumbsUp, Emoji: FaThumbsUp },
-  { type: "fire", icon: Flame, Emoji: FaFire },
-  { type: "sparkles", icon: Sparkles, Emoji: FaGem },
-]
+  { type: "thumbsup", icon: ThumbsUp, label: "Helpful" },
+  { type: "heart", icon: Heart, label: "Love" },
+  { type: "fire", icon: Flame, label: "Fire" },
+  { type: "sparkles", icon: Sparkles, label: "Insightful" },
+] as const
+
+const PAGE_SIZE = 20
+
+interface Author {
+  id: string
+  firstName: string
+  lastName: string
+  profilePicture: string | null
+  isAdmin: boolean
+  postCount?: number
+}
 
 interface Reaction {
   id: string
   type: string
   userId: string
-  user: { firstName: string; lastName: string }
-}
-
-interface ReplyTo {
-  id: string
-  content: string
-  author: {
-    id: string
-    firstName: string
-    lastName: string
-  }
+  user: { firstName: string; lastName: string } | null
 }
 
 interface Post {
-  deleted: any
-  editedAt: any
   id: string
   content: string
   isFirstPost: boolean
+  deleted?: boolean
+  editedAt?: string | null
   createdAt: string
-  updatedAt: string
-  author: {
-    id: string
-    firstName: string
-    lastName: string
-    profilePicture: string | null
-    isAdmin: boolean
-    createdAt: string
-    postCount: number
-  }
+  author: Author | null
   reactions: Reaction[]
-  replyTo: ReplyTo | null
+  replyTo: { id: string; content: string; author: { id: string; firstName: string; lastName: string } | null } | null
 }
 
 interface Thread {
   id: string
+  slug: string
   title: string
   isSticky: boolean
   isClosed: boolean
   viewCount: number
-  forum: {
-    slug: any
-    id: string
-    name: string
-    category: { id: string; name: string }
-  }
-  author: {
-    id: string
-    firstName: string
-    lastName: string
-    isAdmin: boolean
-  }
+  createdAt: string
+  forum: { slug: string; name: string; category: { name: string } }
+  author: Author | null
 }
 
+type Confirm =
+  | { kind: "deleteThread" }
+  | { kind: "deletePost"; post: Post }
+  | { kind: "suspend"; post: Post }
+
 export default function ThreadContent() {
-  const params = useParams()
+  const params = useParams<{ forumId: string; threadId: string }>()
   const router = useRouter()
   const { user } = useUser()
-  const editorRef = useRef<RichTextEditorRef>(null)
+  const replyEditorRef = useRef<RichTextEditorRef>(null)
   const editEditorRef = useRef<RichTextEditorRef>(null)
+  const composerRef = useRef<HTMLDivElement>(null)
+  const countedView = useRef(false)
+  const usedHash = useRef(false)
+
   const [thread, setThread] = useState<Thread | null>(null)
   const [posts, setPosts] = useState<Post[]>([])
-  const [loading, setLoading] = useState(true)
+  const [status, setStatus] = useState<"loading" | "ready" | "locked" | "missing" | "error">("loading")
   const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
-  const [replyContent, setReplyContent] = useState("")
-  const [posting, setPosting] = useState(false)
+  const [total, setTotal] = useState(0)
+  const [scrollTarget, setScrollTarget] = useState<string | null>(null)
+
   const [replyingTo, setReplyingTo] = useState<Post | null>(null)
-  const [editingPost, setEditingPost] = useState<Post | null>(null)
-  const [editContent, setEditContent] = useState("")
+  const [posting, setPosting] = useState(false)
+  const [replyError, setReplyError] = useState<string | null>(null)
+
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
+
+  const [confirm, setConfirm] = useState<Confirm | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const isAdmin = !!user?.isAdmin
+
+  const load = useCallback(
+    async (targetPage: number) => {
+      try {
+        // Only the first load of a visit counts as a view.
+        const view = countedView.current ? "&view=0" : ""
+        countedView.current = true
+        const res = await fetch(`/api/forum/threads/${params.threadId}?page=${targetPage}${view}`)
+        if (res.status === 403) return setStatus("locked")
+        if (res.status === 404) return setStatus("missing")
+        if (!res.ok) throw new Error(String(res.status))
+        const data = await res.json()
+        setThread(data.thread)
+        setPosts(data.posts)
+        setTotal(data.pagination.total)
+        setStatus("ready")
+      } catch {
+        setStatus((s) => (s === "ready" ? s : "error"))
+      }
+    },
+    [params.threadId],
+  )
 
   useEffect(() => {
-    fetchThread()
-  }, [params.threadId, page])
+    load(page)
+  }, [load, page])
 
+  // Deep links (#post-id) on first render, and scrolling to a post just written.
   useEffect(() => {
-    if (editingPost && editEditorRef.current) {
-      editEditorRef.current.setContent(editingPost.content)
+    if (status !== "ready") return
+    let id = scrollTarget
+    if (!id && !usedHash.current) {
+      // The URL hash only applies to the first render, not every later update.
+      usedHash.current = true
+      if (window.location.hash.startsWith("#post-")) id = window.location.hash.slice(6)
     }
-  }, [editingPost])
+    if (!id) return
+    const el = document.getElementById(`post-${id}`)
+    if (!el) return
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" })
+    el.focus({ preventScroll: true })
+    setScrollTarget(null)
+  }, [status, posts, scrollTarget])
 
-  async function fetchThread() {
-    try {
-      const res = await fetch(`/api/forum/threads/${params.threadId}?page=${page}`)
-      if (!res.ok) throw new Error("Failed to load")
-      const data = await res.json()
-      setThread(data.thread)
-      setPosts(data.posts)
-      setTotalPages(data.pagination.totalPages)
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setLoading(false)
-    }
+  function flash(message: string) {
+    setNotice(message)
+    window.setTimeout(() => setNotice((n) => (n === message ? null : n)), 4000)
   }
 
-  async function handleReply() {
-    const content = editorRef.current?.getHTML() || ""
-    if (!content.trim() || content === "<p></p>") return
+  function startReply(post: Post | null) {
+    setReplyingTo(post)
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    composerRef.current?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" })
+    replyEditorRef.current?.focus()
+  }
+
+  async function submitReply() {
+    setReplyError(null)
+    if (replyEditorRef.current?.isEmpty()) return setReplyError("Write something first.")
     setPosting(true)
     try {
       const res = await fetch("/api/forum/posts", {
@@ -150,406 +206,595 @@ export default function ThreadContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           threadId: params.threadId,
-          content,
-          replyToId: replyingTo?.id || null,
+          content: replyEditorRef.current?.getHTML(),
+          replyToId: replyingTo?.id ?? null,
         }),
       })
-      if (!res.ok) {
-        const data = await res.json()
-        alert(data.error || "Failed to post reply")
-        return
-      }
-      editorRef.current?.clearContent()
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) return setReplyError(data.error || "Couldn't post your reply. Try again.")
+
+      replyEditorRef.current?.clearContent()
       setReplyingTo(null)
-      fetchThread()
-    } catch (err) {
-      console.error(err)
+      // New replies land on the last page; go there and bring the post into view.
+      const lastPage = Math.max(1, Math.ceil((total + 1) / PAGE_SIZE))
+      setScrollTarget(data.id)
+      if (lastPage === page) load(page)
+      else setPage(lastPage)
+    } catch {
+      setReplyError("Couldn't post your reply. Check your connection.")
     } finally {
       setPosting(false)
     }
   }
 
-  async function handleEditPost() {
-    if (!editingPost) return
-    const content = editEditorRef.current?.getHTML() || ""
-    if (!content.trim() || content === "<p></p>") return
+  async function saveEdit(post: Post) {
+    setEditError(null)
+    if (editEditorRef.current?.isEmpty()) return setEditError("A post can't be empty.")
     setSaving(true)
     try {
-      const res = await fetch(`/api/forum/posts/${editingPost.id}`, {
+      const content = editEditorRef.current?.getHTML() ?? ""
+      const res = await fetch(`/api/forum/posts/${post.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content }),
       })
-      if (!res.ok) {
-        const data = await res.json()
-        alert(data.error || "Failed to edit post")
-        return
-      }
-      setEditingPost(null)
-      fetchThread()
-    } catch (err) {
-      console.error(err)
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) return setEditError(data.error || "Couldn't save. Try again.")
+      setPosts((prev) =>
+        prev.map((p) => (p.id === post.id ? { ...p, content, editedAt: data.editedAt ?? new Date().toISOString() } : p)),
+      )
+      setEditingId(null)
+    } catch {
+      setEditError("Couldn't save. Check your connection.")
     } finally {
       setSaving(false)
     }
   }
 
-  async function handleReaction(postId: string, type: string) {
+  async function toggleReaction(post: Post, type: string) {
+    if (!user) return
+    const mine = post.reactions.find((r) => r.type === type && r.userId === user.id)
+    const optimistic = mine
+      ? post.reactions.filter((r) => r !== mine)
+      : [
+          ...post.reactions,
+          { id: `temp-${type}`, type, userId: user.id, user: { firstName: user.firstName, lastName: user.lastName } },
+        ]
+    const previous = post.reactions
+    setPosts((prev) => prev.map((p) => (p.id === post.id ? { ...p, reactions: optimistic } : p)))
     try {
-      await fetch("/api/forum/reactions", {
+      const res = await fetch("/api/forum/reactions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ postId, type }),
+        body: JSON.stringify({ postId: post.id, type }),
       })
-      fetchThread()
-    } catch (err) {
-      console.error(err)
+      if (!res.ok) throw new Error()
+    } catch {
+      setPosts((prev) => prev.map((p) => (p.id === post.id ? { ...p, reactions: previous } : p)))
     }
   }
 
-  async function handleAdminAction(action: string, id: string, data?: Record<string, unknown>) {
-    try {
-      if (action === "sticky" || action === "close") {
-        await fetch(`/api/forum/threads/${params.threadId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        })
-      } else if (action === "deleteThread") {
-        await fetch(`/api/forum/threads/${params.threadId}`, { method: "DELETE" })
-        router.push(`/dashboard/forum/${params.forumId}`)
-        return
-      } else if (action === "deletePost") {
-        await fetch(`/api/forum/posts/${id}`, { method: "DELETE" })
-      } else if (action === "suspendUser") {
-        await fetch(`/api/admin/members/${id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ isSuspendedFromForum: true }),
-        })
-      }
-      fetchThread()
-    } catch (err) {
-      console.error(err)
-    }
-  }
-
-  function scrollToPost(postId: string) {
-    const element = document.getElementById(`post-${postId}`)
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth", block: "center" })
-      element.classList.add("ring-2", "ring-primary")
-      setTimeout(() => element.classList.remove("ring-2", "ring-primary"), 2000)
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
+  async function moderateThread(data: { isSticky?: boolean; isClosed?: boolean }) {
+    const res = await fetch(`/api/forum/threads/${params.threadId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    })
+    if (!res.ok) return flash("That didn't work. Try again.")
+    setThread((t) => (t ? { ...t, ...data } : t))
+    flash(
+      data.isSticky !== undefined
+        ? data.isSticky
+          ? "Thread pinned"
+          : "Thread unpinned"
+        : data.isClosed
+          ? "Thread closed"
+          : "Thread reopened",
     )
   }
 
-  if (!thread) {
-    return <div>Thread not found</div>
+  async function runConfirm() {
+    if (!confirm) return
+    const c = confirm
+    setConfirm(null)
+    if (c.kind === "deleteThread") {
+      const res = await fetch(`/api/forum/threads/${params.threadId}`, { method: "DELETE" })
+      if (!res.ok) return flash("Couldn't delete the thread.")
+      router.push(`/dashboard/forum/${thread?.forum.slug ?? params.forumId}`)
+    } else if (c.kind === "deletePost") {
+      const res = await fetch(`/api/forum/posts/${c.post.id}`, { method: "DELETE" })
+      if (!res.ok) return flash("Couldn't delete the post.")
+      // Deleting the opening post removes the whole thread.
+      if (c.post.isFirstPost) return router.push(`/dashboard/forum/${thread?.forum.slug ?? params.forumId}`)
+      load(page)
+      flash("Post deleted")
+    } else if (c.kind === "suspend" && c.post.author) {
+      const res = await fetch(`/api/admin/members/${c.post.author.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isSuspendedFromForum: true }),
+      })
+      flash(res.ok ? `${fullName(c.post.author)} can no longer post` : "Couldn't suspend that member.")
+    }
   }
 
-  return (
-    <div className="p-4 lg:p-6 space-y-6">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/dashboard/forum" className="hover:text-foreground">
-          Forum
-        </Link>
-        <span>/</span>
-        <span className="text-muted-foreground">{thread.forum.category.name}</span>
-        <span>/</span>
-        <Link href={`/dashboard/forum/${thread.forum.slug}`} className="hover:text-foreground">
-          {thread.forum.name}
-        </Link>
-        <span>/</span>
-        <span className="truncate text-foreground">{thread.title}</span>
-      </div>
+  async function copyLink(post: Post) {
+    const url = `${window.location.origin}${window.location.pathname}#post-${post.id}`
+    try {
+      await navigator.clipboard.writeText(url)
+      flash("Link copied")
+    } catch {
+      flash("Couldn't copy the link")
+    }
+  }
 
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Link href={`/dashboard/forum/${thread.forum.id}`}>
-            <Button variant="ghost" size="icon">
-              <ChevronLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-          <div className="flex items-center gap-2">
-            {thread.isSticky && <Pin className="h-4 w-4 text-primary" />}
-            {thread.isClosed && <Lock className="h-4 w-4 text-muted-foreground" />}
-            <h1 className="text-xl font-bold">{thread.title}</h1>
-          </div>
+  if (status === "locked") return <ForumLocked />
+  if (status === "missing") {
+    return (
+      <PageShell>
+        <EmptyState icon={MessageSquare} title="Thread not found" description="It may have been removed.">
+          <Button asChild variant="outline" className="h-10">
+            <Link href={`/dashboard/forum/${params.forumId}`}>Back to forum</Link>
+          </Button>
+        </EmptyState>
+      </PageShell>
+    )
+  }
+  if (status === "error") return <LoadError title="Couldn't load this thread" message="Try again in a moment." />
+  if (status === "loading" || !thread) {
+    return (
+      <PageShell>
+        <div className="max-w-4xl space-y-3">
+          <Skeleton className="h-4 w-64" />
+          <Skeleton className="h-9 w-3/4" />
+          <Skeleton className="h-4 w-48" />
         </div>
-        {user?.isAdmin && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="cursor-pointer">
-                <Shield className="mr-2 h-4 w-4" />
-                Admin Tools
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem className="cursor-pointer" onClick={() => handleAdminAction("sticky", "", { isSticky: !thread.isSticky })}>
-                <Pin className="mr-2 h-4 w-4" />
-                {thread.isSticky ? "Unpin Thread" : "Pin Thread"}
-              </DropdownMenuItem>
-              <DropdownMenuItem className="cursor-pointer" onClick={() => handleAdminAction("close", "", { isClosed: !thread.isClosed })}>
-                <Lock className="mr-2 h-4 w-4" />
-                {thread.isClosed ? "Reopen Thread" : "Close Thread"}
-              </DropdownMenuItem>
-              <DropdownMenuItem className="cursor-pointer text-red-500" onClick={() => handleAdminAction("deleteThread", "")}>
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete Thread
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        <div className="max-w-4xl space-y-4">
+          <Skeleton className="h-48 rounded-xl" />
+          <Skeleton className="h-32 rounded-xl" />
+        </div>
+      </PageShell>
+    )
+  }
+
+  const replies = Math.max(0, total - 1)
+
+  return (
+    <PageShell>
+      <div className="max-w-4xl space-y-8">
+        <header className="space-y-3">
+          <ForumBreadcrumb
+            items={[
+              { label: "Forums", href: "/dashboard/forum" },
+              { label: thread.forum.name, href: `/dashboard/forum/${thread.forum.slug}` },
+              { label: thread.title },
+            ]}
+          />
+
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0 space-y-2">
+              {(thread.isSticky || thread.isClosed) && (
+                <div className="flex flex-wrap gap-2">
+                  {thread.isSticky && (
+                    <Badge variant="secondary" className="gap-1 font-normal">
+                      <Pin className="h-3 w-3" aria-hidden="true" />
+                      Pinned
+                    </Badge>
+                  )}
+                  {thread.isClosed && (
+                    <Badge variant="outline" className="gap-1 font-normal text-muted-foreground">
+                      <Lock className="h-3 w-3" aria-hidden="true" />
+                      Closed
+                    </Badge>
+                  )}
+                </div>
+              )}
+              <h1 className="text-display-3 font-bold text-balance text-foreground [overflow-wrap:anywhere]">
+                {thread.title}
+              </h1>
+              <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+                <span>
+                  {fullName(thread.author)} &middot; {timeAgo(thread.createdAt)}
+                </span>
+                <span aria-hidden="true">&middot;</span>
+                <span className="inline-flex items-center gap-1">
+                  <MessageSquare className="h-3.5 w-3.5" aria-hidden="true" />
+                  {replies} {replies === 1 ? "reply" : "replies"}
+                </span>
+                <span aria-hidden="true">&middot;</span>
+                <span className="inline-flex items-center gap-1">
+                  <Eye className="h-3.5 w-3.5" aria-hidden="true" />
+                  {thread.viewCount} {thread.viewCount === 1 ? "view" : "views"}
+                </span>
+              </p>
+            </div>
+
+            {isAdmin && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-9 shrink-0 gap-1.5">
+                    <Shield className="h-4 w-4" aria-hidden="true" />
+                    <span className="hidden sm:inline">Moderate</span>
+                    <span className="sr-only sm:hidden">Moderate thread</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => moderateThread({ isSticky: !thread.isSticky })}>
+                    {thread.isSticky ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
+                    {thread.isSticky ? "Unpin" : "Pin to top"}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => moderateThread({ isClosed: !thread.isClosed })}>
+                    {thread.isClosed ? <LockOpen className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+                    {thread.isClosed ? "Reopen" : "Close to replies"}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setConfirm({ kind: "deleteThread" })}>
+                    <Trash2 className="h-4 w-4" />
+                    Delete thread
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+        </header>
+
+        {totalPages > 1 && <Pagination page={page} totalPages={totalPages} onChange={setPage} />}
+
+        <ol className="space-y-4">
+          {posts.map((post) => (
+            <li key={post.id}>
+              <PostCard
+                post={post}
+                isOriginalAuthor={!!thread.author && post.author?.id === thread.author.id}
+                currentUserId={user?.id}
+                isAdmin={isAdmin}
+                threadClosed={thread.isClosed}
+                editing={editingId === post.id}
+                editEditorRef={editEditorRef}
+                saving={saving}
+                editError={editingId === post.id ? editError : null}
+                onEdit={() => {
+                  setEditError(null)
+                  setEditingId(post.id)
+                }}
+                onCancelEdit={() => setEditingId(null)}
+                onSaveEdit={() => saveEdit(post)}
+                onReply={() => startReply(post)}
+                onReact={(type) => toggleReaction(post, type)}
+                onCopyLink={() => copyLink(post)}
+                onMessage={() => post.author && router.push(`/dashboard/messages?to=${post.author.id}`)}
+                onDelete={() => setConfirm({ kind: "deletePost", post })}
+                onSuspend={() => setConfirm({ kind: "suspend", post })}
+              />
+            </li>
+          ))}
+        </ol>
+
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          onChange={(p) => {
+            setPage(p)
+            window.scrollTo({ top: 0 })
+          }}
+        />
+
+        {thread.isClosed ? (
+          <div className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-border py-6 text-sm text-muted-foreground">
+            <Lock className="h-4 w-4" aria-hidden="true" />
+            This thread is closed to new replies.
+          </div>
+        ) : (
+          <section aria-labelledby="reply-heading" ref={composerRef} className="scroll-mt-24">
+            <Card className="shadow-e1">
+              <CardContent className="p-4 sm:p-5">
+                <div className="mb-3 flex items-center gap-3">
+                  <UserAvatar firstName={user?.firstName} lastName={user?.lastName} src={user?.profilePicture} className="h-8 w-8" />
+                  <h2 id="reply-heading" className="font-semibold text-foreground">
+                    Reply
+                  </h2>
+                  {replyingTo && (
+                    <span className="flex min-w-0 items-center gap-1 rounded-full bg-muted py-0.5 pl-2.5 pr-1 text-xs text-muted-foreground">
+                      <Reply className="h-3 w-3 shrink-0" aria-hidden="true" />
+                      <span className="truncate">to {fullName(replyingTo.author)}</span>
+                      <button
+                        type="button"
+                        onClick={() => setReplyingTo(null)}
+                        aria-label="Stop replying to this post"
+                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <X className="h-3 w-3" aria-hidden="true" />
+                      </button>
+                    </span>
+                  )}
+                </div>
+
+                <div
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                      e.preventDefault()
+                      submitReply()
+                    }
+                  }}
+                >
+                  <RichTextEditor ref={replyEditorRef} label="Your reply" placeholder="Write a reply" />
+                </div>
+
+                {replyError && (
+                  <p role="alert" className="mt-2 text-sm text-destructive">
+                    {replyError}
+                  </p>
+                )}
+
+                <div className="mt-3 flex items-center justify-end gap-3">
+                  <span className="hidden text-xs text-muted-foreground sm:inline">Ctrl + Enter to post</span>
+                  <Button onClick={submitReply} disabled={posting} className="h-10 gap-2">
+                    <Send className="h-4 w-4" aria-hidden="true" />
+                    {posting ? "Posting..." : "Post reply"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </section>
         )}
       </div>
 
-      <div className="space-y-4">
-        {posts.map((post) => (
-          <Card key={post.id} id={`post-${post.id}`} className="transition-all">
-            <CardContent className="p-4">
-              <div className="grid grid-cols-14 flex justify-center">
-                <div className="col-span-2 hidden flex-col items-center gap-2 sm:flex">
-                  <Avatar className="h-24 w-24">
-                    <AvatarImage src={post.author.profilePicture || undefined} />
-                    <AvatarFallback>
-                      {post.author.firstName[0]}
-                      {post.author.lastName[0]}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="text-center">
-                    <p className={`text-sm font-medium ${post.author.isAdmin ? "text-primary" : ""}`}>
-                      {post.author.firstName} {post.author.lastName}
-                    </p>
-                    {post.author.isAdmin && (
-                      <Badge className="bg-primary text-xs mt-2">
-                        Admin
-                      </Badge>
-                    )}
-                    <p className="text-xs text-muted-foreground mt-1">{post.author.postCount} posts</p>
-                  </div>
-                </div>
-                <div className="col-span-12 min-w-0">
-                  <div className="mb-2 flex items-center justify-between">
-                    <div className="flex items-center gap-2 sm:hidden">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={post.author.profilePicture || undefined} />
-                        <AvatarFallback>
-                          {post.author.firstName[0]}
-                          {post.author.lastName[0]}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className={`text-sm font-medium ${post.author.isAdmin ? "text-primary" : ""}`}>
-                        {post.author.firstName} {post.author.lastName}
-                      </span>
-                    </div>
-                    <div className="flex w-full justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">
-                          {format(new Date(post.createdAt), "MMM d, yyyy 'at' h:mm a")}
-                        </span>
-                        {post.editedAt && (
-                          <span
-                            className="text-xs text-muted-foreground italic"
-                            title={format(new Date(post.editedAt), "MMM d, yyyy 'at' h:mm a")}
-                          >
-                            (edited {formatDistanceToNow(new Date(post.editedAt), { addSuffix: true })})
-                          </span>
-                        )}
-                      </div>
-                      {((user?.isAdmin || user?.id === post.author.id) && !post.deleted) && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="cursor-pointer h-8 w-8">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            {user?.id === post.author.id && (
-                              <DropdownMenuItem className="cursor-pointer" onClick={() => setEditingPost(post)}>
-                                <Pencil className="mr-2 h-4 w-4" />
-                                Edit Post
-                              </DropdownMenuItem>
-                            )}
-                            {user?.isAdmin && user?.id !== post.author.id && (
-                              <>
-                                <DropdownMenuItem className="cursor-pointer"
-                                  onClick={() => router.push(`/dashboard/messages?to=${post.author.id}`)}
-                                >
-                                  <Mail className="mr-2 h-4 w-4" />
-                                  Message User
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleAdminAction("suspendUser", post.author.id)}
-                                  className="text-red-500 cursor-pointer"
-                                >
-                                  <Shield className="mr-2 h-4 w-4" />
-                                  Suspend User
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                            {user?.isAdmin && (
-                              <DropdownMenuItem
-                                onClick={() => handleAdminAction("deletePost", post.id)}
-                                className="cursor-pointer text-red-500"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete Post
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
-                    </div>
-                  </div>
-
-                  {editingPost?.id === post.id ? (
-                    <div className="space-y-3">
-                      <RichTextEditor
-                        ref={editEditorRef}
-                        content={post.content}
-                        onChange={setEditContent}
-                        placeholder="Edit your post..."
-                      />
-                      <div className="flex items-center gap-2">
-                        <Button className="cursor-pointer" onClick={handleEditPost} disabled={saving} size="sm">
-                          {saving ? "Saving..." : "Save Changes"}
-                        </Button>
-                        <Button className="cursor-pointer" variant="outline" size="sm" onClick={() => setEditingPost(null)}>
-                          Cancel
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col justify-between h-full">
-                      {/* Rich text content */}
-                      <div>
-                        {post.replyTo && (
-                          <button
-                            onClick={() => scrollToPost(post.replyTo!.id)}
-                            className="cursor-pointer flex items-start gap-2 rounded-md bg-secondary/50 p-2 text-left text-sm transition-colors hover:bg-secondary"
-                          >
-                            <Reply className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                            <div className="min-w-0">
-                              <span>Replied to </span>
-                              <span className="font-medium text-primary">
-                                @{post.replyTo.author.firstName} {post.replyTo.author.lastName}
-                              </span>
-                              <p
-                                className="line-clamp-1 text-muted-foreground"
-                                dangerouslySetInnerHTML={{
-                                  __html: post.replyTo.content.replace(/<[^>]*>/g, " ").slice(0, 100),
-                                }}
-                              />
-                            </div>
-                          </button>
-                        )}
-                        <div
-                          className="prose prose-sm prose-invert max-w-none [&_a]:text-primary [&_a]:underline [&_img]:rounded-lg [&_img]:max-w-full"
-                          dangerouslySetInnerHTML={{ __html: post.content }}
-                        />
-                      </div>
-                      <div className="flex items-center gap-2 mt-4 -translate-y-8">
-                        {REACTIONS.map(({ type, Emoji }) => {
-                          const count = post.reactions.filter((r) => r.type === type).length
-                          const hasReacted = post.reactions.some((r) => r.type === type && r.userId === user?.id)
-                          return (
-                            <Button
-                              key={type}
-                              className={`h-8 px-3 flex items-center text-foreground cursor-pointer ${hasReacted ? "bg-primary" : "bg-background"}`}
-                              onClick={() => handleReaction(post.id, type)}
-                            >
-                              <Emoji />
-                              {count > 0 && <span className="font-medium">{count}</span>}
-                            </Button>
-                          )
-                        })}
-                        {(!thread.isClosed && !post.deleted) && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="cursor-pointer ml-auto h-8 gap-1"
-                            onClick={() => setReplyingTo(post)}
-                          >
-                            <Reply className="h-4 w-4" />
-                            Reply
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+      <div aria-live="polite" className="pointer-events-none fixed inset-x-0 bottom-6 z-50 flex justify-center px-4">
+        {notice && (
+          <p className="rounded-full border border-border bg-popover px-4 py-2 text-sm text-foreground shadow-e3">{notice}</p>
+        )}
       </div>
 
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>
-            Previous
-          </Button>
-          <span className="text-sm text-muted-foreground">
-            Page {page} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
-          >
-            Next
-          </Button>
-        </div>
-      )}
+      <AlertDialog open={!!confirm} onOpenChange={(open) => !open && setConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirm?.kind === "deleteThread" || (confirm?.kind === "deletePost" && confirm.post.isFirstPost)
+                ? "Delete this thread?"
+                : confirm?.kind === "deletePost"
+                  ? "Delete this post?"
+                  : `Suspend ${confirm?.kind === "suspend" ? fullName(confirm.post.author) : ""}?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirm?.kind === "suspend"
+                ? "They'll still be able to read the forums, but not post."
+                : confirm?.kind === "deletePost" && !confirm.post.isFirstPost
+                  ? "The post is replaced with a deleted notice."
+                  : "The thread and all its replies will be removed."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={runConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {confirm?.kind === "suspend" ? "Suspend" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </PageShell>
+  )
+}
 
-      {!thread.isClosed && (
-        <Card>
-          <CardContent className="p-4">
-            {replyingTo && (
-              <div className="mb-3 flex items-center justify-between rounded-md bg-secondary/50 p-2">
-                <div className="flex items-center gap-2 text-sm">
-                  <Reply className="h-4 w-4 text-muted-foreground" />
-                  <span>Replying to</span>
-                  <span className="font-medium text-primary">
-                    {replyingTo.author.firstName} {replyingTo.author.lastName}
-                  </span>
-                </div>
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setReplyingTo(null)}>
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
+/* --- Post ------------------------------------------------------------------ */
+
+function PostCard({
+  post,
+  isOriginalAuthor,
+  currentUserId,
+  isAdmin,
+  threadClosed,
+  editing,
+  editEditorRef,
+  saving,
+  editError,
+  onEdit,
+  onCancelEdit,
+  onSaveEdit,
+  onReply,
+  onReact,
+  onCopyLink,
+  onMessage,
+  onDelete,
+  onSuspend,
+}: {
+  post: Post
+  isOriginalAuthor: boolean
+  currentUserId?: string
+  isAdmin: boolean
+  threadClosed: boolean
+  editing: boolean
+  editEditorRef: React.RefObject<RichTextEditorRef | null>
+  saving: boolean
+  editError: string | null
+  onEdit: () => void
+  onCancelEdit: () => void
+  onSaveEdit: () => void
+  onReply: () => void
+  onReact: (type: string) => void
+  onCopyLink: () => void
+  onMessage: () => void
+  onDelete: () => void
+  onSuspend: () => void
+}) {
+  const author = post.author
+  const isMine = !!currentUserId && author?.id === currentUserId
+  const quote = useMemo(() => (post.replyTo ? htmlToText(post.replyTo.content).slice(0, 160) : ""), [post.replyTo])
+  const created = new Date(post.createdAt)
+
+  return (
+    <article
+      id={`post-${post.id}`}
+      tabIndex={-1}
+      aria-label={`Post by ${fullName(author)}`}
+      className={cn(
+        "scroll-mt-24 rounded-xl border bg-card shadow-e1 outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-ring target:ring-2 target:ring-primary/50",
+        post.isFirstPost ? "border-primary/30" : "border-border",
+      )}
+    >
+      <header className="flex items-start gap-3 px-4 pt-4 sm:px-5">
+        <UserAvatar
+          firstName={author?.firstName}
+          lastName={author?.lastName}
+          src={author?.profilePicture}
+          className="h-10 w-10 shrink-0"
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="font-semibold text-foreground">{fullName(author)}</span>
+            {author?.isAdmin && (
+              <Badge className="h-5 gap-1 px-1.5 text-[11px] font-medium">
+                <Shield className="h-3 w-3" aria-hidden="true" />
+                Moderator
+              </Badge>
             )}
-            <h3 className="mb-2 font-medium">{replyingTo ? "Write your reply" : "Reply to Thread"}</h3>
-            <RichTextEditor
-              ref={editorRef}
-              onChange={setReplyContent}
-              placeholder="Write your reply... Use @ to mention users"
-              className="mb-3"
-            />
-            <Button onClick={handleReply} className="cursor-pointer" disabled={posting}>
-              <Send className="mr-2 h-4 w-4" />
-              {posting ? "Posting..." : "Post Reply"}
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+            {isOriginalAuthor && !post.isFirstPost && (
+              <Badge variant="secondary" className="h-5 px-1.5 text-[11px] font-normal">
+                Author
+              </Badge>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            <a
+              href={`#post-${post.id}`}
+              className="hover:text-foreground hover:underline"
+              title={format(created, "d MMM yyyy, h:mm a")}
+            >
+              <time dateTime={created.toISOString()}>{timeAgo(created)}</time>
+            </a>
+            {post.editedAt && !post.deleted && (
+              <span title={format(new Date(post.editedAt), "d MMM yyyy, h:mm a")}> &middot; edited</span>
+            )}
+            {typeof author?.postCount === "number" && (
+              <span className="hidden sm:inline">
+                {" "}
+                &middot; {author.postCount} {author.postCount === 1 ? "post" : "posts"}
+              </span>
+            )}
+          </p>
+        </div>
 
-      {thread.isClosed && (
-        <Card className="border-muted">
-          <CardContent className="flex items-center justify-center gap-2 py-6 text-muted-foreground">
-            <Lock className="h-4 w-4" />
-            <span>This thread is closed and cannot receive new replies.</span>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+        {!post.deleted && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="-mr-2 h-9 w-9 text-muted-foreground" aria-label="Post options">
+                <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={onCopyLink}>
+                <Link2 className="h-4 w-4" />
+                Copy link
+              </DropdownMenuItem>
+              {isMine && (
+                <DropdownMenuItem onClick={onEdit}>
+                  <Pencil className="h-4 w-4" />
+                  Edit
+                </DropdownMenuItem>
+              )}
+              {isAdmin && !isMine && author && (
+                <DropdownMenuItem onClick={onMessage}>
+                  <Mail className="h-4 w-4" />
+                  Message {author.firstName}
+                </DropdownMenuItem>
+              )}
+              {isAdmin && (
+                <>
+                  <DropdownMenuSeparator />
+                  {!isMine && author && (
+                    <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={onSuspend}>
+                      <Shield className="h-4 w-4" />
+                      Suspend from posting
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={onDelete}>
+                    <Trash2 className="h-4 w-4" />
+                    {post.isFirstPost ? "Delete thread" : "Delete post"}
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </header>
+
+      <div className="px-4 pb-4 pt-3 sm:px-5 sm:pl-[4.25rem]">
+        {post.replyTo && !post.deleted && (
+          <a
+            href={`#post-${post.replyTo.id}`}
+            className="mb-3 block rounded-lg border-l-2 border-primary/40 bg-muted/50 px-3 py-2 text-sm transition-colors hover:bg-muted"
+          >
+            <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              <Reply className="h-3 w-3" aria-hidden="true" />
+              {fullName(post.replyTo.author)}
+            </span>
+            <span className="mt-0.5 line-clamp-2 text-muted-foreground">{quote || "…"}</span>
+          </a>
+        )}
+
+        {post.deleted ? (
+          <p className="text-sm italic text-muted-foreground">This post was deleted.</p>
+        ) : editing ? (
+          <div className="space-y-3">
+            <RichTextEditor ref={editEditorRef} content={post.content} label="Edit post" autoFocus />
+            {editError && (
+              <p role="alert" className="text-sm text-destructive">
+                {editError}
+              </p>
+            )}
+            <div className="flex gap-2">
+              <Button size="sm" className="h-9" onClick={onSaveEdit} disabled={saving}>
+                {saving ? "Saving..." : "Save"}
+              </Button>
+              <Button size="sm" variant="ghost" className="h-9" onClick={onCancelEdit}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <RichTextContent html={post.content} />
+        )}
+
+        {!post.deleted && !editing && (
+          <div className="mt-4 flex flex-wrap items-center gap-1.5">
+            {REACTIONS.map(({ type, icon: Icon, label }) => {
+              const matching = post.reactions.filter((r) => r.type === type)
+              const mine = matching.some((r) => r.userId === currentUserId)
+              const who = matching.map((r) => fullName(r.user)).slice(0, 10).join(", ")
+              return (
+                <button
+                  key={type}
+                  type="button"
+                  aria-pressed={mine}
+                  aria-label={`${label}${matching.length ? `, ${matching.length}` : ""}`}
+                  title={who ? `${label}: ${who}` : label}
+                  onClick={() => onReact(type)}
+                  className={cn(
+                    "inline-flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    mine
+                      ? "border-primary/40 bg-primary/10 text-primary"
+                      : matching.length
+                        ? "border-border text-foreground hover:bg-muted"
+                        : "border-transparent text-muted-foreground hover:bg-muted hover:text-foreground",
+                  )}
+                >
+                  <Icon className={cn("h-3.5 w-3.5", mine && "fill-current")} aria-hidden="true" />
+                  {matching.length > 0 && <span data-tabular>{matching.length}</span>}
+                </button>
+              )
+            })}
+
+            {!threadClosed && (
+              <Button variant="ghost" size="sm" className="ml-auto h-8 gap-1.5 text-muted-foreground" onClick={onReply}>
+                <Reply className="h-3.5 w-3.5" aria-hidden="true" />
+                Reply
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+    </article>
   )
 }

@@ -2,26 +2,18 @@
 
 import type React from "react"
 
-import { useEditor, EditorContent, NodeViewWrapper, type NodeViewProps } from "@tiptap/react"
+import { useEditor, useEditorState, EditorContent, NodeViewWrapper, type NodeViewProps, type Editor } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
-import Underline from "@tiptap/extension-underline"
-import Link from "@tiptap/extension-link"
 import Placeholder from "@tiptap/extension-placeholder"
 import Mention from "@tiptap/extension-mention"
-import BulletList from "@tiptap/extension-bullet-list"
-import OrderedList from "@tiptap/extension-ordered-list"
-import ListItem from "@tiptap/extension-list-item"
-import Blockquote from "@tiptap/extension-blockquote"
-import Dropcursor from "@tiptap/extension-dropcursor"
 import HardBreak from "@tiptap/extension-hard-break"
-import Heading from "@tiptap/extension-heading"
 import { Node, mergeAttributes } from "@tiptap/core"
 import { ReactNodeViewRenderer } from "@tiptap/react"
 import { useState, useCallback, forwardRef, useImperativeHandle, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   Bold,
   Italic,
@@ -33,26 +25,25 @@ import {
   Quote,
   Loader2,
   Upload,
-  Heading1,
   Heading2,
   Heading3,
+  Strikethrough,
 } from "lucide-react"
+import { cn } from "@lib/utils"
 
 const CustomHardBreak = HardBreak.extend({
   renderText() {
-    return '\n'
+    return "\n"
   },
 })
 
 function ResizableImageComponent({ node, updateAttributes, selected }: NodeViewProps) {
-  const [isResizing, setIsResizing] = useState(false)
   const imageRef = useRef<HTMLImageElement>(null)
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent, direction: string) => {
       e.preventDefault()
       e.stopPropagation()
-      setIsResizing(true)
 
       const startX = e.clientX
       const startY = e.clientY
@@ -67,29 +58,18 @@ function ResizableImageComponent({ node, updateAttributes, selected }: NodeViewP
         let newWidth = startWidth
         let newHeight = startHeight
 
-        if (direction.includes("e")) {
-          newWidth = Math.max(100, startWidth + deltaX)
-        }
-        if (direction.includes("w")) {
-          newWidth = Math.max(100, startWidth - deltaX)
-        }
-        if (direction.includes("s")) {
-          newHeight = Math.max(50, startHeight + deltaY)
-        }
-        if (direction.includes("n")) {
-          newHeight = Math.max(50, startHeight - deltaY)
-        }
+        if (direction.includes("e")) newWidth = Math.max(100, startWidth + deltaX)
+        if (direction.includes("w")) newWidth = Math.max(100, startWidth - deltaX)
+        if (direction.includes("s")) newHeight = Math.max(50, startHeight + deltaY)
+        if (direction.includes("n")) newHeight = Math.max(50, startHeight - deltaY)
 
-        // Maintain aspect ratio when dragging corners
-        if (direction.length === 2) {
-          newHeight = newWidth / aspectRatio
-        }
+        // Corners keep the aspect ratio.
+        if (direction.length === 2) newHeight = newWidth / aspectRatio
 
         updateAttributes({ width: Math.round(newWidth), height: Math.round(newHeight) })
       }
 
       const handleMouseUp = () => {
-        setIsResizing(false)
         document.removeEventListener("mousemove", handleMouseMove)
         document.removeEventListener("mouseup", handleMouseUp)
       }
@@ -100,65 +80,42 @@ function ResizableImageComponent({ node, updateAttributes, selected }: NodeViewP
     [updateAttributes],
   )
 
+  const handles: { dir: string; className: string }[] = [
+    { dir: "se", className: "-right-1 -bottom-1 h-3 w-3 cursor-se-resize" },
+    { dir: "sw", className: "-left-1 -bottom-1 h-3 w-3 cursor-sw-resize" },
+    { dir: "ne", className: "-right-1 -top-1 h-3 w-3 cursor-ne-resize" },
+    { dir: "nw", className: "-left-1 -top-1 h-3 w-3 cursor-nw-resize" },
+    { dir: "e", className: "right-0 top-1/2 h-6 w-2 -translate-y-1/2 translate-x-1/2 cursor-e-resize" },
+    { dir: "w", className: "left-0 top-1/2 h-6 w-2 -translate-y-1/2 -translate-x-1/2 cursor-w-resize" },
+    { dir: "s", className: "bottom-0 left-1/2 h-2 w-6 -translate-x-1/2 translate-y-1/2 cursor-s-resize" },
+    { dir: "n", className: "top-0 left-1/2 h-2 w-6 -translate-x-1/2 -translate-y-1/2 cursor-n-resize" },
+  ]
+
   return (
-    <NodeViewWrapper className="relative inline-block my-2">
-      <div className={`relative inline-block ${selected ? "ring-2 ring-primary rounded" : ""}`}>
+    <NodeViewWrapper className="relative my-2 inline-block">
+      <div className={cn("relative inline-block", selected && "rounded ring-2 ring-primary")}>
         <img
           ref={imageRef}
           src={node.attrs.src || "/placeholder.svg"}
           alt={node.attrs.alt || ""}
           width={node.attrs.width || undefined}
           height={node.attrs.height || undefined}
-          className="rounded-lg max-w-full"
+          className="max-w-full rounded-lg"
           style={{
             width: node.attrs.width ? `${node.attrs.width}px` : undefined,
             height: node.attrs.height ? `${node.attrs.height}px` : undefined,
           }}
           draggable={false}
         />
-        {selected && (
-          <>
-            {/* Resize handles */}
+        {selected &&
+          handles.map((h) => (
             <div
-              className="absolute -right-1 -bottom-1 w-3 h-3 bg-primary rounded-full cursor-se-resize"
-              onMouseDown={(e) => handleMouseDown(e, "se")}
+              key={h.dir}
+              className={cn("absolute rounded-full bg-primary", h.className)}
+              onMouseDown={(e) => handleMouseDown(e, h.dir)}
             />
-            <div
-              className="absolute -left-1 -bottom-1 w-3 h-3 bg-primary rounded-full cursor-sw-resize"
-              onMouseDown={(e) => handleMouseDown(e, "sw")}
-            />
-            <div
-              className="absolute -right-1 -top-1 w-3 h-3 bg-primary rounded-full cursor-ne-resize"
-              onMouseDown={(e) => handleMouseDown(e, "ne")}
-            />
-            <div
-              className="absolute -left-1 -top-1 w-3 h-3 bg-primary rounded-full cursor-nw-resize"
-              onMouseDown={(e) => handleMouseDown(e, "nw")}
-            />
-            <div
-              className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-2 h-6 bg-primary rounded-full cursor-e-resize"
-              onMouseDown={(e) => handleMouseDown(e, "e")}
-            />
-            <div
-              className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 w-2 h-6 bg-primary rounded-full cursor-w-resize"
-              onMouseDown={(e) => handleMouseDown(e, "w")}
-            />
-            <div
-              className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-6 h-2 bg-primary rounded-full cursor-s-resize"
-              onMouseDown={(e) => handleMouseDown(e, "s")}
-            />
-            <div
-              className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-2 bg-primary rounded-full cursor-n-resize"
-              onMouseDown={(e) => handleMouseDown(e, "n")}
-            />
-          </>
-        )}
+          ))}
       </div>
-      {selected && node.attrs.width && (
-        <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs text-muted-foreground bg-background/90 px-2 py-0.5 rounded">
-          {node.attrs.width} x {node.attrs.height}px
-        </div>
-      )}
     </NodeViewWrapper>
   )
 }
@@ -184,7 +141,7 @@ const ResizableImage = Node.create({
   },
 
   renderHTML({ HTMLAttributes }) {
-    return ["img", mergeAttributes(HTMLAttributes, { class: "rounded-lg max-w-full" })]
+    return ["img", mergeAttributes(HTMLAttributes)]
   },
 
   addNodeView() {
@@ -195,138 +152,225 @@ const ResizableImage = Node.create({
     return {
       setResizableImage:
         (options: { src: string; alt?: string; title?: string }) =>
-          ({ commands }) => {
-            return commands.insertContent({
-              type: this.name,
-              attrs: options,
-            })
-          },
-    } as any;
+        ({ commands }) => {
+          return commands.insertContent({ type: this.name, attrs: options })
+        },
+    } as any
   },
 })
+
+type MentionItem = { id: string; label: string }
+type SuggestionProps = {
+  clientRect?: (() => DOMRect | null) | null
+  items: MentionItem[]
+  command: (item: MentionItem) => void
+}
+
+/** The @mention picker. Plain DOM, since Tiptap drives it outside React. */
+function mentionRenderer() {
+  let popup: HTMLDivElement | null = null
+  let current: SuggestionProps | null = null
+  let active = 0
+
+  const draw = () => {
+    if (!popup || !current) return
+    const rect = current.clientRect?.()
+    if (rect) {
+      popup.style.left = `${rect.left}px`
+      popup.style.top = `${rect.bottom + 6}px`
+    }
+    popup.replaceChildren()
+    if (current.items.length === 0) {
+      const empty = document.createElement("div")
+      empty.className = "px-3 py-2 text-sm text-muted-foreground"
+      empty.textContent = "No one found"
+      popup.appendChild(empty)
+      return
+    }
+    current.items.forEach((item, i) => {
+      const btn = document.createElement("button")
+      btn.type = "button"
+      btn.setAttribute("role", "option")
+      btn.setAttribute("aria-selected", String(i === active))
+      btn.className = cn(
+        "block w-full px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted",
+        i === active && "bg-muted",
+      )
+      btn.textContent = item.label
+      // mousedown so the editor keeps focus
+      btn.onmousedown = (e) => {
+        e.preventDefault()
+        current?.command(item)
+      }
+      popup!.appendChild(btn)
+    })
+  }
+
+  return {
+    onStart: (props: SuggestionProps) => {
+      current = props
+      active = 0
+      popup = document.createElement("div")
+      popup.setAttribute("role", "listbox")
+      popup.className = "fixed z-50 min-w-48 overflow-hidden rounded-md border border-border bg-popover py-1 shadow-e3"
+      document.body.appendChild(popup)
+      draw()
+    },
+    onUpdate: (props: SuggestionProps) => {
+      current = props
+      active = Math.min(active, Math.max(0, props.items.length - 1))
+      draw()
+    },
+    onKeyDown: ({ event }: { event: KeyboardEvent }) => {
+      if (!current) return false
+      if (event.key === "Escape") {
+        popup?.remove()
+        popup = null
+        return true
+      }
+      if (!current.items.length) return false
+      if (event.key === "ArrowDown") {
+        active = (active + 1) % current.items.length
+        draw()
+        return true
+      }
+      if (event.key === "ArrowUp") {
+        active = (active - 1 + current.items.length) % current.items.length
+        draw()
+        return true
+      }
+      if (event.key === "Enter" || event.key === "Tab") {
+        current.command(current.items[active])
+        return true
+      }
+      return false
+    },
+    onExit: () => {
+      popup?.remove()
+      popup = null
+      current = null
+    },
+  }
+}
 
 interface RichTextEditorProps {
   content?: string
   onChange?: (content: string) => void
   placeholder?: string
   className?: string
+  /** Accessible name for the editing area. */
+  label?: string
+  /** Focus the editor when it mounts, e.g. after pressing Reply. */
+  autoFocus?: boolean
 }
 
 export interface RichTextEditorRef {
   getHTML: () => string
+  /** True when there's no text and no image. */
+  isEmpty: () => boolean
   clearContent: () => void
   setContent: (content: string) => void
+  focus: () => void
+}
+
+function ToolbarButton({
+  label,
+  active,
+  onClick,
+  children,
+}: {
+  label: string
+  active?: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      aria-pressed={active}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={onClick}
+      className={cn(
+        "flex h-8 w-8 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground",
+      )}
+    >
+      {children}
+    </button>
+  )
 }
 
 const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
-  ({ content = "", onChange, placeholder = "Write something...", className }, ref) => {
+  ({ content = "", onChange, placeholder = "Write something...", className, label = "Post content", autoFocus }, ref) => {
     const [showLinkDialog, setShowLinkDialog] = useState(false)
     const [linkUrl, setLinkUrl] = useState("")
     const [linkText, setLinkText] = useState("")
     const [showImageDialog, setShowImageDialog] = useState(false)
     const [imageUrl, setImageUrl] = useState("")
     const [uploading, setUploading] = useState(false)
+    const [uploadError, setUploadError] = useState<string | null>(null)
     const [isDragging, setIsDragging] = useState(false)
-    const fileInputRef = useRef<HTMLInputElement>(null)
-    const editorContainerRef = useRef<HTMLDivElement>(null)
 
     const uploadFile = useCallback(async (file: File): Promise<string | null> => {
-      const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"]
-      if (!allowedTypes.includes(file.type)) {
-        alert("Invalid file type. Please upload a JPEG, PNG, GIF, or WebP image.")
+      setUploadError(null)
+      if (!["image/jpeg", "image/png", "image/gif", "image/webp"].includes(file.type)) {
+        setUploadError("Images only: JPEG, PNG, GIF or WebP.")
         return null
       }
       if (file.size > 10 * 1024 * 1024) {
-        alert("File too large. Maximum size is 10MB.")
+        setUploadError("That image is over 10MB.")
         return null
       }
-
       const formData = new FormData()
       formData.append("file", file)
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      })
-      if (!res.ok) throw new Error("Upload failed")
+      const res = await fetch("/api/upload", { method: "POST", body: formData })
+      if (!res.ok) {
+        setUploadError("Upload failed. Try again.")
+        return null
+      }
       const { url } = await res.json()
       return url
     }, [])
 
-    const editor = useEditor({
-      parseOptions: {
-        preserveWhitespace: 'full',
+    const insertUploaded = useCallback(
+      async (editor: Editor, file: File) => {
+        setUploading(true)
+        try {
+          const url = await uploadFile(file)
+          if (url) (editor.chain().focus() as any).setResizableImage({ src: url }).run()
+          return !!url
+        } catch {
+          setUploadError("Upload failed. Try again.")
+          return false
+        } finally {
+          setUploading(false)
+        }
       },
+      [uploadFile],
+    )
+
+    const editor = useEditor({
       immediatelyRender: false,
+      autofocus: autoFocus ? "end" : false,
       extensions: [
+        // StarterKit v3 already bundles link, underline, headings and lists.
+        // Registering them again as separate extensions caused duplicate-name
+        // conflicts, so they're configured here instead.
         StarterKit.configure({
-          bulletList: false,
-          orderedList: false,
-          listItem: false,
-          blockquote: false,
-        }),
-        BulletList.configure({
-          HTMLAttributes: {
-            class: "list-disc ml-4 my-2",
-          },
-        }),
-        OrderedList.configure({
-          HTMLAttributes: {
-            class: "list-decimal ml-4 my-2",
-          },
-        }),
-        ListItem.configure({
-          HTMLAttributes: {
-            class: "my-1",
-          },
-        }),
-        Blockquote.configure({
-          HTMLAttributes: {
-            class: "border-l-4 border-primary/50 pl-4 my-2 italic text-muted-foreground",
-          },
-        }),
-        Underline,
-        Link.configure({
-          openOnClick: false,
-          HTMLAttributes: {
-            class: "text-primary underline cursor-pointer hover:text-primary/80",
-          },
-        }),
-        ResizableImage,
-        Placeholder.configure({
-          placeholder,
-        }),
-        Dropcursor.configure({
-          color: "hsl(var(--primary))",
-          width: 2,
+          heading: { levels: [2, 3] },
+          hardBreak: false,
+          codeBlock: false,
+          horizontalRule: false,
+          link: { openOnClick: false, autolink: true, defaultProtocol: "https" },
+          dropcursor: { color: "var(--primary)", width: 2 },
         }),
         CustomHardBreak,
-        Heading.configure({
-          levels: [1, 2, 3],
-        }).extend({
-          renderHTML({ node, HTMLAttributes }) {
-            const hasLevel = this.options.levels.includes(node.attrs.level)
-            const level = hasLevel ? node.attrs.level : this.options.levels[0]
-
-            // Map levels to your specific Tailwind classes
-            const classes: Record<number, string> = {
-              1: 'text-2xl font-bold',
-              2: 'text-xl font-bold',
-              3: 'text-lg font-bold',
-            }
-
-            return [
-              `h${level}`,
-              mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, {
-                class: classes[level]
-              }),
-              0
-            ]
-          },
-        }),
+        ResizableImage,
+        Placeholder.configure({ placeholder }),
         Mention.configure({
-          HTMLAttributes: {
-            class: "bg-primary/20 text-primary rounded px-1 py-0.5 font-medium",
-          },
+          renderText: ({ node }) => `@${node.attrs.label ?? node.attrs.id}`,
           suggestion: {
             items: async ({ query }: { query: string }) => {
               if (!query || query.length < 2) return []
@@ -334,7 +378,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
                 const res = await fetch(`/api/messages/users/search?q=${encodeURIComponent(query)}`)
                 if (!res.ok) return []
                 const users = await res.json()
-                return users.map((u: { id: string; firstName: string; lastName: string }) => ({
+                return users.slice(0, 8).map((u: { id: string; firstName: string; lastName: string }) => ({
                   id: u.id,
                   label: `${u.firstName} ${u.lastName}`,
                 }))
@@ -342,450 +386,302 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
                 return []
               }
             },
-            render: () => {
-              let component: HTMLDivElement | null = null
-              let popup: HTMLDivElement | null = null
-
-              return {
-                onStart: (props: {
-                  clientRect: () => DOMRect | null
-                  items: Array<{ id: string; label: string }>
-                  command: (item: { id: string; label: string }) => void
-                }) => {
-                  component = document.createElement("div")
-                  component.className = "bg-popover border border-border rounded-md shadow-lg overflow-hidden z-50"
-                  popup = document.createElement("div")
-                  popup.className = "fixed"
-                  popup.appendChild(component)
-                  document.body.appendChild(popup)
-                  updatePopup(props)
-                },
-                onUpdate: (props: {
-                  clientRect: () => DOMRect | null
-                  items: Array<{ id: string; label: string }>
-                  command: (item: { id: string; label: string }) => void
-                }) => {
-                  updatePopup(props)
-                },
-                onKeyDown: (props: { event: KeyboardEvent }) => {
-                  if (props.event.key === "Escape") {
-                    popup?.remove()
-                    return true
-                  }
-                  return false
-                },
-                onExit: () => {
-                  popup?.remove()
-                },
-              } as any;
-
-              function updatePopup(props: {
-                clientRect: () => DOMRect | null
-                items: Array<{ id: string; label: string }>
-                command: (item: { id: string; label: string }) => void
-              }) {
-                if (!component || !popup) return
-                const rect = props.clientRect?.()
-                if (rect) {
-                  popup.style.left = `${rect.left}px`
-                  popup.style.top = `${rect.bottom + 4}px`
-                }
-                component.innerHTML = ""
-                if (props.items.length === 0) {
-                  component.innerHTML = '<div class="px-3 py-2 text-sm text-muted-foreground">No users found</div>'
-                } else {
-                  props.items.forEach((item) => {
-                    const btn = document.createElement("button")
-                    btn.className = "w-full px-3 py-2 text-left text-sm hover:bg-default transition-colors"
-                    btn.textContent = item.label
-                    btn.onclick = () => {
-                      props.command(item)
-                      popup?.remove()
-                    }
-                    component?.appendChild(btn)
-                  })
-                }
-              }
-            },
+            render: mentionRenderer as any,
           },
         }),
       ],
       content,
-      onUpdate: ({ editor }) => {
-        onChange?.(editor.getHTML())
-      },
+      onUpdate: ({ editor }) => onChange?.(editor.getHTML()),
       editorProps: {
         attributes: {
-          class: "prose prose-sm prose-invert max-w-none min-h-[120px] p-3 focus:outline-none",
+          class: "rich-text min-h-32 px-4 py-3",
+          role: "textbox",
+          "aria-multiline": "true",
+          "aria-label": label,
         },
-        handlePaste: (view, event) => {
-          const items = event.clipboardData?.items
-          if (!items) return false
-
-          for (const item of Array.from(items)) {
-            if (item.type.startsWith("image/")) {
-              event.preventDefault()
-              const file = item.getAsFile()
-              if (file) {
-                setUploading(true)
-                uploadFile(file)
-                  .then((url) => {
-                    if (url && editor) {
-                      ; (editor.chain().focus() as any).setResizableImage({ src: url }).run()
-                    }
-                  })
-                  .catch(console.error)
-                  .finally(() => setUploading(false))
-              }
-              return true
-            }
-          }
-          return false
-        },
-        handleDrop: (view, event, slice, moved) => {
-          if (moved) return false
-
-          const files = event.dataTransfer?.files
-          if (!files || files.length === 0) return false
-
-          const file = files[0]
-          if (!file.type.startsWith("image/")) return false
-
+        handlePaste: (_view, event) => {
+          const file = Array.from(event.clipboardData?.items ?? [])
+            .find((item) => item.type.startsWith("image/"))
+            ?.getAsFile()
+          if (!file || !editor) return false
           event.preventDefault()
-          setUploading(true)
-          uploadFile(file)
-            .then((url) => {
-              if (url && editor) {
-                ; (editor.chain().focus() as any).setResizableImage({ src: url }).run()
-              }
-            })
-            .catch(console.error)
-            .finally(() => setUploading(false))
-
+          insertUploaded(editor, file)
           return true
         },
       },
     })
 
+    // Toolbar state without re-rendering the whole editor on every keystroke.
+    const marks = useEditorState({
+      editor,
+      selector: ({ editor: e }) =>
+        e
+          ? {
+              bold: e.isActive("bold"),
+              italic: e.isActive("italic"),
+              underline: e.isActive("underline"),
+              strike: e.isActive("strike"),
+              h2: e.isActive("heading", { level: 2 }),
+              h3: e.isActive("heading", { level: 3 }),
+              bullet: e.isActive("bulletList"),
+              ordered: e.isActive("orderedList"),
+              quote: e.isActive("blockquote"),
+              link: e.isActive("link"),
+            }
+          : null,
+    })
+
     useImperativeHandle(ref, () => ({
       getHTML: () => editor?.getHTML() || "",
+      isEmpty: () => !editor || (editor.isEmpty && !editor.getHTML().includes("<img")),
       clearContent: () => editor?.commands.clearContent(),
-      setContent: (newContent: string) => editor?.commands.setContent(newContent, { parseOptions: { preserveWhitespace: "full" } }),
+      setContent: (newContent: string) => editor?.commands.setContent(newContent),
+      focus: () => editor?.commands.focus("end"),
     }))
 
-    const handleAddLink = useCallback(() => {
+    const openLinkDialog = useCallback(() => {
       if (!editor) return
       const { from, to } = editor.state.selection
-      const selectedText = editor.state.doc.textBetween(from, to)
-      setLinkText(selectedText || "")
-      setLinkUrl("")
+      setLinkText(editor.state.doc.textBetween(from, to))
+      setLinkUrl(editor.getAttributes("link").href ?? "")
       setShowLinkDialog(true)
     }, [editor])
 
     const insertLink = useCallback(() => {
       if (!editor || !linkUrl) return
-      if (linkText) {
-        editor.chain().focus().insertContent(`<a href="${linkUrl}">${linkText}</a>`).run()
+      const href = /^(https?:|mailto:|\/)/i.test(linkUrl) ? linkUrl : `https://${linkUrl}`
+      const { from, to } = editor.state.selection
+      if (from === to && linkText) {
+        // Insert as a node, not an HTML string, so the text can't inject markup.
+        editor
+          .chain()
+          .focus()
+          .insertContent({ type: "text", text: linkText, marks: [{ type: "link", attrs: { href } }] })
+          .run()
       } else {
-        editor.chain().focus().setLink({ href: linkUrl }).run()
+        editor.chain().focus().extendMarkRange("link").setLink({ href }).run()
       }
       setShowLinkDialog(false)
       setLinkUrl("")
       setLinkText("")
     }, [editor, linkUrl, linkText])
 
-    const handleImageUpload = useCallback(
-      async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0]
-        if (!file || !editor) return
-
-        setUploading(true)
-        try {
-          const url = await uploadFile(file)
-          if (url) {
-            ; (editor.chain().focus() as any).setResizableImage({ src: url }).run()
-            setShowImageDialog(false)
-          }
-        } catch (err) {
-          console.error(err)
-          alert("Failed to upload image")
-        } finally {
-          setUploading(false)
-        }
-      },
-      [editor, uploadFile],
-    )
-
-    const insertImageUrl = useCallback(() => {
-      if (!editor || !imageUrl) return
-        ; (editor.chain().focus() as any).setResizableImage({ src: imageUrl }).run()
-      setShowImageDialog(false)
-      setImageUrl("")
-    }, [editor, imageUrl])
-
-    const handleDragOver = useCallback((e: React.DragEvent) => {
-      e.preventDefault()
-      e.stopPropagation()
-      setIsDragging(true)
-    }, [])
-
-    const handleDragLeave = useCallback((e: React.DragEvent) => {
-      e.preventDefault()
-      e.stopPropagation()
-      setIsDragging(false)
-    }, [])
-
     const handleDrop = useCallback(
       async (e: React.DragEvent) => {
         e.preventDefault()
-        e.stopPropagation()
         setIsDragging(false)
-
-        const files = e.dataTransfer?.files
-        if (!files || files.length === 0 || !editor) return
-
-        const file = files[0]
+        const file = e.dataTransfer?.files?.[0]
+        if (!file || !editor) return
         if (!file.type.startsWith("image/")) {
-          alert("Please drop an image file")
+          setUploadError("Drop an image file.")
           return
         }
-
-        setUploading(true)
-        try {
-          const url = await uploadFile(file)
-          if (url) {
-            ; (editor.chain().focus() as any).setResizableImage({ src: url }).run()
-          }
-        } catch (err) {
-          console.error(err)
-          alert("Failed to upload image")
-        } finally {
-          setUploading(false)
-        }
+        insertUploaded(editor, file)
       },
-      [editor, uploadFile],
+      [editor, insertUploaded],
     )
 
-    if (!editor) return null
+    if (!editor) {
+      return <div className={cn("h-44 rounded-lg border border-input bg-background", className)} />
+    }
 
     return (
-      <div
-        ref={editorContainerRef}
-        className={`rounded-md border border-input bg-background relative ${isDragging ? "ring-2 ring-primary" : ""} ${className}`}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-      >
-        {isDragging && (
-          <div className="absolute inset-0 bg-primary/10 border-2 border-dashed border-primary rounded-md z-10 flex items-center justify-center">
-            <div className="flex items-center gap-2 text-primary font-medium">
-              <Upload className="h-5 w-5" />
-              Drop image here
+      <div className={className}>
+        <div
+          className={cn(
+            "relative overflow-hidden rounded-lg border border-input bg-background transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30",
+            isDragging && "ring-2 ring-primary",
+          )}
+          onDragOver={(e) => {
+            if (!e.dataTransfer.types.includes("Files")) return
+            e.preventDefault()
+            setIsDragging(true)
+          }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={handleDrop}
+        >
+          {isDragging && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg border-2 border-dashed border-primary bg-primary/10">
+              <span className="flex items-center gap-2 font-medium text-primary">
+                <Upload className="h-5 w-5" aria-hidden="true" />
+                Drop image here
+              </span>
             </div>
-          </div>
-        )}
+          )}
 
-        {uploading && (
-          <div className="absolute inset-0 bg-background/80 z-10 flex items-center justify-center rounded-md">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              Uploading image...
+          {uploading && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80" role="status">
+              <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                Uploading image...
+              </span>
             </div>
-          </div>
-        )}
+          )}
 
-        <div className="flex flex-wrap items-center gap-1 border-b border-border p-2">
-          <Button
-            type="button"
-            variant={editor.isActive("bold") ? "default" : "ghost"}
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => editor.chain().focus().toggleBold().run()}
+          <div
+            role="toolbar"
+            aria-label="Formatting"
+            className="flex flex-wrap items-center gap-0.5 border-b border-border bg-muted/30 px-1.5 py-1"
           >
-            <Bold className="h-4 w-4" />
-          </Button>
-          <Button
-            type="button"
-            variant={editor.isActive("italic") ? "default" : "ghost"}
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => editor.chain().focus().toggleItalic().run()}
-          >
-            <Italic className="h-4 w-4" />
-          </Button>
-          <Button
-            type="button"
-            variant={editor.isActive("underline") ? "default" : "ghost"}
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => editor.chain().focus().toggleUnderline().run()}
-          >
-            <UnderlineIcon className="h-4 w-4" />
-          </Button>
-          <div className="mx-1 h-6 w-px bg-border" />
-          <Button
-            type="button"
-            variant={editor.isActive("heading", { level: 1 }) ? "default" : "ghost"}
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-          >
-            <Heading1 className="h-4 w-4" />
-          </Button>
-          <Button
-            type="button"
-            variant={editor.isActive("heading", { level: 2 }) ? "default" : "ghost"}
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-          >
-            <Heading2 className="h-4 w-4" />
-          </Button>
-          <Button
-            type="button"
-            variant={editor.isActive("heading", { level: 3 }) ? "default" : "ghost"}
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-          >
-            <Heading3 className="h-4 w-4" />
-          </Button>
-          <div className="mx-1 h-6 w-px bg-border" />
-          <Button
-            type="button"
-            variant={editor.isActive("bulletList") ? "default" : "ghost"}
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => editor.chain().focus().toggleBulletList().run()}
-          >
-            <List className="h-4 w-4" />
-          </Button>
-          <Button
-            type="button"
-            variant={editor.isActive("orderedList") ? "default" : "ghost"}
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          >
-            <ListOrdered className="h-4 w-4" />
-          </Button>
-          <Button
-            type="button"
-            variant={editor.isActive("blockquote") ? "default" : "ghost"}
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => editor.chain().focus().toggleBlockquote().run()}
-          >
-            <Quote className="h-4 w-4" />
-          </Button>
-          <div className="mx-1 h-6 w-px bg-border" />
-          <Button
-            type="button"
-            variant={editor.isActive("link") ? "default" : "ghost"}
-            size="icon"
-            className="h-8 w-8"
-            onClick={handleAddLink}
-          >
-            <LinkIcon className="h-4 w-4" />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => setShowImageDialog(true)}
-          >
-            <ImageIcon className="h-4 w-4" />
-          </Button>
-          <span className="ml-auto text-xs text-muted-foreground hidden sm:inline">
-            Type @ to mention | Drag images to resize
-          </span>
+            <ToolbarButton label="Bold" active={marks?.bold} onClick={() => editor.chain().focus().toggleBold().run()}>
+              <Bold className="h-4 w-4" aria-hidden="true" />
+            </ToolbarButton>
+            <ToolbarButton label="Italic" active={marks?.italic} onClick={() => editor.chain().focus().toggleItalic().run()}>
+              <Italic className="h-4 w-4" aria-hidden="true" />
+            </ToolbarButton>
+            <ToolbarButton
+              label="Underline"
+              active={marks?.underline}
+              onClick={() => editor.chain().focus().toggleUnderline().run()}
+            >
+              <UnderlineIcon className="h-4 w-4" aria-hidden="true" />
+            </ToolbarButton>
+            <ToolbarButton
+              label="Strikethrough"
+              active={marks?.strike}
+              onClick={() => editor.chain().focus().toggleStrike().run()}
+            >
+              <Strikethrough className="h-4 w-4" aria-hidden="true" />
+            </ToolbarButton>
+            <span className="mx-1 h-5 w-px bg-border" aria-hidden="true" />
+            <ToolbarButton
+              label="Heading"
+              active={marks?.h2}
+              onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+            >
+              <Heading2 className="h-4 w-4" aria-hidden="true" />
+            </ToolbarButton>
+            <ToolbarButton
+              label="Subheading"
+              active={marks?.h3}
+              onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+            >
+              <Heading3 className="h-4 w-4" aria-hidden="true" />
+            </ToolbarButton>
+            <span className="mx-1 h-5 w-px bg-border" aria-hidden="true" />
+            <ToolbarButton
+              label="Bulleted list"
+              active={marks?.bullet}
+              onClick={() => editor.chain().focus().toggleBulletList().run()}
+            >
+              <List className="h-4 w-4" aria-hidden="true" />
+            </ToolbarButton>
+            <ToolbarButton
+              label="Numbered list"
+              active={marks?.ordered}
+              onClick={() => editor.chain().focus().toggleOrderedList().run()}
+            >
+              <ListOrdered className="h-4 w-4" aria-hidden="true" />
+            </ToolbarButton>
+            <ToolbarButton label="Quote" active={marks?.quote} onClick={() => editor.chain().focus().toggleBlockquote().run()}>
+              <Quote className="h-4 w-4" aria-hidden="true" />
+            </ToolbarButton>
+            <span className="mx-1 h-5 w-px bg-border" aria-hidden="true" />
+            <ToolbarButton label="Link" active={marks?.link} onClick={openLinkDialog}>
+              <LinkIcon className="h-4 w-4" aria-hidden="true" />
+            </ToolbarButton>
+            <ToolbarButton label="Image" onClick={() => setShowImageDialog(true)}>
+              <ImageIcon className="h-4 w-4" aria-hidden="true" />
+            </ToolbarButton>
+            <span className="ml-auto hidden pr-2 text-xs text-muted-foreground md:inline">@ to mention</span>
+          </div>
+
+          <EditorContent editor={editor} />
         </div>
-        <EditorContent editor={editor} />
+
+        {uploadError && (
+          <p role="alert" className="mt-1.5 text-sm text-destructive">
+            {uploadError}
+          </p>
+        )}
 
         <Dialog open={showLinkDialog} onOpenChange={setShowLinkDialog}>
-          <DialogContent>
+          <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Add Link</DialogTitle>
+              <DialogTitle>Add link</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="linkText">Link Text (optional)</Label>
-                <Input
-                  id="linkText"
-                  value={linkText}
-                  onChange={(e) => setLinkText(e.target.value)}
-                  placeholder="Display text"
-                />
-              </div>
+            <form
+              className="space-y-4"
+              onSubmit={(e) => {
+                e.preventDefault()
+                insertLink()
+              }}
+            >
               <div className="space-y-2">
                 <Label htmlFor="linkUrl">URL</Label>
                 <Input
                   id="linkUrl"
+                  type="url"
+                  inputMode="url"
+                  autoFocus
                   value={linkUrl}
                   onChange={(e) => setLinkUrl(e.target.value)}
-                  placeholder="https://..."
+                  placeholder="https://"
                 />
               </div>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setShowLinkDialog(false)}>
+              <div className="space-y-2">
+                <Label htmlFor="linkText">Text</Label>
+                <Input id="linkText" value={linkText} onChange={(e) => setLinkText(e.target.value)} />
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setShowLinkDialog(false)}>
                   Cancel
                 </Button>
-                <Button onClick={insertLink} disabled={!linkUrl}>
-                  Add Link
+                <Button type="submit" disabled={!linkUrl}>
+                  Add link
                 </Button>
-              </div>
-            </div>
+              </DialogFooter>
+            </form>
           </DialogContent>
         </Dialog>
 
         <Dialog open={showImageDialog} onOpenChange={setShowImageDialog}>
-          <DialogContent>
+          <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Add Image</DialogTitle>
+              <DialogTitle>Add image</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>Upload Image</Label>
+                <Label htmlFor="imageFile">Upload</Label>
                 <Input
-                  ref={fileInputRef}
+                  id="imageFile"
                   type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
+                  accept="image/jpeg,image/png,image/gif,image/webp"
                   disabled={uploading}
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0]
+                    if (file && (await insertUploaded(editor, file))) setShowImageDialog(false)
+                  }}
                 />
-                {uploading && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Uploading...
-                  </div>
-                )}
               </div>
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">Or</span>
-                </div>
+              <div className="relative text-center text-xs uppercase text-muted-foreground">
+                <span className="absolute inset-x-0 top-1/2 border-t border-border" aria-hidden="true" />
+                <span className="relative bg-background px-2">or</span>
               </div>
-              <div className="space-y-2">
+              <form
+                className="space-y-2"
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  if (!imageUrl) return
+                  ;(editor.chain().focus() as any).setResizableImage({ src: imageUrl }).run()
+                  setShowImageDialog(false)
+                  setImageUrl("")
+                }}
+              >
                 <Label htmlFor="imageUrl">Image URL</Label>
-                <Input
-                  id="imageUrl"
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  placeholder="https://..."
-                />
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setShowImageDialog(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={insertImageUrl} disabled={!imageUrl || uploading}>
-                  Add Image
-                </Button>
-              </div>
+                <div className="flex gap-2">
+                  <Input
+                    id="imageUrl"
+                    type="url"
+                    value={imageUrl}
+                    onChange={(e) => setImageUrl(e.target.value)}
+                    placeholder="https://"
+                  />
+                  <Button type="submit" disabled={!imageUrl || uploading}>
+                    Add
+                  </Button>
+                </div>
+              </form>
             </div>
           </DialogContent>
         </Dialog>

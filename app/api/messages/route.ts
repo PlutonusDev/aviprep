@@ -4,6 +4,8 @@ import { verifyToken } from "@lib/auth"
 import { cookies } from "next/headers"
 import { notifyNewMessage } from "@lib/notifications"
 
+const MAX_MESSAGE_LENGTH = 2000
+
 export async function GET(request: Request) {
   try {
     const cookieStore = await cookies()
@@ -60,24 +62,22 @@ export async function GET(request: Request) {
       const partner = msg.senderId === payload.userId ? msg.receiver : msg.sender
 
       if (!conversations.has(partnerId)) {
-        const unreadCount = await prisma.privateMessage.count({
-          where: {
-            senderId: partnerId,
-            receiverId: payload.userId,
-            isRead: false,
-          },
-        })
-
-        conversations.set(partnerId, {
-          partnerId,
-          partner,
-          lastMessage: msg,
-          unreadCount,
-        })
+        conversations.set(partnerId, { partnerId, partner, lastMessage: msg, unreadCount: 0 })
+      }
+      // Tallied from the rows already loaded; it used to be one count query per conversation.
+      if (msg.receiverId === payload.userId && !msg.isRead) {
+        conversations.get(partnerId)!.unreadCount++
       }
     }
 
-    return NextResponse.json(Array.from(conversations.values()))
+    return NextResponse.json(
+      Array.from(conversations.values()).map((c) => ({
+        partnerId: c.partnerId,
+        partner: c.partner,
+        lastMessage: { content: c.lastMessage.content, createdAt: c.lastMessage.createdAt, senderId: c.lastMessage.senderId },
+        unreadCount: c.unreadCount,
+      })),
+    )
   } catch (error) {
     console.error("Error fetching messages:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
@@ -98,10 +98,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid token" }, { status: 401 })
     }
 
-    const { receiverId, content } = await request.json()
+    const body = await request.json()
+    const receiverId = typeof body.receiverId === "string" ? body.receiverId : ""
+    const content = typeof body.content === "string" ? body.content.trim() : ""
 
-    if (!receiverId || !content) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
+    if (!/^[a-f0-9]{24}$/i.test(receiverId) || !content) {
+      return NextResponse.json({ error: "Write a message first" }, { status: 400 })
+    }
+    if (content.length > MAX_MESSAGE_LENGTH) {
+      return NextResponse.json({ error: `Keep messages under ${MAX_MESSAGE_LENGTH} characters` }, { status: 400 })
+    }
+    if (receiverId === payload.userId) {
+      return NextResponse.json({ error: "You can't message yourself" }, { status: 400 })
     }
 
     // Check if receiver exists

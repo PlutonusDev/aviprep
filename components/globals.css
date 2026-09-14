@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@plugin "@tailwindcss/typography";
+
 @custom-variant dark (&:is(.dark *));
 
 /* New startup color scheme with vibrant coral/orange accent */
@@ -18,7 +20,7 @@
   --muted: oklch(0.92 0.005 250);
   --muted-foreground: oklch(0.45 0.01 250);
   --accent: oklch(0.7304 0.1754 57.56);
-  --accent-foreground: oklch(0.98 0 0);
+  --accent-foreground: oklch(0.15 0.01 250);
   --destructive: oklch(0.55 0.22 25);
   --destructive-foreground: oklch(0.98 0 0);
   --border: oklch(0.88 0.005 250);
@@ -42,8 +44,18 @@
   /* Custom tokens */
   --success: oklch(0.55 0.15 150);
   --success-foreground: oklch(0.98 0 0);
-  --warning: oklch(0.7 0.15 85);
-  --warning-foreground: oklch(0.15 0.01 250);
+  /* Scrollbars. Measured to clear 3:1 against the lightest surface they sit on
+     (the sidebar), so the thumb is a visible control rather than a hint. */
+  /* Single-series chart marks. Brand orange itself is 2.51:1 on white, under
+     the 3:1 floor for data marks; this deeper step passes the dataviz
+     validator's lightness band and contrast checks against the card. */
+  --chart-mark: #C25E00;
+
+  --scrollbar-thumb: oklch(0.64 0.01 250);
+  --scrollbar-thumb-hover: oklch(0.45 0.01 250);
+
+  --warning: oklch(0.55 0.15 85);
+  --warning-foreground: oklch(0.98 0 0);
 }
 
 .dark {
@@ -55,7 +67,7 @@
   --popover: oklch(0.18 0.01 250);
   --popover-foreground: oklch(0.95 0 0);
   --primary: oklch(0.7304 0.1754 57.56);
-  --primary-foreground: oklch(0.98 0 0);
+  --primary-foreground: oklch(0.15 0.01 250);
   --secondary: oklch(0.22 0.01 250);
   --secondary-foreground: oklch(0.85 0 0);
   --muted: oklch(0.25 0.01 250);
@@ -84,13 +96,47 @@
   /* Custom tokens */
   --success: oklch(0.75 0.15 150);
   --success-foreground: oklch(0.13 0.01 250);
+  /* Brand orange fails the dark lightness band (L 0.73 > 0.67); stepped down. */
+  --chart-mark: #DE7400;
+
+  --scrollbar-thumb: oklch(0.52 0.01 250);
+  --scrollbar-thumb-hover: oklch(0.72 0 0);
+
   --warning: oklch(0.8 0.15 85);
   --warning-foreground: oklch(0.13 0.01 250);
 }
 
 @theme inline {
-  --font-sans: "Inter", "Geist", sans-serif;
-  --font-mono: "Geist Mono", "Geist Mono Fallback";
+  /* Families are supplied by next/font in app/layout.tsx. Every stack ends in a
+     generic family so nothing can fall through to the browser default. */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-jakarta), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, "Cascadia Mono", Menlo, monospace;
+
+  /* Type scale - 1.25 major third, fluid for the display sizes used on marketing.
+     Body sits at 1rem/16px so mobile Safari never auto-zooms an input. */
+  --text-display-1: clamp(2.5rem, 1.4rem + 4.6vw, 4.5rem);
+  --text-display-1--line-height: 1.05;
+  --text-display-1--letter-spacing: -0.03em;
+  --text-display-2: clamp(2rem, 1.3rem + 2.9vw, 3.25rem);
+  --text-display-2--line-height: 1.1;
+  --text-display-2--letter-spacing: -0.025em;
+  --text-display-3: clamp(1.5rem, 1.2rem + 1.4vw, 2rem);
+  --text-display-3--line-height: 1.2;
+  --text-display-3--letter-spacing: -0.02em;
+  --text-lead: 1.125rem;
+  --text-lead--line-height: 1.65;
+
+  /* Elevation - one consistent ramp. Swiss/minimal: shadows stay quiet. */
+  --shadow-e1: 0 1px 2px 0 oklch(0.15 0.01 250 / 0.05);
+  --shadow-e2: 0 1px 3px 0 oklch(0.15 0.01 250 / 0.08), 0 1px 2px -1px oklch(0.15 0.01 250 / 0.06);
+  --shadow-e3: 0 4px 12px -2px oklch(0.15 0.01 250 / 0.10), 0 2px 4px -2px oklch(0.15 0.01 250 / 0.06);
+  --shadow-e4: 0 12px 32px -8px oklch(0.15 0.01 250 / 0.14), 0 4px 8px -4px oklch(0.15 0.01 250 / 0.08);
+
+  /* Motion - shared tokens so every transition shares one rhythm. */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-decelerate: cubic-bezier(0, 0, 0, 1);
+  --ease-accelerate: cubic-bezier(0.3, 0, 1, 1);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -117,6 +163,8 @@
   --color-chart-5: var(--chart-5);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
+  --color-scrollbar-thumb: var(--scrollbar-thumb);
+  --color-chart-mark: var(--chart-mark);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
   --radius-sm: calc(var(--radius) - 4px);
@@ -140,7 +188,63 @@
 
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-sans);
     padding-right: 0px !important;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-heading);
+  }
+
+  /* Figures in data columns, scores and timers must not jitter as values change. */
+  th, td, time, [data-tabular] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Site-wide honouring of the OS reduced-motion setting. Individual components
+     should still skip non-essential motion, but nothing gets through this. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* Standard properties - Firefox, and Chromium 121+. Applied to every scroll
+     container by inheriting from the root. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+  }
+
+  /* WebKit/older Chromium need the pseudo-elements for a rounded thumb and an
+     inset track. Scoped to fine pointers so touch devices keep their native
+     overlay scrollbars, which should stay hidden until you scroll. */
+  @media (pointer: fine) {
+    ::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+
+    ::-webkit-scrollbar-track,
+    ::-webkit-scrollbar-corner {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      /* A transparent border plus background-clip insets the thumb, so it reads
+         as a floating pill rather than a bar welded to the edge. */
+      background-color: var(--scrollbar-thumb);
+      border: 2px solid transparent;
+      background-clip: content-box;
+      border-radius: 9999px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background-color: var(--scrollbar-thumb-hover);
+    }
   }
 
   html {
@@ -174,6 +278,205 @@
   .allow-select {
     user-select: text;
     -webkit-user-select: text;
+  }
+}
+
+@layer components {
+  /* Marketing section rhythm. Two tiers only: `section` is the default beat,
+     `section-lg` is reserved for the few moments that carry the page (the
+     product shot and the closing CTA). `section-raised` alternates the surface
+     so no two neighbouring sections share a tone. */
+  .section {
+    padding-block: 5rem;
+  }
+
+  .section-lg {
+    padding-block: 6rem;
+  }
+
+  @media (width >= 64rem) {
+    .section {
+      padding-block: 7rem;
+    }
+
+    .section-lg {
+      padding-block: 9rem;
+    }
+  }
+
+  .section-raised {
+    background-color: color-mix(in oklab, var(--card) 30%, transparent);
+    border-block: 1px solid var(--border);
+  }
+
+  /* User-written rich text: forum posts, lessons, and the editor for both.
+     Styled by element, not by classes baked into stored HTML (the sanitiser
+     strips those).
+
+     Whitespace: only text blocks keep their line breaks. Setting pre-wrap on
+     the container also rendered the newlines *between* blocks in stored HTML
+     as extra blank lines, which is what blew the spacing out. */
+  .rich-text {
+    color: var(--foreground);
+    font-size: 0.9375rem;
+    line-height: 1.65;
+    overflow-wrap: anywhere;
+  }
+
+  .rich-text-lg {
+    font-size: 1.0625rem;
+    line-height: 1.7;
+  }
+
+  .rich-text :is(p, h1, h2, h3, h4) {
+    white-space: pre-wrap;
+  }
+
+  /* Spacing works like a plain text editor: paragraphs and headings sit on
+     consecutive lines with no gap, and a blank line (an empty paragraph) is
+     exactly one line tall. Authors control spacing by pressing Enter. */
+  .rich-text :is(p, h1, h2, h3, h4) {
+    margin: 0;
+  }
+
+  .rich-text p:empty::before {
+    content: "\00a0";
+  }
+
+  /* Non-text blocks get a small breathing space so they don't touch text. */
+  .rich-text :is(ul, ol, blockquote, pre, table, img, hr) {
+    margin-block: 0.4em;
+  }
+
+  .rich-text > :first-child {
+    margin-top: 0;
+  }
+
+  .rich-text > :last-child {
+    margin-bottom: 0;
+  }
+
+  .rich-text :is(h1, h2, h3, h4) {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    line-height: 1.4;
+    letter-spacing: -0.01em;
+  }
+
+  .rich-text h1 { font-size: 1.5em; }
+  .rich-text h2 { font-size: 1.25em; }
+  .rich-text h3 { font-size: 1.1em; }
+  .rich-text h4 { font-size: 1em; }
+
+  .rich-text strong,
+  .rich-text b {
+    font-weight: 600;
+  }
+
+  .rich-text a {
+    color: var(--primary);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .rich-text :is(ul, ol) {
+    padding-left: 1.5em;
+  }
+
+  .rich-text ul { list-style: disc; }
+  .rich-text ol { list-style: decimal; }
+
+  .rich-text li + li {
+    margin-top: 0;
+  }
+
+  /* Tiptap wraps list text in <p>; don't let those add block gaps. */
+  .rich-text li > p {
+    margin: 0;
+  }
+
+  .rich-text table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9em;
+  }
+
+  .rich-text :is(th, td) {
+    border: 1px solid var(--border);
+    padding: 0.4em 0.6em;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .rich-text th {
+    background: var(--muted);
+    font-weight: 600;
+  }
+
+  .rich-text li::marker {
+    color: var(--muted-foreground);
+  }
+
+  .rich-text blockquote {
+    border-left: 3px solid var(--border);
+    padding-left: 1em;
+    color: var(--muted-foreground);
+  }
+
+  .rich-text code {
+    font-family: var(--font-mono);
+    font-size: 0.875em;
+    background: var(--muted);
+    border-radius: 0.25rem;
+    padding: 0.1em 0.35em;
+  }
+
+  .rich-text pre {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    background: var(--muted);
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  .rich-text pre code {
+    background: none;
+    padding: 0;
+  }
+
+  .rich-text hr {
+    border: 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .rich-text img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    border-radius: 0.5rem;
+  }
+
+  .rich-text [data-type="mention"] {
+    color: var(--primary);
+    font-weight: 500;
+    background: color-mix(in oklab, var(--primary) 12%, transparent);
+    border-radius: 0.25rem;
+    padding: 0 0.2em;
+  }
+
+  /* Editor-only */
+  .rich-text.ProseMirror {
+    outline: none;
+  }
+
+  .rich-text.ProseMirror p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    color: var(--muted-foreground);
+    float: left;
+    height: 0;
+    pointer-events: none;
   }
 }
 

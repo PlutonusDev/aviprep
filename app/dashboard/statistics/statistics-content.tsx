@@ -1,487 +1,424 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Target, TrendingUp, Clock, BookOpen, Award, Flame, CheckCircle2, XCircle } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import Link from "next/link"
+import { BarChart3, BookOpen, CheckCircle2, ClipboardList, Clock, Flame, Target } from "lucide-react"
+import { Bar, BarChart, CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
 import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  ResponsiveContainer,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  Cell,
-  PieChart,
-  Pie,
-} from "recharts"
+  EmptyState,
+  LoadError,
+  PageHeader,
+  PageShell,
+  PageSkeleton,
+  SectionHeading,
+  StatTile,
+  formatMinutes,
+} from "@/components/hub/page-primitives"
+import { PASS_SCORE } from "@lib/insights"
 import type { SubjectData, UserStats } from "@lib/types"
+import { cn } from "@lib/utils"
 
-interface StatsData {
-  stats: UserStats
-  performanceData: Array<{ date: string; score: number; count: number }>
-  studyTimeData: Array<{ day: string; hours: number }>
+interface ScorePoint {
+  id: string
+  completedAt: string
+  score: number
+  passed: boolean
+  subjectName: string
 }
 
+interface StudyDay {
+  date: string
+  day: string
+  minutes: number
+}
+
+interface StatsPayload {
+  stats: UserStats
+  recentScores: ScorePoint[]
+  studyTimeData: StudyDay[]
+}
+
+// Chart ink. The mark is a darkened brand orange that clears 3:1 on the card in
+// both themes; text stays on text tokens, and the grid recedes.
+const MARK = "var(--chart-mark)"
+const GRID = "var(--border)"
+const TICK = { fill: "var(--muted-foreground)", fontSize: 12 }
+
+const shortDate = (iso: string) => new Date(iso).toLocaleDateString("en-AU", { day: "numeric", month: "short" })
+
 export default function StatisticsContent() {
-  const [statsData, setStatsData] = useState<StatsData | null>(null)
+  const [data, setData] = useState<StatsPayload | null>(null)
   const [subjects, setSubjects] = useState<SubjectData[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState(false)
 
   useEffect(() => {
-    async function fetchData() {
-      try {
-        const [statsRes, subjectsRes] = await Promise.all([fetch("/api/user/stats"), fetch("/api/user/subjects")])
-
-        if (!statsRes.ok || !subjectsRes.ok) {
-          throw new Error("Failed to fetch data")
-        }
-
-        const stats = await statsRes.json()
-        const subjectsData = await subjectsRes.json()
-
-        setStatsData(stats)
-        setSubjects(subjectsData.subjects)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "An error occurred")
-      } finally {
-        setLoading(false)
-      }
+    let cancelled = false
+    Promise.all([fetch("/api/user/stats"), fetch("/api/user/subjects")])
+      .then(async ([statsRes, subjectsRes]) => {
+        if (!statsRes.ok || !subjectsRes.ok) throw new Error("load")
+        const [stats, subjectsData] = await Promise.all([statsRes.json(), subjectsRes.json()])
+        if (cancelled) return
+        setData(stats)
+        setSubjects(subjectsData.subjects ?? [])
+      })
+      .catch(() => !cancelled && setError(true))
+      .finally(() => !cancelled && setLoading(false))
+    return () => {
+      cancelled = true
     }
-    fetchData()
   }, [])
 
-  if (loading) {
-    return (
-      <div className="p-4 lg:p-6 space-y-6">
-        <div>
-          <Skeleton className="h-8 w-64 mb-2" />
-          <Skeleton className="h-4 w-96" />
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-32" />
-          ))}
-        </div>
-        <Skeleton className="h-96" />
-      </div>
-    )
-  }
+  const bySubject = useMemo(
+    () =>
+      subjects
+        .filter((s) => s.isPurchased && s.examsCompleted > 0)
+        .sort((a, b) => b.averageScore - a.averageScore),
+    [subjects],
+  )
 
-  if (error || !statsData) {
-    return (
-      <div className="p-4 lg:p-6">
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <p className="text-lg font-medium text-red-500">Error loading statistics</p>
-            <p className="text-sm text-muted-foreground">{error}</p>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
+  if (loading) return <PageSkeleton tiles={5} />
+  if (error || !data) return <LoadError title="We couldn't load your statistics" message="Try again in a moment." />
 
-  const { stats, performanceData, studyTimeData } = statsData
-  const purchasedSubjects = subjects.filter((s) => s.isPurchased)
-  const subjectsWithScores = purchasedSubjects.filter((s) => s.averageScore > 0)
-
-  // Build subject performance data for chart
-  const subjectPerformance = subjectsWithScores.map((s) => ({
-    name: s.code,
-    fullName: s.name,
-    score: s.averageScore,
-    questions: s.questionsAttempted,
-  }))
-
-  // Check if user has any data
-  const hasData = stats.totalExams > 0
+  const { stats, recentScores = [], studyTimeData = [] } = data
+  const accuracy = stats.questionsAnswered > 0 ? Math.round((stats.correctAnswers / stats.questionsAnswered) * 100) : 0
 
   return (
-    <div className="p-4 lg:p-6 space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Statistics & Analytics</h1>
-        <p className="text-muted-foreground">Track your progress and identify areas for improvement</p>
-      </div>
+    <PageShell>
+      <PageHeader title="Statistics" description="Your scores and study time." />
 
-      {/* Key Metrics */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Overall Score</p>
-                <p className="text-3xl font-bold text-foreground">{hasData ? `${stats.averageScore}%` : "—"}</p>
-                {hasData && (
-                  <p className="text-xs text-green-500 flex items-center gap-1 mt-1">
-                    <TrendingUp className="h-3 w-3" />
-                    Keep practicing!
-                  </p>
-                )}
-              </div>
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <Target className="h-6 w-6 text-primary" />
-              </div>
+      {stats.totalExams === 0 ? (
+        <EmptyState
+          icon={BarChart3}
+          title="No stats yet"
+          description="Sit a practice exam to get started."
+        >
+          <Button asChild className="h-10">
+            <Link href="/dashboard/exams">Start a practice exam</Link>
+          </Button>
+        </EmptyState>
+      ) : (
+        <>
+          <section aria-label="Totals" className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            <StatTile icon={ClipboardList} label="Exams sat" value={String(stats.totalExams)} />
+            <StatTile
+              icon={CheckCircle2}
+              label="Pass rate"
+              value={`${stats.passRate}%`}
+              detail={`${stats.passedExams} of ${stats.totalExams} passed`}
+            />
+            <StatTile
+              icon={Target}
+              label="Accuracy"
+              value={`${accuracy}%`}
+              detail={`${stats.correctAnswers.toLocaleString()} of ${stats.questionsAnswered.toLocaleString()}`}
+            />
+            <StatTile
+              icon={Flame}
+              label="Study streak"
+              value={`${stats.studyStreak} ${stats.studyStreak === 1 ? "day" : "days"}`}
+            />
+            <StatTile icon={Clock} label="Time studied" value={`${stats.totalStudyHours}h`} />
+          </section>
+
+          <ScoreTrend points={recentScores} />
+
+          <div className="grid gap-8 lg:grid-cols-5">
+            <section aria-label="Average score by subject" className="lg:col-span-3">
+              <SectionHeading title="By subject" description={`Average score vs the ${PASS_SCORE}% pass mark`} />
+              <SubjectBars subjects={bySubject} />
+            </section>
+
+            <section aria-label="Study time, last 7 days" className="lg:col-span-2">
+              <SectionHeading
+                title="Last 7 days"
+                description={`${formatMinutes(studyTimeData.reduce((n, d) => n + d.minutes, 0))} studied`}
+              />
+              <StudyWeek days={studyTimeData} />
+            </section>
+          </div>
+        </>
+      )}
+    </PageShell>
+  )
+}
+
+/* --- Score trend ----------------------------------------------------------- */
+
+function ScoreTrend({ points }: { points: ScorePoint[] }) {
+  const chartData = points.map((p, i) => ({ ...p, n: i + 1, label: shortDate(p.completedAt) }))
+
+  // The one hero figure on the page: where recent scores sit, and which way they're heading.
+  // A comparison is only shown with enough sittings on both sides to mean anything.
+  const span = Math.max(1, Math.min(5, Math.floor(points.length / 2)))
+  const avg = (list: ScorePoint[]) => Math.round(list.reduce((n, p) => n + p.score, 0) / list.length)
+  const recent = points.length ? avg(points.slice(-span)) : 0
+  const change = span >= 3 ? recent - avg(points.slice(-span * 2, -span)) : null
+
+  return (
+    <section aria-label="Score trend">
+      <Card className="shadow-e1">
+        <CardContent className="p-5 sm:p-6">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h2 className="text-base font-semibold text-foreground">Score trend</h2>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                Last {points.length} {points.length === 1 ? "exam" : "exams"}
+              </p>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Pass Rate</p>
-                <p className="text-3xl font-bold text-foreground">{hasData ? `${stats.passRate}%` : "—"}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {hasData ? `${stats.passedExams}/${stats.totalExams} exams passed` : "No exams yet"}
+            {points.length > 0 && (
+              <div className="text-right">
+                <p className="text-display-3 font-bold leading-none text-foreground">{recent}%</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {span > 1 ? `Last ${span} average` : "Latest score"}
+                  {change !== null && change !== 0 && (
+                    <>
+                      {" · "}
+                      <span className="font-medium text-foreground">
+                        {change > 0 ? "up" : "down"} {Math.abs(change)} pts
+                      </span>
+                    </>
+                  )}
                 </p>
               </div>
-              <div className="h-12 w-12 rounded-full bg-green-500/10 flex items-center justify-center">
-                <Award className="h-6 w-6 text-green-500" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Study Streak</p>
-                <p className="text-3xl font-bold text-foreground">{stats.studyStreak} days</p>
-                <p className="text-xs text-muted-foreground mt-1">Keep it going!</p>
-              </div>
-              <div className="h-12 w-12 rounded-full bg-orange-500/10 flex items-center justify-center">
-                <Flame className="h-6 w-6 text-orange-500" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Study Time</p>
-                <p className="text-3xl font-bold text-foreground">{stats.totalStudyHours}h</p>
-                <p className="text-xs text-muted-foreground mt-1">Total time spent</p>
-              </div>
-              <div className="h-12 w-12 rounded-full bg-chart-4/10 flex items-center justify-center">
-                <Clock className="h-6 w-6 text-chart-4" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Charts Section */}
-      <Tabs defaultValue="performance" className="space-y-4">
-        <TabsList className="bg-secondary">
-          <TabsTrigger value="performance">Performance</TabsTrigger>
-          <TabsTrigger value="subjects">By Subject</TabsTrigger>
-          <TabsTrigger value="study-time">Study Time</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="performance" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Score Trend</CardTitle>
-              <CardDescription>Your average exam scores over time</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {performanceData.length > 0 ? (
-                <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={performanceData}>
-                      <defs>
-                        <linearGradient id="scoreGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="oklch(0.65 0.18 220)" stopOpacity={0.3} />
-                          <stop offset="95%" stopColor="oklch(0.65 0.18 220)" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                      <XAxis dataKey="date" stroke="var(--muted-foreground)" fontSize={12} />
-                      <YAxis domain={[50, 100]} stroke="var(--muted-foreground)" fontSize={12} />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "var(--card)",
-                          border: "1px solid var(--border)",
-                          borderRadius: "8px",
-                        }}
-                        labelStyle={{ color: "var(--foreground)" }}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="score"
-                        stroke="oklch(0.65 0.18 220)"
-                        strokeWidth={2}
-                        fill="url(#scoreGradient)"
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              ) : (
-                <div className="h-[300px] flex items-center justify-center">
-                  <div className="text-center">
-                    <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground">Complete some exams to see your score trend</p>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Question Stats */}
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Questions Breakdown</CardTitle>
-                <CardDescription>Your answer accuracy</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {hasData ? (
-                  <>
-                    <div className="flex items-center justify-center">
-                      <div className="relative h-[200px] w-[200px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie
-                              data={[
-                                { name: "Correct", value: stats.correctAnswers },
-                                { name: "Incorrect", value: stats.questionsAnswered - stats.correctAnswers },
-                              ]}
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={60}
-                              outerRadius={80}
-                              paddingAngle={2}
-                              dataKey="value"
-                            >
-                              <Cell fill="var(--success)" />
-                              <Cell fill="var(--red-500)" />
-                            </Pie>
-                            <Tooltip
-                              contentStyle={{
-                                backgroundColor: "var(--card)",
-                                border: "1px solid var(--border)",
-                                borderRadius: "8px",
-                              }}
-                            />
-                          </PieChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </div>
-                    <div className="mt-4 grid grid-cols-2 gap-4">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="h-5 w-5 text-green-500" />
-                        <div>
-                          <p className="text-sm font-medium text-foreground">{stats.correctAnswers}</p>
-                          <p className="text-xs text-muted-foreground">Correct</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <XCircle className="h-5 w-5 text-red-500" />
-                        <div>
-                          <p className="text-sm font-medium text-foreground">
-                            {stats.questionsAnswered - stats.correctAnswers}
-                          </p>
-                          <p className="text-xs text-muted-foreground">Incorrect</p>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <div className="h-[200px] flex items-center justify-center">
-                    <p className="text-muted-foreground">No questions answered yet</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Exam Summary</CardTitle>
-                <CardDescription>Your exam completion statistics</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Total Exams</span>
-                    <span className="text-lg font-bold text-foreground">{stats.totalExams}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Passed</span>
-                    <span className="text-lg font-bold text-green-500">{stats.passedExams}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Failed</span>
-                    <span className="text-lg font-bold text-red-500">{stats.totalExams - stats.passedExams}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Questions Answered</span>
-                    <span className="text-lg font-bold text-foreground">{stats.questionsAnswered}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            )}
           </div>
-        </TabsContent>
 
-        <TabsContent value="subjects" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Performance by Subject</CardTitle>
-              <CardDescription>Average scores across all theory subjects</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {subjectPerformance.length > 0 ? (
-                <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={subjectPerformance} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                      <XAxis type="number" domain={[0, 100]} stroke="var(--muted-foreground)" fontSize={12} />
-                      <YAxis type="category" dataKey="name" stroke="var(--muted-foreground)" fontSize={12} width={50} />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "var(--card)",
-                          border: "1px solid var(--border)",
-                          borderRadius: "8px",
-                        }}
-                        formatter={(value: number, name: string, props: { payload?: { fullName?: string } }) => [
-                          `${value}%`,
-                          props.payload?.fullName || name,
-                        ]}
-                      />
-                      <Bar dataKey="score" radius={[0, 4, 4, 0]}>
-                        {subjectPerformance.map((entry, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={
-                              entry.score >= 80
-                                ? "var(--success)"
-                                : entry.score >= 70
-                                  ? "var(--primary)"
-                                  : "var(--warning)"
-                            }
-                          />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              ) : (
-                <div className="h-[300px] flex items-center justify-center">
-                  <div className="text-center">
-                    <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground">Complete some exams to see subject performance</p>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Subject Cards */}
-          {purchasedSubjects.length > 0 && (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {purchasedSubjects.map((subject) => (
-                <Card key={subject.id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary">{subject.code}</Badge>
-                        <span className="text-sm font-medium text-foreground">{subject.name}</span>
-                      </div>
-                      <span
-                        className={`text-lg font-bold ${
-                          subject.averageScore >= 80
-                            ? "text-green-500"
-                            : subject.averageScore >= 70
-                              ? "text-primary"
-                              : subject.averageScore > 0
-                                ? "text-orange-500"
-                                : "text-muted-foreground"
-                        }`}
-                      >
-                        {subject.averageScore > 0 ? `${subject.averageScore}%` : "—"}
-                      </span>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span>Progress</span>
-                        <span>{subject.progress}%</span>
-                      </div>
-                      <Progress value={subject.progress} className="h-1.5" />
-                      <p className="text-xs text-muted-foreground">
-                        {subject.questionsAttempted}/{subject.totalQuestions} questions attempted
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="study-time" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Weekly Study Time</CardTitle>
-              <CardDescription>Hours spent studying each day this week</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[300px]">
+          {points.length < 2 ? (
+            <p className="mt-6 rounded-lg border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground">
+              Sit another exam to see your trend.
+            </p>
+          ) : (
+            <>
+              <div className="mt-6 h-64" aria-hidden="true">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={studyTimeData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                    <XAxis dataKey="day" stroke="var(--muted-foreground)" fontSize={12} />
-                    <YAxis stroke="var(--muted-foreground)" fontSize={12} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "var(--card)",
-                        border: "1px solid var(--border)",
-                        borderRadius: "8px",
-                      }}
-                      formatter={(value: number) => [`${value}h`, "Study Time"]}
+                  <LineChart data={chartData} margin={{ top: 8, right: 12, bottom: 0, left: -12 }}>
+                    <CartesianGrid stroke={GRID} strokeDasharray="0" vertical={false} />
+                    <XAxis
+                      dataKey="n"
+                      tickFormatter={(n: number) => chartData[n - 1]?.label ?? ""}
+                      tick={TICK}
+                      tickLine={false}
+                      axisLine={{ stroke: GRID }}
+                      minTickGap={24}
                     />
-                    <Bar dataKey="hours" fill="oklch(0.65 0.18 220)" radius={[4, 4, 0, 0]} />
-                  </BarChart>
+                    <YAxis
+                      domain={[0, 100]}
+                      ticks={[0, 25, 50, 75, 100]}
+                      tickFormatter={(v: number) => `${v}%`}
+                      tick={TICK}
+                      tickLine={false}
+                      axisLine={false}
+                      width={48}
+                    />
+                    <ReferenceLine
+                      y={PASS_SCORE}
+                      stroke="var(--muted-foreground)"
+                      strokeDasharray="4 4"
+                      label={{ value: `Pass ${PASS_SCORE}%`, position: "insideTopLeft", ...TICK }}
+                    />
+                    <Tooltip
+                      cursor={{ stroke: GRID }}
+                      content={({ active, payload }) => {
+                        const p = active && payload?.[0] ? (payload[0].payload as ScorePoint & { label: string }) : null
+                        if (!p) return null
+                        return (
+                          <div className="rounded-md border border-border bg-popover px-3 py-2 text-sm shadow-e2">
+                            <p className="font-medium text-foreground">{p.score}%</p>
+                            <p className="text-xs text-muted-foreground">{p.subjectName}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {p.label} · {p.passed ? "Passed" : "Not passed"}
+                            </p>
+                          </div>
+                        )
+                      }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="score"
+                      stroke={MARK}
+                      strokeWidth={2}
+                      dot={{ r: 3, fill: MARK, strokeWidth: 0 }}
+                      activeDot={{ r: 5, fill: MARK, stroke: "var(--card)", strokeWidth: 2 }}
+                      isAnimationActive={false}
+                    />
+                  </LineChart>
                 </ResponsiveContainer>
               </div>
-            </CardContent>
-          </Card>
 
-          {/* Study Stats */}
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card>
-              <CardContent className="p-6 text-center">
-                <p className="text-3xl font-bold text-foreground">{stats.totalStudyHours}h</p>
-                <p className="text-sm text-muted-foreground">Total Study Time</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6 text-center">
-                <p className="text-3xl font-bold text-foreground">
-                  {stats.totalExams > 0 ? Math.round(stats.totalStudyHours / stats.totalExams) : 0}h
-                </p>
-                <p className="text-sm text-muted-foreground">Avg. per Exam</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6 text-center">
-                <p className="text-3xl font-bold text-foreground">{stats.studyStreak}</p>
-                <p className="text-sm text-muted-foreground">Day Streak</p>
-              </CardContent>
-            </Card>
+              {/* The same numbers for screen readers and anyone who'd rather read than squint. */}
+              <details className="mt-3 text-sm">
+                <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                  Show as a table
+                </summary>
+                <div className="mt-3 max-h-64 overflow-auto rounded-lg border border-border">
+                  <table className="w-full text-left text-sm">
+                    <thead className="sticky top-0 bg-muted text-xs text-muted-foreground">
+                      <tr>
+                        <th scope="col" className="px-3 py-2 font-medium">Date</th>
+                        <th scope="col" className="px-3 py-2 font-medium">Subject</th>
+                        <th scope="col" className="px-3 py-2 text-right font-medium">Score</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {[...chartData].reverse().map((p) => (
+                        <tr key={p.id}>
+                          <td className="px-3 py-2 text-muted-foreground">{p.label}</td>
+                          <td className="px-3 py-2 text-foreground">{p.subjectName}</td>
+                          <td className="px-3 py-2 text-right text-foreground" data-tabular>
+                            {p.score}%<span className="sr-only">, {p.passed ? "passed" : "not passed"}</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </details>
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </section>
+  )
+}
+
+/* --- Subjects ---------------------------------------------------------------- */
+
+/**
+ * Horizontal bars as plain markup: the labels are long subject names, which a
+ * chart library would truncate, and every row doubles as its own table row.
+ * One hue for every bar - status is carried by the pass-mark line and the words.
+ */
+function SubjectBars({ subjects }: { subjects: SubjectData[] }) {
+  if (subjects.length === 0) {
+    return (
+      <Card className="border-dashed shadow-none">
+        <CardContent className="py-10 text-center text-sm text-muted-foreground">
+          No subject results yet.
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <Card className="shadow-e1">
+      <CardContent className="p-0">
+        <ul className="divide-y divide-border">
+          {subjects.map((s) => {
+            const below = s.averageScore < PASS_SCORE
+            return (
+              <li key={s.id}>
+                <Link
+                  href={`/dashboard/exams/${s.id}`}
+                  className="block px-5 py-4 transition-colors hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                >
+                  <div className="flex items-baseline justify-between gap-3">
+                    <p className="min-w-0 truncate font-medium text-foreground">{s.name}</p>
+                    <p className="shrink-0 font-semibold text-foreground" data-tabular>
+                      {s.averageScore}%
+                    </p>
+                  </div>
+                  <div className="relative mt-2 h-2 rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full"
+                      style={{ width: `${Math.max(2, Math.min(100, s.averageScore))}%`, background: MARK }}
+                    />
+                    <span
+                      aria-hidden="true"
+                      className="absolute -top-1 h-4 w-0.5 rounded-full bg-foreground/60"
+                      style={{ left: `${PASS_SCORE}%` }}
+                    />
+                  </div>
+                  <p className="mt-1.5 flex flex-wrap gap-x-2 text-xs text-muted-foreground">
+                    <span>{s.code}</span>
+                    <span aria-hidden="true">&middot;</span>
+                    <span>
+                      {s.examsCompleted} {s.examsCompleted === 1 ? "exam" : "exams"}
+                    </span>
+                    <span aria-hidden="true">&middot;</span>
+                    <span>{s.questionsAttempted} questions</span>
+                    <span aria-hidden="true">&middot;</span>
+                    <span className={cn(below ? "font-medium text-foreground" : undefined)}>
+                      {below ? `${PASS_SCORE - s.averageScore} below pass` : "Passing"}
+                    </span>
+                  </p>
+                </Link>
+              </li>
+            )
+          })}
+        </ul>
+      </CardContent>
+    </Card>
+  )
+}
+
+/* --- Study time ------------------------------------------------------------ */
+
+function StudyWeek({ days }: { days: StudyDay[] }) {
+  const total = days.reduce((n, d) => n + d.minutes, 0)
+
+  return (
+    <Card className="shadow-e1">
+      <CardContent className="p-5">
+        {total === 0 ? (
+          <div className="flex flex-col items-center py-8 text-center">
+            <BookOpen className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
+            <p className="mt-3 text-sm text-muted-foreground">No study time this week.</p>
           </div>
-        </TabsContent>
-      </Tabs>
-    </div>
+        ) : (
+          <>
+            <div className="h-56" aria-hidden="true">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={days} margin={{ top: 8, right: 4, bottom: 0, left: -16 }}>
+                  <CartesianGrid stroke={GRID} vertical={false} />
+                  <XAxis dataKey="day" tick={TICK} tickLine={false} axisLine={{ stroke: GRID }} interval={0} />
+                  <YAxis
+                    allowDecimals={false}
+                    tickFormatter={(v: number) => (v >= 60 ? `${Math.round(v / 60)}h` : `${v}m`)}
+                    tick={TICK}
+                    tickLine={false}
+                    axisLine={false}
+                    width={44}
+                  />
+                  <Tooltip
+                    cursor={{ fill: "var(--muted)", opacity: 0.5 }}
+                    content={({ active, payload }) => {
+                      const d = active && payload?.[0] ? (payload[0].payload as StudyDay) : null
+                      if (!d) return null
+                      return (
+                        <div className="rounded-md border border-border bg-popover px-3 py-2 text-sm shadow-e2">
+                          <p className="font-medium text-foreground">{formatMinutes(d.minutes)}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(`${d.date}T00:00:00`).toLocaleDateString("en-AU", {
+                              weekday: "long",
+                              day: "numeric",
+                              month: "short",
+                            })}
+                          </p>
+                        </div>
+                      )
+                    }}
+                  />
+                  <Bar dataKey="minutes" fill={MARK} radius={[4, 4, 0, 0]} maxBarSize={32} isAnimationActive={false} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <table className="sr-only">
+              <caption>Minutes studied per day, last 7 days</caption>
+              <tbody>
+                {days.map((d) => (
+                  <tr key={d.date}>
+                    <th scope="row">{d.day}</th>
+                    <td>{formatMinutes(d.minutes)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
+      </CardContent>
+    </Card>
   )
 }

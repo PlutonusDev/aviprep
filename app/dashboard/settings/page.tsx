@@ -18,7 +18,7 @@ export default function SettingsPage() {
 
 function SettingsLoading() {
   return (
-    <div className="p-4 lg:p-6 space-y-6">
+    <div className="mx-auto w-full max-w-6xl space-y-8 p-4 lg:p-8">
       <div>
         <div className="h-8 w-32 bg-secondary rounded animate-pulse" />
         <div className="h-4 w-48 bg-secondary rounded animate-pulse mt-2" />

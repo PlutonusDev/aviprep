@@ -155,7 +155,7 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="p-4 lg:p-6 space-y-6">
+    <div className="mx-auto w-full max-w-6xl space-y-8 p-4 lg:p-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -165,7 +165,7 @@ export default function NotificationsPage() {
             </Link>
           </Button>
           <div>
-            <h1 className="text-2xl font-bold">Notifications</h1>
+            <h1 className="text-display-3 font-bold text-foreground">Notifications</h1>
             <p className="text-muted-foreground">
               {unreadCount > 0 ? `${unreadCount} unread` : "All caught up!"}
             </p>

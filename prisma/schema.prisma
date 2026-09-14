@@ -27,6 +27,13 @@ model User {
   hasBundle         Boolean   @default(false)
   bundleExpiry      DateTime?
 
+  // Subjects this student's school has granted them directly. Kept apart from
+  // Purchase, which records money changing hands.
+  schoolSubjectIds    String[]      @default([])
+
+  // When the welcome tour was finished or skipped. Null means never shown.
+  onboardedAt         DateTime?
+
   flightSchoolId      String?       @db.ObjectId
   flightSchool        FlightSchool? @relation ("FlightSchoolStudents", fields: [flightSchoolId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   isFlightSchoolAdmin Boolean       @default(false)
@@ -76,6 +83,10 @@ model FlightSchool {
   footerText      String?
   hideBranding    Boolean @default(false)
 
+  // Feature keys the school has switched off for its students.
+  // See lib/tenant-features.ts for the registry of valid keys.
+  disabledFeatures String[] @default([])
+
   apiKey          String?   @unique
   apiEnabled      Boolean   @default(true)
   webhookUrl      String?
@@ -104,6 +115,9 @@ model StudentGroup {
   flightSchool    FlightSchool @relation(fields: [flightSchoolId], references: [id], onDelete: Cascade)
 
   studentIds  String[]  @db.ObjectId
+
+  // Subjects every member of this group can see.
+  subjectIds  String[]  @default([])
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -245,9 +259,20 @@ model Question {
   correctIndex Int
   explanation  String
   reference    String
-  
+
+  // Authoring workflow. All optional so existing rows need no backfill -
+  // a missing status is treated as "published" (see lib/question-validation.ts).
+  status       String?   // "draft" | "review" | "published"
+  authorId     String?   @db.ObjectId
+  reviewedById String?   @db.ObjectId
+  authorNote   String?
+
+  createdAt    DateTime? @default(now())
+  updatedAt    DateTime? @updatedAt
+
   @@index([subjectId])
   @@index([topic])
+  @@index([status])
 }
 
 model Waitlist {

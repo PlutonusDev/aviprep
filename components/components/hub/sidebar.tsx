@@ -1,156 +1,150 @@
-import { usePathname } from "next/navigation";
-import { RiDashboardHorizontalFill } from "react-icons/ri";
-import { GiPlaneWing } from "react-icons/gi";
-import Link from "@/components/meta/link";
-import { cn } from "lib/utils";
-import { FaBrain, FaClipboardList, FaComputer, FaDoorClosed, FaMedal, FaPaperPlane } from "react-icons/fa6";
-import { IoBarChart, IoSettings, IoSparkles } from "react-icons/io5";
-import { SlSpeech } from "react-icons/sl";
-import { useUser } from "@lib/user-context";
-import { useEffect, useState } from "react";
-import { useTenant } from "@lib/tenant-context";
-import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
-import { Building2 } from "lucide-react";
+"use client"
 
-const navigation = [
-    {
-        name: "Dashboard",
-        href: "/dashboard",
-        icon: RiDashboardHorizontalFill
-    },
-    {
-        name: "Subject Courses",
-        href: "/dashboard/learn",
-        icon: FaClipboardList
-    },
-    {
-        name: "Practice Exams",
-        href: "/dashboard/exams",
-        icon: FaComputer
-    },
-    {
-        name: "Statistics",
-        href: "/dashboard/statistics",
-        icon: IoBarChart
-    },
-    {
-        name: "Exam History",
-        href: "/dashboard/history",
-        icon: FaMedal
-    },
-    {
-        name: "AI Insights",
-        href: "/dashboard/insights",
-        icon: FaBrain
-    },
-    {
-        name: "Forums",
-        href: "/dashboard/forum",
-        icon: SlSpeech
-    },
-    {
-        name: "Messages",
-        href: "/dashboard/messages",
-        icon: FaPaperPlane
-    }
-]
+import { usePathname } from "next/navigation"
+import Link from "@/components/meta/link"
+import { cn } from "lib/utils"
+import { useUser } from "@lib/user-context"
+import { useTenant } from "@lib/tenant-context"
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
+import { Building2, LogOut } from "lucide-react"
+import {
+  NAV_GROUPS,
+  SECONDARY_NAV,
+  SCHOOL_NAV,
+  ADMIN_NAV,
+  isNavItemActive,
+  filterNavItems,
+  type NavItem,
+} from "./nav-items"
 
-const bottomNav = [
-    {
-        name: "Upgrade",
-        href: "/dashboard/pricing",
-        icon: IoSparkles
-    },
-    {
-        name: "Settings",
-        href: "/dashboard/settings",
-        icon: IoSettings
-    }
-]
+const linkBase =
+  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
 
-export default () => {
-    const { user, logout } = useUser();
-    const pathname = usePathname();
-    const [pendingPathname, setPendingPathname] = useState<string | null>(null);
-    const { tenant, isWhitelabeled } = useTenant();
+const TOUR_KEYS: Record<string, string> = {
+  "/dashboard/learn": "nav-learn",
+  "/dashboard/exams": "nav-exams",
+  "/dashboard/insights": "nav-insights",
+  "/dashboard/pricing": "nav-pricing",
+}
 
-    useEffect(() => {
-        const handleStart = (e: any) => {
-            setPendingPathname(e.detail.href);
-        };
+function NavLink({ item, active }: { item: NavItem; active: boolean }) {
+  return (
+    <Link
+      href={item.href}
+      data-tour={TOUR_KEYS[item.href]}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        linkBase,
+        active
+          ? "bg-sidebar-accent text-sidebar-foreground"
+          : "text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+      )}
+    >
+      {/* A bar, not just colour, marks the current section. */}
+      <span
+        aria-hidden="true"
+        className={cn(
+          "-ml-3 h-5 w-0.5 rounded-full",
+          active ? "bg-primary" : "bg-transparent",
+        )}
+      />
+      <item.icon className="h-4.5 w-4.5 shrink-0" aria-hidden="true" />
+      <span className="truncate">{item.name}</span>
+    </Link>
+  )
+}
 
-        window.addEventListener("trigger-transition-start", handleStart);
-        setPendingPathname(null);
+export default function Sidebar() {
+  const { user, logout } = useUser()
+  const { tenant, isWhitelabeled, disabledFeatures } = useTenant()
+  const navFilter = { isTenant: isWhitelabeled, disabledFeatures }
 
-        return () => window.removeEventListener("trigger-transition-start", handleStart);
-    }, [pathname]);
+  // Navigation is immediate now, so the pathname is the current path - there is
+  // no pending destination to optimistically highlight.
+  const currentPath = usePathname()
 
-    const currentPath = pendingPathname || pathname;
-
-    return (
-        <aside className="fixed inset-y-0 left-0 z-50 hidden w-64 flex-col border-r border-border bg-sidebar lg:flex">
-            <div className="flex h-16 items-center gap-2 border-b border-border px-6 justify-center">
-                {isWhitelabeled && tenant ? (
-                    <>
-                        <Avatar className="h-12 w-12">
-                            <AvatarImage src={tenant.logo || undefined} />
-                            <AvatarFallback className="bg-primary/10">
-                                <Building2 className="h-5 w-5 text-primary" />
-                            </AvatarFallback>
-                        </Avatar>
-                        <div className="flex flex-col">
-                            <span className="text-sm font-semibold text-sidebar-foreground truncate max-w-[170px]">{tenant.name}</span>
-                            <span className="text-xs text-muted-foreground">Training Portal</span>
-                        </div>
-                    </>
-                ) : (
-                    <img className="h-14" src="/img/AviPrep-logo.png" />
-                )}
+  return (
+    <aside className="fixed inset-y-0 left-0 z-50 hidden w-64 flex-col border-r border-border bg-sidebar lg:flex">
+      <div className="flex h-16 shrink-0 items-center gap-2.5 border-b border-border px-5">
+        {isWhitelabeled && tenant ? (
+          <>
+            <Avatar className="h-9 w-9 shrink-0">
+              <AvatarImage src={tenant.logo || undefined} alt="" />
+              <AvatarFallback className="bg-primary/10">
+                <Building2 className="h-4 w-4 text-primary" aria-hidden="true" />
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex min-w-0 flex-col">
+              <span className="truncate text-sm font-semibold text-sidebar-foreground">
+                {tenant.name}
+              </span>
+              <span className="text-xs text-muted-foreground">Training portal</span>
             </div>
+          </>
+        ) : (
+          <img
+            src="/img/AviPrep-logo.png"
+            alt="AviPrep"
+            width={176}
+            height={44}
+            className="h-11 w-auto"
+          />
+        )}
+      </div>
 
-            <nav className="flex-1 space-y-1 px-3 py-4">
-                {navigation.map(item => {
-                    const isActive = currentPath === item.href;
-                    return (
-                        <Link key={item.name} href={item.href} className={cn(
-                            "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                            isActive ? "bg-sidebar-accent text-sidebar-foreground"
-                            : "text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
-                        )}>
-                            <item.icon className="text-lg" />
-                            {item.name}
-                        </Link>
-                    )
-                })}
-            </nav>
-
-            <div className="border-t border-border px-3 py-4">
-                {bottomNav.map(item => (
-                    <Link key={item.name} href={item.href} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground">
-                        <item.icon className="text-lg" />
-                        {item.name}
-                    </Link>
-                ))}
-
-                {user && user.isFlightSchoolAdmin && (
-                    <Link href="/school" className="cursor-pointer flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground">
-                        <GiPlaneWing className="text-lg" />
-                        Manage Flight School
-                    </Link>
-                )}
-
-                {user && user.isAdmin && (
-                    <Link href="/admin" className="cursor-pointer flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground">
-                        <GiPlaneWing className="text-lg" />
-                        Admin Panel
-                    </Link>
-                )}
-
-                <button onClick={logout} className="cursor-pointer flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground">
-                    <FaDoorClosed className="text-lg" />
-                    Sign Out
-                </button>
+      <nav aria-label="Main" className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
+        {NAV_GROUPS.map((group) => {
+          const items = filterNavItems(group.items, navFilter)
+          // A group whose destinations are all switched off should disappear
+          // rather than leave a stray heading.
+          if (items.length === 0) return null
+          return (
+          <div key={group.label}>
+            {/* Grouping turns one long list of eight into three scannable sets. */}
+            <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+              {group.label}
+            </p>
+            <div className="space-y-0.5">
+              {items.map((item) => (
+                <NavLink key={item.href} item={item} active={isNavItemActive(currentPath, item.href)} />
+              ))}
             </div>
-        </aside>
-    )
+          </div>
+          )
+        })}
+      </nav>
+
+      <div className="shrink-0 border-t border-border px-3 py-3">
+        <nav aria-label="Account" className="space-y-0.5">
+          {filterNavItems(SECONDARY_NAV, navFilter).map((item) => (
+            <NavLink key={item.href} item={item} active={isNavItemActive(currentPath, item.href)} />
+          ))}
+
+          {user?.isFlightSchoolAdmin && (
+            <NavLink item={SCHOOL_NAV} active={isNavItemActive(currentPath, SCHOOL_NAV.href)} />
+          )}
+
+          {user?.isAdmin && (
+            <NavLink item={ADMIN_NAV} active={isNavItemActive(currentPath, ADMIN_NAV.href)} />
+          )}
+        </nav>
+
+        {/* Signing out is set apart from ordinary destinations. */}
+        <div className="mt-2 border-t border-border pt-2">
+          <button
+            type="button"
+            onClick={logout}
+            className={cn(
+              linkBase,
+              "w-full cursor-pointer text-muted-foreground hover:bg-destructive/10 hover:text-destructive",
+            )}
+          >
+            <span aria-hidden="true" className="-ml-3 h-5 w-0.5" />
+            <LogOut className="h-4.5 w-4.5 shrink-0" aria-hidden="true" />
+            Sign out
+          </button>
+        </div>
+      </div>
+    </aside>
+  )
 }

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import {
     Bell,
     Menu,
+    Building2,
     Search,
     LayoutDashboard,
     BookOpen,
@@ -45,24 +46,25 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import {
+    NAV_GROUPS,
+    SECONDARY_NAV,
+    SCHOOL_NAV,
+    ADMIN_NAV,
+    isNavItemActive,
+    filterNavItems,
+} from "./nav-items"
 import { Badge } from "@/components/ui/badge"
 import Link from "@/components/meta/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@lib/utils"
 import { useUser } from "@lib/user-context"
+import { useTenant } from "@lib/tenant-context"
 import { SUBJECTS, LICENSE_TYPES } from "@lib/subjects"
 import type React from "react"
 import { NotificationsDropdown } from "./notifications-dropdown"
 
-const navigation = [
-    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { name: "Practice Exams", href: "/dashboard/exams", icon: BookOpen },
-    { name: "Statistics", href: "/dashboard/statistics", icon: BarChart3 },
-    { name: "Exam History", href: "/dashboard/history", icon: History },
-    { name: "AI Insights", href: "/dashboard/insights", icon: BrainCircuit },
-    { name: "Settings", href: "/dashboard/settings", icon: Settings },
-]
 
 // Icon mapping for subjects
 const subjectIconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -466,6 +468,8 @@ function CommandSearch({ open, onOpenChange }: { open: boolean; onOpenChange: (o
 export default function Header() {
     const pathname = usePathname()
     const { user, logout } = useUser()
+    const { tenant, isWhitelabeled, disabledFeatures } = useTenant()
+    const navFilter = { isTenant: isWhitelabeled, disabledFeatures }
     const [searchOpen, setSearchOpen] = useState(false)
 
     const initials = user ? `${user.firstName[0]}${user.lastName[0]}`.toUpperCase() : "??"
@@ -494,36 +498,96 @@ export default function Header() {
                                 <span className="sr-only">Toggle menu</span>
                             </Button>
                         </SheetTrigger>
-                        <SheetContent side="left" className="w-64 p-0">
-                            <div className="flex h-16 items-center gap-2 border-b border-border px-6">
-                                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-                                    <Plane className="h-5 w-5 text-primary-foreground" />
-                                </div>
-                                <div className="flex flex-col">
-                                    <span className="text-sm font-semibold">AviPrep</span>
-                                    <span className="text-xs text-muted-foreground">Pilot Training</span>
-                                </div>
+                        <SheetContent side="left" className="w-72 p-0">
+                            <SheetTitle className="sr-only">Navigation</SheetTitle>
+
+                            <div className="flex h-16 shrink-0 items-center gap-2.5 border-b border-border px-5">
+                                {isWhitelabeled && tenant ? (
+                                    <>
+                                        <Avatar className="h-9 w-9 shrink-0">
+                                            <AvatarImage src={tenant.logo || undefined} alt="" />
+                                            <AvatarFallback className="bg-primary/10">
+                                                <Building2 className="h-4 w-4 text-primary" aria-hidden="true" />
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <div className="flex min-w-0 flex-col">
+                                            <span className="truncate text-sm font-semibold">{tenant.name}</span>
+                                            <span className="text-xs text-muted-foreground">Training portal</span>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <img
+                                        src="/img/AviPrep-logo.png"
+                                        alt="AviPrep"
+                                        width={176}
+                                        height={44}
+                                        className="h-11 w-auto"
+                                    />
+                                )}
                             </div>
-                            <nav className="space-y-1 px-3 py-4">
-                                {navigation.map((item) => {
-                                    const isActive = pathname === item.href
-                                    return (
-                                        <Link
-                                            key={item.name}
-                                            href={item.href}
-                                            className={cn(
-                                                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                                                isActive
-                                                    ? "bg-accent text-foreground"
-                                                    : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-                                            )}
-                                        >
-                                            <item.icon className="h-5 w-5" />
-                                            {item.name}
-                                        </Link>
-                                    )
-                                })}
-                            </nav>
+
+                            <div className="flex h-[calc(100%-4rem)] flex-col overflow-y-auto">
+                                <nav aria-label="Main" className="flex-1 space-y-5 px-3 py-4">
+                                    {NAV_GROUPS.map((group) => {
+                                        const items = filterNavItems(group.items, navFilter)
+                                        if (items.length === 0) return null
+                                        return (
+                                        <div key={group.label}>
+                                            <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                                                {group.label}
+                                            </p>
+                                            <div className="space-y-0.5">
+                                                {items.map((item) => {
+                                                    const isActive = isNavItemActive(pathname, item.href)
+                                                    return (
+                                                        <Link
+                                                            key={item.href}
+                                                            href={item.href}
+                                                            aria-current={isActive ? "page" : undefined}
+                                                            className={cn(
+                                                                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                                                                isActive
+                                                                    ? "bg-accent text-foreground"
+                                                                    : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                                                            )}
+                                                        >
+                                                            <item.icon className="h-4.5 w-4.5 shrink-0" aria-hidden="true" />
+                                                            {item.name}
+                                                        </Link>
+                                                    )
+                                                })}
+                                            </div>
+                                        </div>
+                                        )
+                                    })}
+                                </nav>
+
+                                <nav aria-label="Account" className="space-y-0.5 border-t border-border px-3 py-3">
+                                    {filterNavItems([
+                                        ...SECONDARY_NAV,
+                                        ...(user?.isFlightSchoolAdmin ? [SCHOOL_NAV] : []),
+                                        ...(user?.isAdmin ? [ADMIN_NAV] : []),
+                                    ], navFilter).map((item) => {
+                                        const isActive = isNavItemActive(pathname, item.href)
+                                        return (
+                                            <Link
+                                                key={item.href}
+                                                href={item.href}
+                                                aria-current={isActive ? "page" : undefined}
+                                                className={cn(
+                                                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                                                    isActive
+                                                        ? "bg-accent text-foreground"
+                                                        : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                                                )}
+                                            >
+                                                <item.icon className="h-4.5 w-4.5 shrink-0" aria-hidden="true" />
+                                                {item.name}
+                                            </Link>
+                                        )
+                                    })}
+                                </nav>
+                            </div>
                         </SheetContent>
                     </Sheet>
 

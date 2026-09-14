@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@lib/prisma"
 import { verifyToken } from "@lib/auth"
 import { cookies } from "next/headers"
+import { FORUM_ACCESS_ERROR, hasForumAccess } from "@lib/forum-access"
 
 export async function POST(request: Request) {
   try {
@@ -27,16 +28,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Your forum posting privileges have been suspended" }, { status: 403 })
     }
 
-    // Check forum access
-    const purchases = await prisma.purchase.count({
-      where: {
-        userId: payload.userId,
-        expiresAt: { gt: new Date() },
-      },
-    })
-
-    if (purchases === 0) {
-      return NextResponse.json({ error: "Forum access requires at least one active subject purchase" }, { status: 403 })
+    if (!(await hasForumAccess(payload.userId))) {
+      return NextResponse.json({ error: FORUM_ACCESS_ERROR }, { status: 403 })
     }
 
     const { threadId, content, replyToId } = await request.json()
@@ -51,7 +44,11 @@ export async function POST(request: Request) {
       select: { isClosed: true, id: true },
     })
 
-    if (thread?.isClosed) {
+    if (!thread) {
+      return NextResponse.json({ error: "Thread not found" }, { status: 404 })
+    }
+
+    if (thread.isClosed) {
       return NextResponse.json({ error: "This thread is closed" }, { status: 403 })
     }
 

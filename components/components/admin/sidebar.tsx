@@ -3,7 +3,7 @@
 import Link from "@/components/meta/link"
 import { usePathname, useRouter } from "next/navigation"
 import { cn } from "@lib/utils"
-import { LayoutDashboard, Users, HelpCircle, Package, Ticket, LogOut, Shield, Sparkles, Building2, GraduationCap } from "lucide-react"
+import { LayoutDashboard, Users, HelpCircle, Package, Ticket, LogOut, Shield, Sparkles, Building2, GraduationCap, ImageIcon } from "lucide-react"
 import { SlSpeech } from "react-icons/sl"
 import { MdEmail } from "react-icons/md"
 
@@ -12,6 +12,7 @@ const navigation = [
   { name: "Members", href: "/admin/members", icon: Users },
   { name: "Flight Schools", href: "/admin/flight-schools", icon: Building2 },
   { name: "Courses", href: "/admin/courses", icon: GraduationCap },
+  { name: "Card artwork", href: "/admin/branding", icon: ImageIcon },
   { name: "Questions", href: "/admin/questions", icon: HelpCircle },
   { name: "Email", href: "/admin/email", icon: MdEmail },
   { name: "Products", href: "/admin/products", icon: Package },

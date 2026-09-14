@@ -1,11 +1,19 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import Link from "@/components/meta/link"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { MessageSquare, Clock, ChevronRight, Lock, AlertCircle } from "lucide-react"
-import { formatDistanceToNow } from "date-fns"
+import { useEffect, useMemo, useState } from "react"
+import Link from "next/link"
+import { ChevronRight, MessagesSquare, Search } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Skeleton } from "@/components/ui/skeleton"
+import {
+  EmptyState,
+  LoadError,
+  PageHeader,
+  PageShell,
+  SectionHeading,
+} from "@/components/hub/page-primitives"
+import { ForumLocked, fullName, timeAgo } from "@/components/forum/forum-ui"
 
 interface Forum {
   id: string
@@ -16,8 +24,9 @@ interface Forum {
   threads: Array<{
     id: string
     title: string
+    slug: string
     updatedAt: string
-    author: { firstName: string; lastName: string }
+    author: { firstName: string; lastName: string } | null
   }>
 }
 
@@ -31,122 +40,152 @@ interface Category {
 
 export default function ForumContent() {
   const [categories, setCategories] = useState<Category[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [status, setStatus] = useState<"loading" | "ready" | "locked" | "error">("loading")
+  const [query, setQuery] = useState("")
 
   useEffect(() => {
-    async function fetchCategories() {
-      try {
-        const res = await fetch("/api/forum/categories")
-        if (!res.ok) {
-          const data = await res.json()
-          throw new Error(data.error || "Failed to load forum")
-        }
-        const data = await res.json()
-        setCategories(data)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load forum")
-      } finally {
-        setLoading(false)
-      }
+    let cancelled = false
+    fetch("/api/forum/categories")
+      .then(async (res) => {
+        if (cancelled) return
+        if (res.status === 403) return setStatus("locked")
+        if (!res.ok) throw new Error(String(res.status))
+        setCategories(await res.json())
+        setStatus("ready")
+      })
+      .catch(() => !cancelled && setStatus("error"))
+    return () => {
+      cancelled = true
     }
-    fetchCategories()
   }, [])
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    )
-  }
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return categories
+    return categories
+      .map((c) => ({
+        ...c,
+        forums: c.forums.filter(
+          (f) =>
+            f.name.toLowerCase().includes(q) ||
+            f.description?.toLowerCase().includes(q) ||
+            c.name.toLowerCase().includes(q),
+        ),
+      }))
+      .filter((c) => c.forums.length > 0)
+  }, [categories, query])
 
-  if (error) {
-    return (
-      <div className="p-4 lg:p-6 space-y-6">
-        <h1 className="text-2xl font-bold">Community Forums</h1>
-        <Card className="border-destructive/50 bg-destructive/10">
-          <CardContent className="flex items-center gap-3 py-6">
-            <Lock className="h-5 w-5 text-destructive" />
-            <div>
-              <p className="font-medium text-destructive">{error}</p>
-              <p className="text-sm text-muted-foreground">
-                Purchase access to at least one subject to join the community.
-              </p>
-            </div>
-            <Link href="/dashboard/pricing" className="ml-auto">
-              <Button size="sm">Get Access</Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
+  if (status === "locked") return <ForumLocked />
+  if (status === "error") return <LoadError title="Couldn't load the forums" message="Try again in a moment." />
 
-  if (categories.length === 0) {
-    return (
-      <div className="p-4 lg:p-6 space-y-6">
-        <h1 className="text-2xl font-bold">Community Forum</h1>
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <AlertCircle className="mb-4 h-12 w-12 text-muted-foreground" />
-            <h3 className="text-lg font-medium">No Forums Available</h3>
-            <p className="text-sm text-muted-foreground">Forums are being set up. Check back soon!</p>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
+  const forumCount = categories.reduce((n, c) => n + c.forums.length, 0)
 
   return (
-    <div className="p-4 lg:p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Community Forum</h1>
-          <p className="text-muted-foreground">Connect with fellow student pilots and discuss CPL topics</p>
+    <PageShell>
+      <PageHeader title="Forums" description="Talk theory with other student pilots.">
+        {forumCount > 6 && (
+          <div className="relative w-full md:w-64">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <Input
+              type="search"
+              aria-label="Find a forum"
+              placeholder="Find a forum"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="h-10 pl-9"
+            />
+          </div>
+        )}
+      </PageHeader>
+
+      {status === "loading" ? (
+        <div className="space-y-8">
+          {[0, 1].map((i) => (
+            <div key={i} className="space-y-3">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-56 rounded-xl" />
+            </div>
+          ))}
         </div>
+      ) : forumCount === 0 ? (
+        <EmptyState icon={MessagesSquare} title="No forums yet" description="Check back soon." />
+      ) : filtered.length === 0 ? (
+        <p className="py-10 text-center text-sm text-muted-foreground">No forums match &ldquo;{query}&rdquo;.</p>
+      ) : (
+        filtered.map((category) => (
+          <section key={category.id} aria-labelledby={`cat-${category.id}`}>
+            <div id={`cat-${category.id}`}>
+              <SectionHeading title={category.name} description={category.description ?? undefined} />
+            </div>
+            <Card className="overflow-hidden shadow-e1">
+              <CardContent className="p-0">
+                <ul className="divide-y divide-border">
+                  {category.forums.map((forum) => (
+                    <ForumRow key={forum.id} forum={forum} />
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          </section>
+        ))
+      )}
+    </PageShell>
+  )
+}
+
+function ForumRow({ forum }: { forum: Forum }) {
+  const latest = forum.threads[0]
+  const count = forum._count.threads
+
+  return (
+    <li className="group relative flex items-center gap-4 p-4 transition-colors hover:bg-muted/40 has-[a:focus-visible]:bg-muted/40 has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-inset has-[a:focus-visible]:ring-ring">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+        <MessagesSquare className="h-5 w-5 text-primary" aria-hidden="true" />
+      </span>
+
+      <div className="min-w-0 flex-1">
+        <Link
+          href={`/dashboard/forum/${forum.slug}`}
+          className="font-medium text-foreground after:absolute after:inset-0 focus-visible:outline-none"
+        >
+          {forum.name}
+        </Link>
+        {forum.description && <p className="mt-0.5 line-clamp-1 text-sm text-muted-foreground">{forum.description}</p>}
+        {/* Latest activity moves under the name on small screens. */}
+        {latest && (
+          <p className="mt-1 truncate text-xs text-muted-foreground md:hidden">
+            Latest: {latest.title} &middot; {timeAgo(latest.updatedAt)}
+          </p>
+        )}
       </div>
 
-      {categories.map((category) => (
-        <Card key={category.id}>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">{category.name}</CardTitle>
-            {category.description && <p className="text-sm text-muted-foreground">{category.description}</p>}
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {category.forums.map((forum) => (
-              <Link
-                key={forum.id}
-                href={`/dashboard/forum/${forum.slug}`}
-                className="flex items-center gap-4 rounded-lg border border-border bg-card/50 p-4 transition-colors hover:bg-secondary/50"
-              >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                  <MessageSquare className="h-5 w-5 text-primary" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-medium">{forum.name}</h3>
-                  {forum.description && <p className="truncate text-sm text-muted-foreground">{forum.description}</p>}
-                </div>
-                <div className="hidden items-center gap-6 text-sm text-muted-foreground sm:flex">
-                  <div className="flex items-center gap-1.5">
-                    <MessageSquare className="h-4 w-4" />
-                    <span>{forum._count.threads}</span>
-                  </div>
-                  {forum.threads[0] && (
-                    <div className="flex items-center gap-1.5">
-                      <Clock className="h-4 w-4" />
-                      <span className="max-w-[150px] truncate">
-                        {formatDistanceToNow(new Date(forum.threads[0].updatedAt), { addSuffix: true })}
-                      </span>
-                    </div>
-                  )}
-                </div>
-                <ChevronRight className="h-5 w-5 text-muted-foreground" />
-              </Link>
-            ))}
-          </CardContent>
-        </Card>
-      ))}
-    </div>
+      <div className="hidden w-60 shrink-0 md:block">
+        {latest ? (
+          <>
+            <p className="truncate text-sm text-foreground">{latest.title}</p>
+            <p className="truncate text-xs text-muted-foreground">
+              {fullName(latest.author)} &middot; {timeAgo(latest.updatedAt)}
+            </p>
+          </>
+        ) : (
+          <p className="text-sm text-muted-foreground">No threads yet</p>
+        )}
+      </div>
+
+      <div className="w-16 shrink-0 text-right">
+        <p className="font-semibold text-foreground" data-tabular>
+          {count}
+        </p>
+        <p className="text-xs text-muted-foreground">{count === 1 ? "thread" : "threads"}</p>
+      </div>
+
+      <ChevronRight
+        className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"
+        aria-hidden="true"
+      />
+    </li>
   )
 }

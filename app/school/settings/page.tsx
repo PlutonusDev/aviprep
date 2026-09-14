@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { TENANT_FEATURES } from "@lib/tenant-features"
 import { 
   Building2, 
   Upload, 
@@ -21,6 +22,7 @@ import {
   Eye,
   Copy,
   ExternalLink,
+  SlidersHorizontal,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -47,6 +49,7 @@ interface SchoolSettings {
   welcomeMessage: string | null
   footerText: string | null
   hideBranding: boolean
+  disabledFeatures: string[]
 }
 
 export default function SettingsPage() {
@@ -131,6 +134,7 @@ export default function SettingsPage() {
           welcomeMessage: settings.welcomeMessage,
           footerText: settings.footerText,
           hideBranding: settings.hideBranding,
+          disabledFeatures: settings.disabledFeatures ?? [],
         }),
       })
 
@@ -185,6 +189,10 @@ export default function SettingsPage() {
           <TabsTrigger value="domain" className="gap-2">
             <Globe className="h-4 w-4" />
             Domain
+          </TabsTrigger>
+          <TabsTrigger value="features" className="gap-2">
+            <SlidersHorizontal className="h-4 w-4" />
+            Features
           </TabsTrigger>
           <TabsTrigger value="subscription" className="gap-2">
             <CheckCircle2 className="h-4 w-4" />
@@ -578,6 +586,58 @@ export default function SettingsPage() {
         </TabsContent>
 
         {/* Subscription Tab */}
+        {/* Features Tab */}
+        <TabsContent value="features" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Student features</CardTitle>
+              <CardDescription>
+                Switch off parts of the student portal your school does not use. Students will not
+                see them in navigation, and the pages become unreachable.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-1">
+              {TENANT_FEATURES.map((feature) => {
+                const disabled = (settings.disabledFeatures ?? []).includes(feature.key)
+                return (
+                  <div
+                    key={feature.key}
+                    className="flex items-start justify-between gap-4 border-b border-border py-4 last:border-b-0"
+                  >
+                    <div className="min-w-0">
+                      <Label htmlFor={`feature-${feature.key}`} className="text-base">
+                        {feature.label}
+                      </Label>
+                      <p className="mt-0.5 text-sm text-muted-foreground">{feature.description}</p>
+                    </div>
+                    <Switch
+                      id={`feature-${feature.key}`}
+                      checked={!disabled}
+                      onCheckedChange={(on) =>
+                        setSettings({
+                          ...settings,
+                          disabledFeatures: on
+                            ? (settings.disabledFeatures ?? []).filter((f) => f !== feature.key)
+                            : [...(settings.disabledFeatures ?? []), feature.key],
+                        })
+                      }
+                      aria-describedby={`feature-${feature.key}-hint`}
+                    />
+                    <span id={`feature-${feature.key}-hint`} className="sr-only">
+                      {disabled ? "Currently hidden from students" : "Currently visible to students"}
+                    </span>
+                  </div>
+                )
+              })}
+
+              <p className="pt-4 text-sm text-muted-foreground">
+                Practice exams, the dashboard and account settings cannot be switched off - they are
+                the core of the portal. AviPrep pricing is always hidden on your subdomain.
+              </p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="subscription" className="space-y-6">
           <Card>
             <CardHeader>

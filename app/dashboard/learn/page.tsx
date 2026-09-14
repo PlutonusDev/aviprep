@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react"
 import Link from "@/components/meta/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -27,8 +28,10 @@ import {
   X,
   Filter,
 } from "lucide-react"
-import { LICENSE_TYPES, getSubjectsByLicense, type LicenseType } from "@lib/subjects"
+import { LICENSE_TYPES, SUBJECTS, getSubjectsByLicense, type LicenseType } from "@lib/subjects"
+import { CourseArtHeader } from "@/components/hub/course-art-header"
 import { useUser } from "@lib/user-context"
+import { useTenant } from "@lib/tenant-context"
 import { cn } from "@lib/utils"
 
 interface Course {
@@ -68,6 +71,7 @@ export default function LearnPage() {
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
   const { hasAccessToSubject } = useUser()
+  const { isWhitelabeled } = useTenant()
 
   const availableLicenses = LICENSE_TYPES; //.filter(l => l.available)
   const subjects = getSubjectsByLicense(selectedLicense)
@@ -104,6 +108,12 @@ export default function LearnPage() {
   const filteredCourses = useMemo(() => {
     let filtered = courses
 
+    // A school portal only shows what the student has been assigned - there is
+    // nothing for them to unlock on their own.
+    if (isWhitelabeled) {
+      filtered = filtered.filter((c) => hasAccessToSubject(c.subjectId))
+    }
+
     if (selectedSubject !== "all") {
       filtered = filtered.filter(c => c.subjectId === selectedSubject)
     }
@@ -118,7 +128,7 @@ export default function LearnPage() {
     }
 
     return filtered
-  }, [courses, selectedSubject, searchQuery, subjects])
+  }, [courses, selectedSubject, searchQuery, subjects, isWhitelabeled, hasAccessToSubject])
 
   // Get subject name by id
   const getSubjectName = (subjectId: string) => {
@@ -161,20 +171,27 @@ export default function LearnPage() {
     }
   }
 
+  // Counted over what the student can actually see, so a school portal does not
+  // advertise courses that were never assigned.
+  const visibleCourses = useMemo(
+    () => (isWhitelabeled ? courses.filter((c) => hasAccessToSubject(c.subjectId)) : courses),
+    [courses, isWhitelabeled, hasAccessToSubject],
+  )
+
   const stats = useMemo(() => ({
-    total: courses.length,
-    inProgress: courses.filter(c => c.isEnrolled && (c.progress || 0) < 100).length,
-    completed: courses.filter(c => c.progress === 100).length,
-  }), [courses])
+    total: visibleCourses.length,
+    inProgress: visibleCourses.filter(c => c.isEnrolled && (c.progress || 0) < 100).length,
+    completed: visibleCourses.filter(c => c.progress === 100).length,
+  }), [visibleCourses])
 
   const hasActiveFilters = selectedSubject !== "all" || searchQuery.trim()
 
   return (
-    <div className="p-4 lg:p-6 space-y-4">
+    <div className="mx-auto w-full max-w-6xl space-y-8 p-4 lg:p-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Learn</h1>
+          <h1 className="text-display-3 font-bold text-foreground">Learn</h1>
           <p className="text-muted-foreground text-sm">
             Interactive courses to master aviation theory
           </p>
@@ -317,132 +334,146 @@ export default function LearnPage() {
                 </Button>
               </>
             ) : (
+              isWhitelabeled ? (
+                <>
+                  <h3 className="text-lg font-semibold">No courses assigned yet</h3>
+                  <p className="text-muted-foreground text-sm mt-1 max-w-sm">
+                    Your school hasn&apos;t assigned you any courses. They&apos;ll appear here once
+                    they do.
+                  </p>
+                </>
+              ) : (
               <>
                 <h3 className="text-lg font-semibold">No courses yet</h3>
                 <p className="text-muted-foreground text-sm mt-1">
                   Courses for {LICENSE_TYPES.find(l => l.id === selectedLicense)?.fullName} are coming soon!
                 </p>
               </>
+              )
             )}
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-2">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {filteredCourses.map((course) => {
             const hasAccess = hasAccessToSubject(course.subjectId)
             const subjectName = getSubjectName(course.subjectId)
             const subjectCode = getSubjectCode(course.subjectId)
+            const licenseType = SUBJECTS.find((s) => s.id === course.subjectId)?.licenseType
+            const href = hasAccess
+              ? `/dashboard/learn/${course.id}`
+              : `/dashboard/pricing?license=${selectedLicense}`
 
             return (
               <Card
                 key={course.id}
                 className={cn(
-                  "group transition-all hover:shadow-sm",
-                  !hasAccess && "opacity-75"
+                  "group flex flex-col overflow-hidden p-0 shadow-e1 transition-shadow hover:shadow-e3",
+                  !hasAccess && "opacity-90",
                 )}
               >
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-4">
-                    {/* Progress Indicator / Lock */}
-                    <div className="hidden sm:flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-secondary">
-                      {!hasAccess ? (
-                        <Lock className="h-5 w-5 text-muted-foreground" />
-                      ) : course.progress === 100 ? (
-                        <CheckCircle2 className="h-5 w-5 text-green-500" />
-                      ) : course.isEnrolled ? (
-                        <div className="relative h-8 w-8">
-                          <svg className="h-8 w-8 -rotate-90">
-                            <circle
-                              cx="16"
-                              cy="16"
-                              r="14"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="3"
-                              className="text-muted"
-                            />
-                            <circle
-                              cx="16"
-                              cy="16"
-                              r="14"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="3"
-                              strokeDasharray={`${(course.progress || 0) * 0.88} 88`}
-                              className="text-primary"
-                            />
-                          </svg>
-                          <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold">
-                            {course.progress || 0}%
-                          </span>
-                        </div>
-                      ) : (
-                        <BookOpen className="h-5 w-5 text-muted-foreground" />
-                      )}
-                    </div>
-
-                    {/* Course Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant="secondary" className="text-xs shrink-0">
-                          {subjectCode}
-                        </Badge>
-                        <h3 className="font-semibold truncate">{course.title}</h3>
-                        {getDifficultyBadge(course.difficulty)}
-                      </div>
-                      <p className="text-sm text-muted-foreground line-clamp-1 mt-0.5">
-                        {course.description}
-                      </p>
-                      <div className="flex items-center gap-4 mt-1.5 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <BookOpen className="h-3 w-3" />
-                          {course.totalLessons} lessons
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {course.estimatedHours}h duration
-                        </span>
-                        <Link 
-                          href={`/dashboard/learn?license=${selectedLicense}&subject=${course.subjectId}`}
-                          className="hover:text-primary hover:underline"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleSubjectChange(course.subjectId)
-                          }}
-                        >
-                          {subjectName}
-                        </Link>
-                      </div>
-                    </div>
-
-                    {/* Action */}
-                    <div className="shrink-0">
-                      {!hasAccess ? (
-                        <Button size="sm" variant="outline" asChild>
-                          <Link href={`/dashboard/pricing?license=${selectedLicense}`}>
-                            <Lock className="h-4 w-4 mr-1.5" />
-                            Unlock
-                          </Link>
-                        </Button>
-                      ) : (
-                        <Button size="sm" variant={course.isEnrolled ? "outline" : "default"} asChild>
-                          <Link href={`/dashboard/learn/${course.id}`}>
-                            {course.isEnrolled ? (
-                              <>
-                                Continue
-                                <ChevronRight className="h-4 w-4 ml-1" />
-                              </>
-                            ) : (
-                              <>
-                                Start
-                                <Play className="h-4 w-4 ml-1" />
-                              </>
-                            )}
-                          </Link>
-                        </Button>
-                      )}
-                    </div>
+                <CourseArtHeader
+                  thumbnail={course.thumbnail}
+                  title={course.title}
+                  code={subjectCode}
+                  licenseType={licenseType}
+                >
+                  {/* Status sits on the art so the card reads at a glance. */}
+                  <div className="absolute right-3 top-3 flex items-center gap-2">
+                    {!hasAccess ? (
+                      <span className="flex items-center gap-1 rounded-full bg-background/90 px-2 py-1 text-xs font-medium text-foreground backdrop-blur-sm">
+                        <Lock className="h-3 w-3" aria-hidden="true" />
+                        Locked
+                      </span>
+                    ) : course.progress === 100 ? (
+                      <span className="flex items-center gap-1 rounded-full bg-success/90 px-2 py-1 text-xs font-medium text-success-foreground">
+                        <CheckCircle2 className="h-3 w-3" aria-hidden="true" />
+                        Complete
+                      </span>
+                    ) : course.isEnrolled ? (
+                      <span className="rounded-full bg-background/90 px-2 py-1 text-xs font-medium text-foreground backdrop-blur-sm">
+                        {course.progress || 0}% done
+                      </span>
+                    ) : null}
                   </div>
+                </CourseArtHeader>
+
+                <CardContent className="flex flex-1 flex-col gap-4 p-4">
+                  {/* The art carries the title, so the body adds what it cannot. */}
+                  <h3 className="sr-only">{course.title}</h3>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    {getDifficultyBadge(course.difficulty)}
+                    <span className="text-xs text-muted-foreground">{subjectName}</span>
+                  </div>
+
+                  <p className="line-clamp-2 text-sm text-muted-foreground">{course.description}</p>
+
+                  {!hasAccess ? (
+                    <div className="mt-auto flex items-center gap-4 text-sm text-muted-foreground">
+                      <span className="flex items-center gap-1.5">
+                        <BookOpen className="h-4 w-4 shrink-0" aria-hidden="true" />
+                        {course.totalLessons} lessons
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <Clock className="h-4 w-4 shrink-0" aria-hidden="true" />
+                        {course.estimatedHours}h
+                      </span>
+                    </div>
+                  ) : course.isEnrolled ? (
+                    <div className="mt-auto space-y-2">
+                      <div className="flex items-baseline justify-between text-xs">
+                        <span className="text-muted-foreground">Lessons complete</span>
+                        {/* A count reads better than a bare percentage. */}
+                        <span className="font-medium text-foreground" data-tabular>
+                          {course.completedLessons ?? 0} of {course.totalLessons}
+                        </span>
+                      </div>
+                      <Progress value={course.progress || 0} className="h-1.5" />
+                      <p className="text-xs text-muted-foreground">
+                        {course.progress === 100
+                          ? "Finished"
+                          : `About ${Math.max(1, Math.round(course.estimatedHours * (1 - (course.progress || 0) / 100)))}h left`}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="mt-auto flex items-center gap-4 text-sm text-muted-foreground">
+                      <span className="flex items-center gap-1.5">
+                        <BookOpen className="h-4 w-4 shrink-0" aria-hidden="true" />
+                        {course.totalLessons} lessons
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <Clock className="h-4 w-4 shrink-0" aria-hidden="true" />
+                        {course.estimatedHours}h
+                      </span>
+                    </div>
+                  )}
+
+                  <Button
+                    asChild
+                    variant={!hasAccess ? "default" : course.isEnrolled ? "secondary" : "default"}
+                    className="group mt-1 h-10 w-full"
+                  >
+                    <Link href={href}>
+                      {!hasAccess ? (
+                        <>
+                          <Lock className="mr-1.5 h-4 w-4" aria-hidden="true" />
+                          Unlock
+                        </>
+                      ) : course.isEnrolled ? (
+                        <>
+                          Continue
+                          <ChevronRight className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                        </>
+                      ) : (
+                        <>
+                          Start course
+                          <Play className="ml-1 h-4 w-4" aria-hidden="true" />
+                        </>
+                      )}
+                      <span className="sr-only"> {course.title}</span>
+                    </Link>
+                  </Button>
                 </CardContent>
               </Card>
             )

@@ -3,7 +3,7 @@ import { cookies } from "next/headers"
 import { prisma } from "@lib/prisma"
 import { verifyToken, hashPassword, isValidAustralianPhone, isValidARN } from "@lib/auth"
 import { sendEmailWelcome } from "@lib/email"
-import { getCustomTemplate } from "@lib/email-templates"
+import { getSchoolWelcomeTemplate } from "@lib/email-school-welcome"
 import { stripe } from "@lib/stripe";
 
 async function getSchoolForAdmin(userId: string) {
@@ -16,7 +16,7 @@ async function getSchoolForAdmin(userId: string) {
 
   return prisma.flightSchool.findUnique({
     where: { adminId: userId },
-    select: { id: true, name: true, maxStudents: true, subdomain: true },
+    select: { id: true, name: true, maxStudents: true, subdomain: true, logo: true },
   })
 }
 
@@ -170,18 +170,18 @@ export async function POST(request: Request) {
           data: { flightSchoolId: school.id, enrolledAt: new Date() },
         })
 
-        const html = `
-        <p>Hi ${existingUser.firstName},</p>
-        <p><strong>${school.name}</strong> now manages your account on AviPrep.
-        <br/>
-        <p>You can log in to your account at <a href="https://${school.subdomain}.aviprep.com.au/login">https://${school.subdomain}.aviprep.com.au/login</a>
-        </p>`
-
-        // Send notification email
         sendEmailWelcome({
           to: existingUser.email,
           subject: `You've been added to ${school.name}`,
-          html: getCustomTemplate(html, existingUser.email),
+          html: getSchoolWelcomeTemplate({
+            firstName: existingUser.firstName,
+            email: existingUser.email,
+            schoolName: school.name,
+            schoolLogo: school.logo,
+            loginUrl: school.subdomain
+              ? `https://${school.subdomain}.aviprep.com.au/login`
+              : "https://aviprep.com.au/login",
+          }),
         }).catch(console.error)
 
         return NextResponse.json({ success: true, userId: existingUser.id })
@@ -221,22 +221,20 @@ export async function POST(request: Request) {
       },
     })
 
-    const html = `
-        <p>Hi ${firstName},</p>
-        <p>You have been enrolled with <strong>${school.name}</strong> on AviPrep.</p>
-        <p>Your temporary login credentials:</p>
-        <ul>
-          <li>Email: ${email}</li>
-          <li>Password: <strong>${tempPassword}</strong></li>
-        </ul>
-        <p>Please log in and change your password immediately at <a href="https://${school.subdomain}.aviprep.com.au/login">https://${school.subdomain}.aviprep.com.au/login</a>.</p>
-      `
-
     // Send welcome email with temporary password
     sendEmailWelcome({
       to: newUser.email,
-      subject: `Welcome to AviPrep - ${school.name}`,
-      html: getCustomTemplate(html, newUser.email),
+      subject: `Welcome to ${school.name} on AviPrep`,
+      html: getSchoolWelcomeTemplate({
+        firstName,
+        email: newUser.email,
+        schoolName: school.name,
+        schoolLogo: school.logo,
+        loginUrl: school.subdomain
+          ? `https://${school.subdomain}.aviprep.com.au/login`
+          : "https://aviprep.com.au/login",
+        tempPassword,
+      }),
     }).catch(console.error)
 
     return NextResponse.json({ success: true, userId: newUser.id })

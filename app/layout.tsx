@@ -1,5 +1,26 @@
 import { Metadata, Viewport } from "next";
+import { Inter, Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import "../components/globals.css";
+
+// Self-hosted by next/font: no external request, no layout shift.
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  weight: ["600", "700", "800"],
+  variable: "--font-jakarta",
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-jetbrains-mono",
+  display: "swap",
+});
 import CaptchaProvider from "@/components/meta/recaptcha-provider";
 import { ThemeProvider } from "@/components/meta/theme-provider";
 import { TenantProvider } from "@lib/tenant-context";
@@ -77,7 +98,7 @@ export const viewport: Viewport = {
 
 export default ({ children }: { children: React.ReactNode }) => {
   return (
-    <html lang="en">
+    <html lang="en" className={`${inter.variable} ${jakarta.variable} ${jetbrainsMono.variable}`}>
       <head>
         <script
           type="application/ld+json"

@@ -6,7 +6,7 @@ import { stripe } from "@lib/stripe";
 
 export async function POST(request: Request) {
   try {
-    return NextResponse.json({ error: "New registrations are disabled" }, { status: 400 });
+    //return NextResponse.json({ error: "New registrations are disabled" }, { status: 400 });
 
     const body = await request.json()
     const { email, password, firstName, lastName, phone, arn } = body

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { prisma } from "@lib/prisma"
+import { sanitiseDisabledFeatures } from "@lib/tenant-features"
 import { verifyToken } from "@lib/auth"
 
 async function getSchoolForAdmin(userId: string) {
@@ -58,6 +59,7 @@ export async function GET() {
       welcomeMessage: school.welcomeMessage,
       footerText: school.footerText,
       hideBranding: school.hideBranding,
+      disabledFeatures: school.disabledFeatures ?? [],
     })
   } catch (error) {
     console.error("Get school settings error:", error)
@@ -98,6 +100,10 @@ export async function PATCH(request: Request) {
       if (body[field] !== undefined) {
         updates[field] = body[field]
       }
+    }
+
+    if (body.disabledFeatures !== undefined) {
+      updates.disabledFeatures = sanitiseDisabledFeatures(body.disabledFeatures)
     }
 
     // Validate subdomain if provided
