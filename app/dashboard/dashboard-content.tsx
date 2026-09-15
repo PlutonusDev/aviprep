@@ -30,7 +30,6 @@ import {
   Shuffle,
   Timer,
   Crosshair,
-  Gift,
 } from "lucide-react"
 import Link from "next/link"
 import { useUser } from "@lib/user-context"
@@ -205,11 +204,6 @@ export default function DashboardContent() {
               </Badge>
             )}
           </div>
-          <p className="text-muted-foreground">
-            {hasSubjects
-              ? "Pick up where you left off."
-              : "Get started by choosing your first subject."}
-          </p>
           {/*tenant?.welcomeMessage && (
             <p className="text-sm text-muted-foreground">{tenant.welcomeMessage}</p>
           )*/}
@@ -226,26 +220,6 @@ export default function DashboardContent() {
           </Button>
         )}
       </header>
-
-      {/* A new member hasn't picked their free subject yet: that comes first. */}
-      {user?.canClaimFreeSubject && !isWhitelabeled && (
-        <Card className="overflow-hidden border-primary/30 bg-primary/5 shadow-none">
-          <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary">
-              <Gift className="h-5 w-5 text-primary-foreground" aria-hidden="true" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <h2 className="font-semibold text-foreground">Choose your free subject</h2>
-              <p className="text-sm text-muted-foreground">
-                Unlock one subject free: lessons, practice exams and insights.
-              </p>
-            </div>
-            <Button asChild className="h-10 shrink-0">
-              <Link href="/dashboard/choose-subject">Choose subject</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      )}
 
       <InstallAppCard />
 
