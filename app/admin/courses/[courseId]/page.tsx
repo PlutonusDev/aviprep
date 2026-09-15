@@ -44,6 +44,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { use } from "react"
+import { useUser } from "@lib/user-context"
 
 interface Lesson {
   id: string
@@ -81,6 +82,7 @@ const contentTypeIcons: Record<string, any> = {
 
 export default function CourseEditorPage({ params }: { params: Promise<{ courseId: string }> }) {
   const { courseId } = use(params)
+  const { user } = useUser()
   const [course, setCourse] = useState<Course | null>(null)
   const [loading, setLoading] = useState(true)
   const [openModules, setOpenModules] = useState<string[]>([])
@@ -136,6 +138,11 @@ export default function CourseEditorPage({ params }: { params: Promise<{ courseI
       }),
     })
 
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      toast.error(data.error || "Couldn't save the module")
+      return
+    }
     if (res.ok) {
       fetchCourse()
       setModuleDialogOpen(false)
@@ -320,6 +327,8 @@ export default function CourseEditorPage({ params }: { params: Promise<{ courseI
     )
   }
 
+  const isCuratorOnLive = !user?.isAdmin && !!course?.isPublished
+
   if (!course) {
     return (
       <div className="text-center py-12">
@@ -347,6 +356,13 @@ export default function CourseEditorPage({ params }: { params: Promise<{ courseI
           {course.isPublished ? "Published" : "Draft"}
         </Badge>
       </div>
+
+      {isCuratorOnLive && (
+        <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm text-foreground">
+          This course is live. You can open any lesson and propose edits, which an admin reviews before students see
+          them. Adding, removing or reordering modules and lessons needs an admin.
+        </div>
+      )}
 
       {/* Modules */}
       <div className="flex items-center justify-between">

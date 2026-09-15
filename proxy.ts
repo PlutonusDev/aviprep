@@ -57,8 +57,6 @@ export async function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl
   const host = request.headers.get("host") || ""
   const sessionToken = request.cookies.get("session")?.value
-  const isPwa = request.cookies.get("pwa")
-  const isPwaForce = searchParams.get("force-pwa") === "true"
 
   const rawSubdomain = getSubdomain(host)
 
@@ -84,10 +82,6 @@ export async function proxy(request: NextRequest) {
   if (subdomain) requestHeaders.set("x-tenant-subdomain", subdomain)
   const next = () => NextResponse.next({ request: { headers: requestHeaders } })
 
-  if ((isPwa && !pathname.startsWith("/m")) || isPwaForce) {
-    return NextResponse.redirect(new URL(`/m${pathname}`, request.url))
-  }
-
   let isAuthenticated = false
   if (sessionToken) {
     try {
@@ -107,10 +101,18 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  // The installed app starts at /m. Signed in: straight to the dashboard.
+  if (isAuthenticated && (pathname === "/m" || pathname === "/m/login")) {
+    const url = request.nextUrl.clone()
+    url.pathname = "/dashboard"
+    url.search = ""
+    return NextResponse.redirect(url)
+  }
+
   if (protectedRoutes.some((route) => pathname.startsWith(route))) {
     if (!isAuthenticated) {
       const url = request.nextUrl.clone()
-      url.pathname = "/login"
+      url.pathname = pathname.startsWith("/m/") ? "/m/login" : "/login"
       url.searchParams.set("redirect", pathname)
       return NextResponse.redirect(url)
     }

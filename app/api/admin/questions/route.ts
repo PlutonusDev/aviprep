@@ -1,13 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@lib/prisma"
-import { verifyAdmin } from "app/api/admin/middleware"
+import { isResponse, requireStaff } from "@lib/staff"
 import { validateQuestion, isValid } from "@lib/question-validation"
 
 export async function GET(request: NextRequest) {
-  const adminCheck = await verifyAdmin()
-  if ("error" in adminCheck) {
-    return NextResponse.json({ error: adminCheck.error }, { status: adminCheck.status })
-  }
+  const staff = await requireStaff({ curators: true })
+  if (isResponse(staff)) return staff
 
   const searchParams = request.nextUrl.searchParams
   const page = Number.parseInt(searchParams.get("page") || "1")
@@ -27,14 +25,15 @@ export async function GET(request: NextRequest) {
     }),
     ...(subjectId && subjectId !== "all" && { subjectId }),
     ...(topic && topic !== "all" && { topic }),
-    // Rows written before the status field are live, so "published" must
-    // include those with no status at all.
     ...(status &&
-      status !== "all" && {
-        ...(status === "published"
-          ? { OR: [{ status: "published" }, { status: null }] }
-          : { status }),
-      }),
+      status !== "all" &&
+      (status === "changes"
+        ? // Live questions with a curator's edit waiting for review.
+          { pendingRevisionAt: { not: null } }
+        : status === "published"
+          ? // Rows written before the status field are live.
+            { AND: [{ OR: [{ status: "published" }, { status: null }] }] }
+          : { status })),
   }
 
   const [questions, total] = await Promise.all([
@@ -53,25 +52,25 @@ export async function GET(request: NextRequest) {
     page,
     pageSize,
     totalPages: Math.ceil(total / pageSize),
+    role: staff.role,
   })
 }
 
 export async function POST(request: NextRequest) {
-  const adminCheck = await verifyAdmin()
-  if ("error" in adminCheck) {
-    return NextResponse.json({ error: adminCheck.error }, { status: adminCheck.status })
-  }
+  const staff = await requireStaff({ curators: true })
+  if (isResponse(staff)) return staff
 
   const body = await request.json()
 
   try {
     const errors = validateQuestion(body)
     if (!isValid(errors)) {
-      return NextResponse.json(
-        { error: "This question is not ready to save.", fieldErrors: errors },
-        { status: 422 },
-      )
+      return NextResponse.json({ error: "This question is not ready to save.", fieldErrors: errors }, { status: 422 })
     }
+
+    // Curators can write and submit, never publish.
+    const requested = body.status === "review" || body.status === "published" ? body.status : "draft"
+    const status = !staff.isAdmin && requested === "published" ? "review" : requested
 
     const question = await prisma.question.create({
       data: {
@@ -83,9 +82,10 @@ export async function POST(request: NextRequest) {
         correctIndex: body.correctIndex,
         explanation: body.explanation,
         reference: body.reference || "",
-        status: body.status || "draft",
-        authorId: adminCheck.userId ?? undefined,
+        status,
+        authorId: staff.userId,
         authorNote: body.authorNote || null,
+        ...(status === "published" ? { reviewedById: staff.userId } : {}),
       },
     })
 

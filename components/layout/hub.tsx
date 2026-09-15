@@ -4,7 +4,9 @@ import Header from "@/components/hub/header"
 import Sidebar from "@/components/hub/sidebar"
 import { usePathname } from "next/navigation"
 import { TenantGuard } from "@/components/meta/tenant-guard"
-import { Onboarding } from "@/components/onboarding/onboarding"
+import { ONBOARDING_ENABLED, Onboarding } from "@/components/onboarding/onboarding"
+import { EmailVerificationBanner } from "@/components/hub/email-verification-banner"
+import { MobileTabBar } from "@/components/hub/mobile-tab-bar"
 
 /**
  * Focused tasks get the whole viewport, with no sidebar or header competing:
@@ -32,12 +34,15 @@ export default ({ children }: { children: React.ReactNode }) => {
             <Sidebar />
             <div className="lg:pl-64">
                 <Header />
-                <div className="relative min-h-[calc(100dvh-4rem)]">
+                <EmailVerificationBanner />
+                {/* Bottom padding keeps content clear of the mobile tab bar. */}
+                <div className="relative min-h-[calc(100dvh-4rem)] pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">
                     <main>
                         <TenantGuard>{children}</TenantGuard>
                     </main>
-                    <Onboarding />
+                    {ONBOARDING_ENABLED && <Onboarding />}
                 </div>
+                <MobileTabBar />
             </div>
         </div>
     )

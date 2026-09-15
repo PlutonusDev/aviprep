@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server"
-import { verifyAdmin } from "app/api/admin/middleware"
+import { verifyContentStaff } from "app/api/admin/middleware"
 import { getQuestionCountsBySubject } from "@lib/question-counts"
 
 /** Bank size per subject, split by authoring status. */
 export async function GET() {
-  const adminCheck = await verifyAdmin()
+  const adminCheck = await verifyContentStaff()
   if ("error" in adminCheck) {
     return NextResponse.json({ error: adminCheck.error }, { status: adminCheck.status })
   }

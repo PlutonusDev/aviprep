@@ -539,7 +539,7 @@ export default function ThreadContent() {
         )}
       </div>
 
-      <div aria-live="polite" className="pointer-events-none fixed inset-x-0 bottom-6 z-50 flex justify-center px-4">
+      <div aria-live="polite" className="pointer-events-none fixed inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-50 lg:bottom-6 flex justify-center px-4">
         {notice && (
           <p className="rounded-full border border-border bg-popover px-4 py-2 text-sm text-foreground shadow-e3">{notice}</p>
         )}

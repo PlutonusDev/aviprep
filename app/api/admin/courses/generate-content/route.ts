@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { generateText, Output, embed } from "ai"
 import { z } from "zod"
-import { verifyAdmin } from "app/api/admin/middleware"
+import { verifyContentStaff } from "app/api/admin/middleware"
 import { SUBJECTS } from "@lib/subjects"
 import { MongoClient } from "mongodb"
 
@@ -71,7 +71,7 @@ const exerciseOrderingSchema = z.object({
 })
 
 export async function POST(request: Request): Promise<Response> {
-    const adminCheck = await verifyAdmin()
+    const adminCheck = await verifyContentStaff()
     if ("error" in adminCheck) {
         return NextResponse.json({ error: adminCheck.error }, { status: adminCheck.status })
     }

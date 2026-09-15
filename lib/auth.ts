@@ -1,6 +1,7 @@
 import { cookies } from "next/headers"
 import { prisma } from "./prisma"
 import bcrypt from "bcryptjs"
+import { createHash } from "crypto"
 import { SignJWT, jwtVerify } from "jose"
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "your-secret-key-min-32-chars-long!")
@@ -35,6 +36,60 @@ export async function createSession(user: SessionUser): Promise<string> {
     .sign(JWT_SECRET)
 
   return token
+}
+
+const SESSION_MAX_AGE = 60 * 60 * 24 * 7
+const TRUSTED_COOKIE = "trusted_device"
+const TRUSTED_MAX_AGE = 60 * 60 * 24 * 30
+
+/** Signs the user in: creates the session token and sets the cookie. */
+export async function startSession(user: SessionUser) {
+  const token = await createSession(user)
+  const cookieStore = await cookies()
+  cookieStore.set("session", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: SESSION_MAX_AGE,
+    path: "/",
+  })
+}
+
+/*
+ * Trusted devices skip the login SMS for 30 days. The token carries a
+ * fingerprint of the password hash, so changing or resetting the password
+ * signs every remembered device back out of the shortcut.
+ */
+function passwordFingerprint(passwordHash: string) {
+  return createHash("sha256").update(passwordHash).digest("hex").slice(0, 24)
+}
+
+export async function trustThisDevice(userId: string, passwordHash: string) {
+  const token = await new SignJWT({ kind: "trusted-device", userId, fp: passwordFingerprint(passwordHash) })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime("30d")
+    .sign(JWT_SECRET)
+  const cookieStore = await cookies()
+  cookieStore.set(TRUSTED_COOKIE, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: TRUSTED_MAX_AGE,
+    path: "/",
+  })
+}
+
+export async function isTrustedDevice(userId: string, passwordHash: string): Promise<boolean> {
+  const cookieStore = await cookies()
+  const token = cookieStore.get(TRUSTED_COOKIE)?.value
+  if (!token) return false
+  try {
+    const { payload } = await jwtVerify(token, JWT_SECRET)
+    return payload.kind === "trusted-device" && payload.userId === userId && payload.fp === passwordFingerprint(passwordHash)
+  } catch {
+    return false
+  }
 }
 
 export async function getSession(): Promise<SessionUser | null> {

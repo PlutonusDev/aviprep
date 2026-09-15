@@ -6,6 +6,8 @@ export interface SubjectCounts {
   draft: number
   review: number
   published: number
+  /** Live questions with a curator's proposed edit waiting for an admin. */
+  changes: number
 }
 
 /**
@@ -23,15 +25,16 @@ export interface SubjectCounts {
  */
 export async function getQuestionCountsBySubject(): Promise<Record<string, SubjectCounts>> {
   const rows = await prisma.question.findMany({
-    select: { subjectId: true, status: true },
+    select: { subjectId: true, status: true, pendingRevisionAt: true },
   })
 
   const counts: Record<string, SubjectCounts> = {}
 
   for (const row of rows) {
     if (!row.subjectId) continue
-    const entry = counts[row.subjectId] ?? { total: 0, draft: 0, review: 0, published: 0 }
+    const entry = counts[row.subjectId] ?? { total: 0, draft: 0, review: 0, published: 0, changes: 0 }
     entry.total += 1
+    if (row.pendingRevisionAt) entry.changes += 1
     entry[effectiveStatus(row.status)] += 1
     counts[row.subjectId] = entry
   }

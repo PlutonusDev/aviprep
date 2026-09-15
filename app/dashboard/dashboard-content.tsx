@@ -30,6 +30,7 @@ import {
   Shuffle,
   Timer,
   Crosshair,
+  Gift,
 } from "lucide-react"
 import Link from "next/link"
 import { useUser } from "@lib/user-context"
@@ -39,6 +40,7 @@ import { useEffect, useMemo, useState } from "react"
 import { useTenant } from "@lib/tenant-context"
 import { QuickActions, type QuickAction } from "@/components/hub/quick-actions"
 import { StatTile, SectionHeading } from "@/components/hub/page-primitives"
+import { InstallAppCard } from "@/components/pwa/install-app"
 
 const QUICK_ACTIONS: QuickAction[] = [
   { href: "/dashboard/exams", icon: ClipboardList, title: "Practice exam", hint: "Pick a subject" },
@@ -224,6 +226,28 @@ export default function DashboardContent() {
           </Button>
         )}
       </header>
+
+      {/* A new member hasn't picked their free subject yet: that comes first. */}
+      {user?.canClaimFreeSubject && !isWhitelabeled && (
+        <Card className="overflow-hidden border-primary/30 bg-primary/5 shadow-none">
+          <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary">
+              <Gift className="h-5 w-5 text-primary-foreground" aria-hidden="true" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h2 className="font-semibold text-foreground">Choose your free subject</h2>
+              <p className="text-sm text-muted-foreground">
+                Unlock one subject free: lessons, practice exams and insights.
+              </p>
+            </div>
+            <Button asChild className="h-10 shrink-0">
+              <Link href="/dashboard/choose-subject">Choose subject</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      <InstallAppCard />
 
       {/* Headline numbers */}
       <section aria-label="Your progress at a glance">

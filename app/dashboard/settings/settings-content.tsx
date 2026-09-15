@@ -34,6 +34,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ImageCropper } from "@/components/hub/image-cropper"
+import { OtpInput, ResendCode } from "@/components/auth/otp"
+import { ONBOARDING_ENABLED } from "@/components/onboarding/onboarding"
 import { PageHeader, PageShell } from "@/components/hub/page-primitives"
 import { UserAvatar } from "@/components/forum/forum-ui"
 import { useTenant } from "@lib/tenant-context"
@@ -305,7 +307,7 @@ function ProfileSection() {
       </dl>
 
       <div className="flex items-center justify-between gap-3 bg-muted/30 px-4 py-3 text-sm text-muted-foreground sm:px-5">
-        <span>These are tied to your CASA details, so changes go through support.</span>
+        <span>Please contact support if you wish to change these details.</span>
         <a href={changeRequest} className="shrink-0 font-medium text-primary hover:underline">
           Request a change
         </a>
@@ -406,7 +408,15 @@ function ExpiryText({ date }: { date: string | Date }) {
 
 function SecuritySection() {
   const [open, setOpen] = useState(false)
-  const closeRequest = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("Close my account")}`
+  const [closeOpen, setCloseOpen] = useState(false)
+  const [closureRequestedAt, setClosureRequestedAt] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch("/api/user/account-deletion")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d?.requestedAt && setClosureRequestedAt(d.requestedAt))
+      .catch(() => {})
+  }, [])
 
   return (
     <Section id="security" title="Security">
@@ -416,15 +426,28 @@ function SecuritySection() {
           Change password
         </Button>
       </Row>
-      <Row label="Close account" detail="We'll delete your account and study history. This can't be undone.">
-        <Button asChild variant="ghost" size="sm" className="h-9 gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive">
-          <a href={closeRequest}>
+      <Row
+        label="Close account"
+        detail={
+          closureRequestedAt
+            ? `Closure requested ${dateFmt(closureRequestedAt)}. Support will be in touch by email.`
+            : "We'll delete your account and study history. This can't be undone."
+        }
+      >
+        {!closureRequestedAt && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-9 gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive"
+            onClick={() => setCloseOpen(true)}
+          >
             <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
             Request closure
-          </a>
-        </Button>
+          </Button>
+        )}
       </Row>
       <PasswordDialog open={open} onOpenChange={setOpen} />
+      <CloseAccountDialog open={closeOpen} onOpenChange={setCloseOpen} onRequested={setClosureRequestedAt} />
     </Section>
   )
 }
@@ -543,6 +566,165 @@ function PasswordDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (
   )
 }
 
+function CloseAccountDialog({
+  open,
+  onOpenChange,
+  onRequested,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onRequested: (requestedAt: string) => void
+}) {
+  const [stage, setStage] = useState<"confirm" | "code">("confirm")
+  const [reason, setReason] = useState("")
+  const [challenge, setChallenge] = useState<string | null>(null)
+  const [maskedPhone, setMaskedPhone] = useState<string | null>(null)
+  const [resendWait, setResendWait] = useState(60)
+  const [code, setCode] = useState("")
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!open) {
+      setStage("confirm")
+      setCode("")
+      setError(null)
+      setChallenge(null)
+    }
+  }, [open])
+
+  async function sendCode() {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch("/api/user/account-deletion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) return setError(data.error || "Couldn't send a code.")
+      if (data.requestedAt) {
+        onRequested(data.requestedAt)
+        return onOpenChange(false)
+      }
+      setChallenge(data.challenge)
+      setMaskedPhone(data.maskedPhone)
+      setResendWait(data.retryAfter ?? 60)
+      setStage("code")
+    } catch {
+      setError("Couldn't reach the server. Check your connection.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function confirm(value = code) {
+    if (value.length !== 6) return setError("Enter the 6-digit code.")
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch("/api/user/account-deletion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ challenge, code: value, reason }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        if (data.restart) setStage("confirm")
+        setCode("")
+        return setError(data.error || "That code isn't right.")
+      }
+      onRequested(data.requestedAt)
+      toast.success("Closure requested. We'll email you to confirm.")
+      onOpenChange(false)
+    } catch {
+      setError("Couldn't reach the server. Check your connection.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{stage === "confirm" ? "Close your account?" : "Confirm it's you"}</DialogTitle>
+          <DialogDescription>
+            {stage === "confirm" ? (
+              "Your progress, exam history and forum posts will be deleted, and any remaining access is lost. We'll text you a code to confirm."
+            ) : (
+              <>
+                Enter the code we texted to <span className="font-medium text-foreground">{maskedPhone}</span>.
+              </>
+            )}
+          </DialogDescription>
+        </DialogHeader>
+
+        {stage === "confirm" ? (
+          <div className="space-y-2 py-2">
+            <Label htmlFor="closure-reason">
+              Why are you leaving? <span className="font-normal text-muted-foreground">(optional)</span>
+            </Label>
+            <textarea
+              id="closure-reason"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              maxLength={1000}
+              rows={3}
+              className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            {error && (
+              <p role="alert" className="text-sm text-destructive">
+                {error}
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-3 py-2">
+            <Label htmlFor="closure-otp" className="sr-only">
+              Code
+            </Label>
+            <OtpInput
+              id="closure-otp"
+              value={code}
+              onChange={(v) => {
+                setCode(v)
+                setError(null)
+              }}
+              onComplete={(v) => confirm(v)}
+              error={error}
+              disabled={loading}
+            />
+            <ResendCode
+              challenge={challenge}
+              initialWait={resendWait}
+              onError={(message, restart) => {
+                setError(message)
+                if (restart) setStage("confirm")
+              }}
+            />
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Keep my account
+          </Button>
+          <Button
+            onClick={() => (stage === "confirm" ? sendCode() : confirm())}
+            disabled={loading}
+            className="gap-2 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {loading && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+            {stage === "confirm" ? "Text me a code" : "Request closure"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 /* --- Help ----------------------------------------------------------------------- */
 
 function HelpSection() {
@@ -568,11 +750,13 @@ function HelpSection() {
 
   return (
     <Section id="help" title="Help">
+      {ONBOARDING_ENABLED && (
       <Row label="Product tour" detail="A quick walk through subjects, lessons, exams and results.">
         <Button variant="outline" size="sm" className="h-9" onClick={replayTour} disabled={starting}>
           {starting ? "Starting..." : "Replay tour"}
         </Button>
       </Row>
+      )}
       <Row label="Contact support" detail={SUPPORT_EMAIL}>
         <Button asChild variant="outline" size="sm" className="h-9 gap-1.5">
           <a href={`mailto:${SUPPORT_EMAIL}`}>

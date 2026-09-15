@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
-import { mkdir, writeFile } from "fs/promises"
-import path from "path"
+import { saveUpload } from "@lib/uploads"
 import sharp from "sharp"
 import { nanoid } from "nanoid"
 import { verifyToken } from "@lib/auth"
@@ -10,15 +9,8 @@ import { prisma } from "@lib/prisma"
 const MAX_BYTES = 8 * 1024 * 1024
 const ALLOWED = ["image/png", "image/jpeg", "image/webp"]
 
-/**
- * Where generated card art lives on disk. Defaults to public/uploads/course-art
- * so a stock `next start` serves it straight back at /uploads/course-art/...
- * Point UPLOAD_DIR at a mounted volume to keep media off the deploy artifact;
- * it must still resolve inside public/ for the static handler to serve it.
- */
-const UPLOAD_SUBDIR = "uploads/course-art"
-const UPLOAD_DIR =
-  process.env.UPLOAD_DIR || path.join(process.cwd(), "public", UPLOAD_SUBDIR)
+/** Card art is stored with other uploads (lib/uploads.ts), under this folder. */
+const UPLOAD_FOLDER = "course-art"
 
 async function requireAdmin() {
   const cookieStore = await cookies()
@@ -86,10 +78,7 @@ export async function POST(request: Request) {
     // Flat vector-derived art compresses far better as webp than as PNG.
     const output = await sharp(input).webp({ quality: 90 }).toBuffer()
 
-    await mkdir(UPLOAD_DIR, { recursive: true })
-    await writeFile(path.join(UPLOAD_DIR, filename), output)
-
-    const url = `/${UPLOAD_SUBDIR}/${filename}`
+    const url = await saveUpload({ folder: UPLOAD_FOLDER, filename, data: output })
 
     if (courseId) {
       await prisma.course.update({

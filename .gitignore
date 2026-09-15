@@ -38,3 +38,4 @@ next-env.d.ts
 
 # Runtime-uploaded media (course art, avatars)
 /public/uploads
+/storage

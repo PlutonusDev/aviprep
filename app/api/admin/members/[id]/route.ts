@@ -21,6 +21,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         phone: body.phone,
         arn: body.arn,
         isAdmin: body.isAdmin,
+        // Content curator: courses and questions only, submit-for-review only.
+        isCurator: typeof body.isCurator === "boolean" ? body.isCurator : undefined,
         hasBundle: body.hasBundle,
         ...(body.hasBundle &&
           !body.bundleExpiry && {

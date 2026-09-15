@@ -38,6 +38,8 @@ interface Lesson {
   contentType: string
   content: any
   estimatedMins: number
+  /** A curator's proposed edit to a lesson in a live course. */
+  pendingRevision?: { contentType?: string; content?: any } | null
   module: {
     course: {
       id: string
@@ -56,6 +58,9 @@ export default function LessonEditorPage({
   const [lesson, setLesson] = useState<Lesson | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [role, setRole] = useState<"admin" | "curator">("admin")
+  const [isLive, setIsLive] = useState(false)
+  const [reviewing, setReviewing] = useState(false)
   const [content, setContent] = useState<any>({})
   const [contentType, setContentType] = useState("text")
 
@@ -69,8 +74,13 @@ export default function LessonEditorPage({
       const res = await fetch(`/api/admin/lessons/${lessonId}`)
       const data = await res.json()
       setLesson(data.lesson)
-      setContent(data.lesson?.content || {})
-      setContentType(data.lesson?.contentType || "text")
+      setRole(data.role === "curator" ? "curator" : "admin")
+      setIsLive(!!data.isLive)
+      // A curator continues their own proposed edit, if there is one.
+      const source =
+        data.role === "curator" && data.lesson?.pendingRevision ? { ...data.lesson, ...data.lesson.pendingRevision } : data.lesson
+      setContent(source?.content || {})
+      setContentType(source?.contentType || "text")
     } catch (error) {
       console.error("Failed to fetch lesson:", error)
       toast.error("Failed to load lesson")
@@ -90,16 +100,38 @@ export default function LessonEditorPage({
         body: JSON.stringify({ content, contentType }),
       })
       
-      if (res.ok) {
-        toast.success("Lesson saved successfully")
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || "Failed to save")
+      if (data.revisionPending) {
+        toast.success("Changes sent to an admin for review")
+        setLesson((l) => (l ? { ...l, pendingRevision: data.lesson?.pendingRevision } : l))
       } else {
-        throw new Error("Failed to save")
+        toast.success("Lesson saved successfully")
       }
     } catch (error) {
       console.error("Failed to save:", error)
       toast.error("Failed to save lesson")
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function reviewRevision(action: "apply-revision" | "discard-revision") {
+    setReviewing(true)
+    try {
+      const res = await fetch(`/api/admin/lessons/${lessonId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || "Failed")
+      toast.success(action === "apply-revision" ? "Changes applied" : "Proposed changes discarded")
+      await fetchLesson()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't update the lesson")
+    } finally {
+      setReviewing(false)
     }
   }
 
@@ -146,9 +178,44 @@ export default function LessonEditorPage({
           ) : (
             <Save className="mr-2 h-4 w-4" />
           )}
-          {saving ? "Saving..." : "Save Changes"}
+          {saving ? "Saving..." : role === "curator" && isLive ? "Submit for review" : "Save Changes"}
         </Button>
       </div>
+
+      {role === "curator" && isLive && (
+        <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm text-foreground">
+          This lesson is in a live course. Saving sends your changes to an admin; students keep seeing the current version
+          until they&apos;re approved.
+          {lesson.pendingRevision ? " You're editing your proposed version." : ""}
+        </div>
+      )}
+
+      {role === "admin" && lesson.pendingRevision && (
+        <div className="space-y-3 rounded-lg border border-warning/40 bg-warning/10 p-4 text-sm">
+          <p className="font-medium text-foreground">A curator has proposed changes to this lesson.</p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setContent(lesson.pendingRevision?.content ?? content)
+                setContentType(lesson.pendingRevision?.contentType ?? contentType)
+                toast.info("Proposed version loaded. Nothing is saved until you apply or save.")
+              }}
+            >
+              <Eye className="mr-2 h-4 w-4" />
+              Preview proposed version
+            </Button>
+            <Button size="sm" disabled={reviewing} onClick={() => reviewRevision("apply-revision")}>
+              <CheckCircle2 className="mr-2 h-4 w-4" />
+              Apply changes
+            </Button>
+            <Button variant="ghost" size="sm" disabled={reviewing} onClick={() => reviewRevision("discard-revision")}>
+              Discard
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Content Type Selector */}
       <Card>

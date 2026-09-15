@@ -31,10 +31,13 @@ export async function GET() {
         profilePicture: user.profilePicture,
         isFlightSchoolAdmin: user.isFlightSchoolAdmin,
         isAdmin: user.isAdmin,
+        isCurator: user.isCurator === true,
         hasBundle: user.hasBundle,
         bundleExpiry: user.bundleExpiry,
         createdAt: user.createdAt,
         onboardedAt: user.onboardedAt,
+        emailVerifiedAt: user.emailVerifiedAt,
+        canClaimFreeSubject: user.freeSubjectEligible === true && !user.freeSubjectId,
       },
       purchases: user.purchases,
       // Subjects the student's school opened up, individually or via a group.

@@ -2,8 +2,7 @@ import { NextResponse } from "next/server"
 import { verifyToken } from "@lib/auth"
 import { cookies } from "next/headers"
 import { nanoid } from "nanoid"
-import { writeFile, mkdir } from "fs/promises"
-import path from "path"
+import { saveUpload } from "@lib/uploads"
 
 export async function POST(request: Request) {
   try {
@@ -37,25 +36,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "File too large (max 10MB)" }, { status: 400 })
     }
 
-    const ext = file.name.split(".").pop() || "jpg"
-    const filename = `${nanoid()}.${ext}`
-
-    // Ensure uploads directory exists
-    const uploadsDir = path.join(process.cwd(), "public", "uploads")
-    try {
-      await mkdir(uploadsDir, { recursive: true })
-    } catch {
-      // Directory may already exist
-    }
-
-    // Convert file to buffer and write to disk
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-    const filePath = path.join(uploadsDir, filename)
-    await writeFile(filePath, buffer)
-
-    // Return the public URL
-    const url = `/uploads/${filename}`
+    // Extension from the verified MIME type, never from the client's filename.
+    const ext = { "image/jpeg": "jpg", "image/png": "png", "image/gif": "gif", "image/webp": "webp" }[file.type]
+    const url = await saveUpload({
+      filename: `${nanoid()}.${ext}`,
+      data: Buffer.from(await file.arrayBuffer()),
+    })
 
     return NextResponse.json({ url })
   } catch (error) {

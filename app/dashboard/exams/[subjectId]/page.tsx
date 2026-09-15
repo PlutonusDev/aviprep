@@ -725,7 +725,7 @@ export default function ExamPage({ params }: ExamPageProps) {
         </p>
       </div>
 
-      <footer className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 backdrop-blur">
+      <footer className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
         <div className="mx-auto flex max-w-2xl items-center gap-2 px-4 py-3">
           <Button variant="ghost" onClick={() => goTo(current - 1)} disabled={current === 0} className="h-11 gap-1.5">
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />

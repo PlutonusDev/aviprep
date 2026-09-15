@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@lib/prisma"
-import { verifyAdmin } from "app/api/admin/middleware"
+import { verifyContentStaff } from "app/api/admin/middleware"
 import { effectiveStatus } from "@lib/question-validation"
 
 /**
@@ -9,7 +9,7 @@ import { effectiveStatus } from "@lib/question-validation"
  * can plan against - you can see which topics are thin before writing.
  */
 export async function GET(request: NextRequest) {
-  const adminCheck = await verifyAdmin()
+  const adminCheck = await verifyContentStaff()
   if ("error" in adminCheck) {
     return NextResponse.json({ error: adminCheck.error }, { status: adminCheck.status })
   }

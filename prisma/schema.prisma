@@ -18,6 +18,10 @@ model User {
   phone                 String    // Australian phone number format
   stripeCustomerId      String?   @unique // Stripe customer ID for payments
   isAdmin               Boolean   @default(false)
+  // Content curator: writes courses and questions, submits them for review,
+  // never publishes and never sees members or business data. Optional so
+  // existing accounts read as null (not a curator).
+  isCurator             Boolean?
   profilePicture        String?   // URL to profile picture
   isSuspendedFromForum  Boolean   @default(false) // Forum posting suspension
   createdAt             DateTime  @default(now())
@@ -33,6 +37,22 @@ model User {
 
   // When the welcome tour was finished or skipped. Null means never shown.
   onboardedAt         DateTime?
+
+  // When the mobile number was confirmed by SMS code. Null for accounts made
+  // before verification existed, or created by a school.
+  phoneVerifiedAt     DateTime?
+  // When the email address was confirmed from the link we send. Unverified
+  // members can still use the site; they just see a reminder banner.
+  emailVerifiedAt     DateTime?
+  // Last verification email sent, for the resend cooldown.
+  emailVerificationSentAt DateTime?
+
+  // New sign-ups may unlock one subject free (app/api/user/free-subject).
+  // Optional so existing accounts read as null = not eligible.
+  freeSubjectEligible Boolean?
+  freeSubjectId       String?
+  // Set when the member confirms a closure request by SMS; support actions it.
+  deletionRequestedAt DateTime?
 
   flightSchoolId      String?       @db.ObjectId
   flightSchool        FlightSchool? @relation ("FlightSchoolStudents", fields: [flightSchoolId], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -267,6 +287,12 @@ model Question {
   reviewedById String?   @db.ObjectId
   authorNote   String?
 
+  // Review workflow (lib/staff.ts). Edits a curator makes to live content are
+  // held here as proposed changes until an admin applies or discards them.
+  pendingRevision     Json?
+  pendingRevisionById String?   @db.ObjectId
+  pendingRevisionAt   DateTime?
+
   createdAt    DateTime? @default(now())
   updatedAt    DateTime? @updatedAt
 
@@ -449,6 +475,14 @@ model Course {
   
   // Status
   isPublished     Boolean  @default(false)
+  // "review" once a curator submits an unpublished course; cleared on publish.
+  reviewStatus    String?
+
+  // Review workflow (lib/staff.ts). Edits a curator makes to live content are
+  // held here as proposed changes until an admin applies or discards them.
+  pendingRevision     Json?
+  pendingRevisionById String?   @db.ObjectId
+  pendingRevisionAt   DateTime?
   
   modules         Module[]
   enrollments     CourseEnrollment[]
@@ -498,6 +532,12 @@ model Lesson {
   
   // Estimated time in minutes
   estimatedMins Int    @default(5)
+
+  // Review workflow (lib/staff.ts). Edits a curator makes to live content are
+  // held here as proposed changes until an admin applies or discards them.
+  pendingRevision     Json?
+  pendingRevisionById String?   @db.ObjectId
+  pendingRevisionAt   DateTime?
   
   progress    LessonProgress[]
   
@@ -584,4 +624,22 @@ model Notification {
   @@index([userId])
   @@index([createdAt])
   @@index([isRead])
+}
+
+/// One-time SMS codes (lib/otp.ts). Codes are stored hashed, never in plain text.
+model OtpCode {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  /// "signup" | "login" | "reset" | "delete"
+  purpose   String
+  /// Who the code is for within the purpose: a user id, or the phone at sign-up.
+  key       String
+  phone     String
+  codeHash  String
+  attempts  Int      @default(0)
+  /// Used, replaced by a newer code, or burned by too many attempts.
+  consumed  Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([purpose, key, createdAt])
 }

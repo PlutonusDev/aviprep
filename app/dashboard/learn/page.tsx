@@ -127,7 +127,10 @@ export default function LearnPage() {
       )
     }
 
-    return filtered
+    // Unlocked and unfinished first, then unlocked and completed, then locked.
+    // A stable sort, so the server's course order holds within each group.
+    const rank = (c: Course) => (!hasAccessToSubject(c.subjectId) ? 2 : c.progress === 100 ? 1 : 0)
+    return [...filtered].sort((a, b) => rank(a) - rank(b))
   }, [courses, selectedSubject, searchQuery, subjects, isWhitelabeled, hasAccessToSubject])
 
   // Get subject name by id

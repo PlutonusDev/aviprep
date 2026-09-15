@@ -123,7 +123,7 @@ export default function MessagesContent() {
 
   return (
     <div className="mx-auto w-full max-w-6xl p-4 lg:p-8">
-      <div className="flex h-[calc(100dvh-4rem-2rem)] overflow-hidden rounded-xl border border-border bg-card shadow-e1 lg:h-[calc(100dvh-4rem-4rem)]">
+      <div className="flex h-[calc(100dvh-4rem-2rem-4rem-env(safe-area-inset-bottom))] overflow-hidden rounded-xl border border-border bg-card shadow-e1 lg:h-[calc(100dvh-4rem-4rem)]">
         {/* Conversation list */}
         <aside
           aria-label="Conversations"

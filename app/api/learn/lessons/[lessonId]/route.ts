@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { prisma } from "@lib/prisma"
 import { verifyToken } from "@lib/auth"
+import { getStaff } from "@lib/staff"
 
 export async function GET(
   request: Request,
@@ -36,7 +37,8 @@ export async function GET(
       },
     })
 
-    if (!lesson) {
+    // Lessons in unpublished courses are staff-only previews.
+    if (!lesson || (!lesson.module.course.isPublished && !(await getStaff()))) {
       return NextResponse.json({ error: "Lesson not found" }, { status: 404 })
     }
 

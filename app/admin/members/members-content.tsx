@@ -29,6 +29,7 @@ interface Member {
   phone: string
   arn: string
   isAdmin: boolean
+  isCurator: boolean | null
   hasBundle: boolean
   bundleExpiry: string | null
   createdAt: string
@@ -99,6 +100,7 @@ export function MembersContent() {
           phone: editMember.phone,
           arn: editMember.arn,
           isAdmin: editMember.isAdmin,
+          isCurator: !!editMember.isCurator,
           hasBundle: editMember.hasBundle,
         }),
       })
@@ -202,6 +204,11 @@ export function MembersContent() {
                           {member.isAdmin && (
                             <Badge variant="outline" className="text-xs">
                               Admin
+                            </Badge>
+                          )}
+                          {!member.isAdmin && member.isCurator && (
+                            <Badge variant="outline" className="text-xs">
+                              Curator
                             </Badge>
                           )}
                         </div>
@@ -326,6 +333,19 @@ export function MembersContent() {
                 <Switch
                   checked={editMember.isAdmin}
                   onCheckedChange={(checked) => setEditMember({ ...editMember, isAdmin: checked })}
+                />
+              </div>
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div>
+                  <Label>Curator</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Write courses and questions and submit them for review. No publishing, and no access to members or business data.
+                  </p>
+                </div>
+                <Switch
+                  checked={!!editMember.isCurator}
+                  disabled={editMember.isAdmin}
+                  onCheckedChange={(checked) => setEditMember({ ...editMember, isCurator: checked })}
                 />
               </div>
               <div className="flex items-center justify-between rounded-lg border p-3">

@@ -24,6 +24,8 @@ const jetbrainsMono = JetBrains_Mono({
 import CaptchaProvider from "@/components/meta/recaptcha-provider";
 import { ThemeProvider } from "@/components/meta/theme-provider";
 import { TenantProvider } from "@lib/tenant-context";
+import { Toaster } from "@/components/ui/sonner";
+import { PwaProvider } from "@/components/pwa/pwa-provider";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://aviprep.com.au"),
@@ -82,7 +84,12 @@ export const metadata: Metadata = {
     images: ["/img/AviPrep-logo.png"],
     creator: "@AviPrep_AU",
   },
-  manifest: "/site.webmanifest",
+  // app/manifest.ts is linked automatically.
+  appleWebApp: {
+    capable: true,
+    title: "AviPrep",
+    statusBarStyle: "default",
+  },
   category: "Education"
 }
 
@@ -94,6 +101,8 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
+  // Lets the installed app draw under the notch; layouts pad with safe-area insets.
+  viewportFit: "cover",
 }
 
 export default ({ children }: { children: React.ReactNode }) => {
@@ -202,8 +211,10 @@ export default ({ children }: { children: React.ReactNode }) => {
         >
           <TenantProvider>
             <CaptchaProvider>
-              {children}
+              <PwaProvider>{children}</PwaProvider>
             </CaptchaProvider>
+            {/* Never mounted before, so every toast() call in the app was silently dropped. */}
+            <Toaster position="bottom-right" closeButton mobileOffset={{ bottom: "calc(5rem + env(safe-area-inset-bottom))" }} />
           </TenantProvider>
         </ThemeProvider>
       </body>

@@ -8,6 +8,13 @@ import { Tour } from "./tour"
 import { MAIN_TOUR, STUDENT_TOUR } from "./tour-steps"
 
 /**
+ * Master switch for the welcome tour. Off for now: it never starts on its own
+ * and the replay option is hidden from Settings. The tour itself is kept intact;
+ * set this to true to bring it back.
+ */
+export const ONBOARDING_ENABLED = false
+
+/**
  * Shows the welcome tour once per account.
  *
  * Only on the dashboard: the tour points at the sidebar and the resume card, so

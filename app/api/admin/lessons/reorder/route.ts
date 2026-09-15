@@ -1,34 +1,21 @@
 import { NextResponse } from "next/server"
-import { cookies } from "next/headers"
 import { prisma } from "@lib/prisma"
-import { verifyToken } from "@lib/auth"
+import { courseIsLive, isResponse, liveContentError, pick, requireStaff } from "@lib/staff"
 
-async function verifyAdmin() {
-  const cookieStore = await cookies()
-  const token = cookieStore.get("session")?.value
-  if (!token) return null
-
-  const payload = await verifyToken(token)
-  if (!payload) return null
-
-  const user = await prisma.user.findUnique({
-    where: { id: payload.userId },
-    select: { id: true, isAdmin: true },
-  })
-
-  return user?.isAdmin ? user : null
-}
 
 export async function POST(request: Request) {
-  const admin = await verifyAdmin()
-  if (!admin) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+  const staff = await requireStaff({ curators: true })
+  if (isResponse(staff)) return staff
 
   const { lessonId, newModuleId, newOrder } = await request.json()
 
   if (!lessonId || newOrder === undefined) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
+  }
+
+  if (!staff.isAdmin) {
+    const live = (await courseIsLive({ lessonId })) || (newModuleId ? await courseIsLive({ moduleId: newModuleId }) : false)
+    if (live) return liveContentError()
   }
 
   // Get the lesson being moved

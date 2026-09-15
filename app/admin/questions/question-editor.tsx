@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { AlertCircle, Check, Loader2, Plus, Trash2, Lightbulb } from "lucide-react"
+import { AlertCircle, Check, Eye, Loader2, Plus, Trash2, Lightbulb, Radio } from "lucide-react"
 import { cn } from "@lib/utils"
 import {
   DIFFICULTIES,
@@ -29,6 +29,10 @@ import {
 
 export interface EditableQuestion extends QuestionDraft {
   id?: string
+  authorNote?: string | null
+  /** A curator's proposed edit to a live question, awaiting an admin. */
+  pendingRevision?: Partial<QuestionDraft> | null
+  pendingRevisionAt?: string | null
 }
 
 function FieldError({ message }: { message?: string }) {
@@ -54,6 +58,11 @@ export default function QuestionEditor({
   saving,
   serverErrors,
   knownTopics,
+  canPublish = true,
+  isLive = false,
+  pendingRevision,
+  onReviewRevision,
+  reviewing = false,
 }: {
   value: EditableQuestion
   onChange: (next: EditableQuestion) => void
@@ -62,6 +71,14 @@ export default function QuestionEditor({
   saving: boolean
   serverErrors?: FieldErrors
   knownTopics: string[]
+  /** Admins publish; curators can only submit for review. */
+  canPublish?: boolean
+  /** Editing a question students can already see. */
+  isLive?: boolean
+  /** Admin view: a curator's proposed changes to this live question. */
+  pendingRevision?: Partial<QuestionDraft> | null
+  onReviewRevision?: (action: "apply-revision" | "discard-revision") => void
+  reviewing?: boolean
 }) {
   const [touched, setTouched] = useState(false)
 
@@ -99,8 +116,55 @@ export default function QuestionEditor({
     onSave(status, addAnother)
   }
 
+  const curatorOnLive = !canPublish && isLive
+
   return (
     <div className="space-y-6">
+      {curatorOnLive && (
+        <div className="flex items-start gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
+          <Radio className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+          <p className="text-foreground">
+            This question is live. Your edits are sent to an admin for review, and students keep seeing the current
+            version until they&apos;re approved.
+          </p>
+        </div>
+      )}
+
+      {canPublish && pendingRevision && onReviewRevision && (
+        <div className="space-y-3 rounded-lg border border-warning/40 bg-warning/10 p-4 text-sm">
+          <p className="font-medium text-foreground">A curator has proposed changes to this live question.</p>
+          <p className="text-muted-foreground">
+            Load them into the form to compare, then apply or discard. Nothing changes for students until you apply.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-9 gap-1.5"
+              onClick={() => onChange({ ...value, ...pendingRevision })}
+            >
+              <Eye className="h-3.5 w-3.5" aria-hidden="true" />
+              Load proposed changes
+            </Button>
+            <Button type="button" size="sm" className="h-9 gap-1.5" disabled={reviewing} onClick={() => onReviewRevision("apply-revision")}>
+              <Check className="h-3.5 w-3.5" aria-hidden="true" />
+              Apply changes
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-9 text-muted-foreground"
+              disabled={reviewing}
+              onClick={() => onReviewRevision("discard-revision")}
+            >
+              Discard
+            </Button>
+          </div>
+        </div>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="q-topic">Topic</Label>
@@ -277,24 +341,35 @@ export default function QuestionEditor({
       )}
 
       <div className="flex flex-wrap items-center gap-3 border-t border-border pt-5">
-        <Button onClick={() => attemptSave("draft", false)} disabled={saving} variant="outline" className="h-11">
-          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : null}
-          Save draft
-        </Button>
-        <Button onClick={() => attemptSave("review", false)} disabled={saving} variant="secondary" className="h-11">
-          Submit for review
-        </Button>
-        <Button onClick={() => attemptSave("published", false)} disabled={saving} className="h-11">
-          Publish
-        </Button>
-        <Button
-          onClick={() => attemptSave("draft", true)}
-          disabled={saving}
-          variant="ghost"
-          className="h-11"
-        >
-          Save &amp; write another
-        </Button>
+        {curatorOnLive ? (
+          <Button onClick={() => attemptSave("review", false)} disabled={saving} className="h-11">
+            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : null}
+            Submit changes for review
+          </Button>
+        ) : (
+          <>
+            <Button onClick={() => attemptSave("draft", false)} disabled={saving} variant="outline" className="h-11">
+              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : null}
+              Save draft
+            </Button>
+            <Button
+              onClick={() => attemptSave("review", false)}
+              disabled={saving}
+              variant={canPublish ? "secondary" : "default"}
+              className="h-11"
+            >
+              Submit for review
+            </Button>
+            {canPublish && (
+              <Button onClick={() => attemptSave("published", false)} disabled={saving} className="h-11">
+                Publish
+              </Button>
+            )}
+            <Button onClick={() => attemptSave("draft", true)} disabled={saving} variant="ghost" className="h-11">
+              Save &amp; write another
+            </Button>
+          </>
+        )}
         <Button onClick={onCancel} variant="ghost" className="ml-auto h-11">
           Cancel
         </Button>
@@ -307,7 +382,9 @@ export default function QuestionEditor({
       )}
 
       <p className="text-xs text-muted-foreground">
-        {QUESTION_STATUSES.map((s) => `${s.label}: ${s.description}`).join("  ·  ")}
+        {canPublish
+          ? QUESTION_STATUSES.map((s) => `${s.label}: ${s.description}`).join("  ·  ")
+          : "Draft: only you and admins see it  ·  In review: ready for an admin to check and publish"}
       </p>
     </div>
   )

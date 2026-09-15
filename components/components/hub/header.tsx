@@ -52,6 +52,7 @@ import {
     SECONDARY_NAV,
     SCHOOL_NAV,
     ADMIN_NAV,
+    CURATOR_NAV,
     isNavItemActive,
     filterNavItems,
 } from "./nav-items"
@@ -64,6 +65,7 @@ import { useTenant } from "@lib/tenant-context"
 import { SUBJECTS, LICENSE_TYPES } from "@lib/subjects"
 import type React from "react"
 import { NotificationsDropdown } from "./notifications-dropdown"
+import { OPEN_MENU_EVENT } from "./mobile-tab-bar"
 
 
 // Icon mapping for subjects
@@ -471,6 +473,19 @@ export default function Header() {
     const { tenant, isWhitelabeled, disabledFeatures } = useTenant()
     const navFilter = { isTenant: isWhitelabeled, disabledFeatures }
     const [searchOpen, setSearchOpen] = useState(false)
+    const [menuOpen, setMenuOpen] = useState(false)
+
+    // The bottom tab bar's "More" opens this same sheet.
+    useEffect(() => {
+        const open = () => setMenuOpen(true)
+        window.addEventListener(OPEN_MENU_EVENT, open)
+        return () => window.removeEventListener(OPEN_MENU_EVENT, open)
+    }, [])
+
+    // Close it once a link inside has navigated.
+    useEffect(() => {
+        setMenuOpen(false)
+    }, [pathname])
 
     const initials = user ? `${user.firstName[0]}${user.lastName[0]}`.toUpperCase() : "??"
     const fullName = user ? `${user.firstName} ${user.lastName}` : "Loading..."
@@ -491,7 +506,7 @@ export default function Header() {
         <>
             <header className="sticky h-16 top-0 z-40 border-b border-border bg-sidebar">
                 <div className="flex h-16 items-center gap-4 px-4 lg:px-6">
-                    <Sheet>
+                    <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
                         <SheetTrigger asChild>
                             <Button variant="ghost" size="icon" className="lg:hidden">
                                 <Menu className="h-5 w-5" />
@@ -566,7 +581,7 @@ export default function Header() {
                                     {filterNavItems([
                                         ...SECONDARY_NAV,
                                         ...(user?.isFlightSchoolAdmin ? [SCHOOL_NAV] : []),
-                                        ...(user?.isAdmin ? [ADMIN_NAV] : []),
+                                        ...(user?.isAdmin ? [ADMIN_NAV] : user?.isCurator ? [CURATOR_NAV] : []),
                                     ], navFilter).map((item) => {
                                         const isActive = isNavItemActive(pathname, item.href)
                                         return (

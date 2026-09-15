@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server"
-import { cookies } from "next/headers"
 import { prisma } from "@lib/prisma"
-import { hashPassword, createSession, isValidAustralianPhone, isValidARN } from "@lib/auth"
+import { hashPassword, startSession, isValidAustralianPhone, isValidARN } from "@lib/auth"
+import { readPhoneProof } from "@lib/otp"
+import { requestOrigin, sendVerificationEmail } from "@lib/email-verification"
+import { toE164AustralianMobile } from "@lib/sms"
 import { stripe } from "@lib/stripe";
 
 export async function POST(request: Request) {
@@ -9,7 +11,7 @@ export async function POST(request: Request) {
     //return NextResponse.json({ error: "New registrations are disabled" }, { status: 400 });
 
     const body = await request.json()
-    const { email, password, firstName, lastName, phone, arn } = body
+    const { email, password, firstName, lastName, phone, arn, phoneProof } = body
 
     // Validate required fields
     if (!email || !password || !firstName || !lastName || !phone || !arn) {
@@ -30,6 +32,12 @@ export async function POST(request: Request) {
     // Validate Australian phone number
     if (!isValidAustralianPhone(phone)) {
       return NextResponse.json({ error: "Invalid Australian mobile number. Use format: 04XX XXX XXX" }, { status: 400 })
+    }
+
+    // The mobile must have been confirmed by SMS code in this sign-up.
+    const verifiedPhone = await readPhoneProof(phoneProof)
+    if (!verifiedPhone || verifiedPhone !== toE164AustralianMobile(phone)) {
+      return NextResponse.json({ error: "Confirm your mobile number first.", field: "phone" }, { status: 400 })
     }
 
     // Validate ARN
@@ -76,54 +84,28 @@ export async function POST(request: Request) {
           firstName,
           lastName,
           phone,
+          phoneVerifiedAt: new Date(),
+          // They pick one subject to unlock free, straight after sign-up.
+          freeSubjectEligible: true,
           arn,
           stripeCustomerId: stripeCustomer.id,
-        },
-      });
-
-      const expiryDate = new Date();
-      expiryDate.setFullYear(expiryDate.getFullYear() + 1);
-
-      await tx.purchase.create({
-        data: {
-          subjectId: "human-factors",
-          subjectName: "Human Factors",
-          subjectCode: "CHUF",
-          expiresAt: expiryDate,
-          hasPrinting: false,
-          hasAiInsights: false,
-          purchaseType: "individual",
-          priceAud: 0,
-          stripePaymentId: "free_trial",
-          stripeCustomerId: newUser.stripeCustomerId,
-          user: {
-            connect: {
-              id: newUser.id
-            },
-          },
         },
       });
 
       return newUser;
     });
 
-    // Create session
-    const token = await createSession({
+    // A mail failure shouldn't block sign-up; they can resend from the dashboard banner.
+    await sendVerificationEmail({ user, origin: requestOrigin(request) }).catch((err) =>
+      console.error("Verification email failed:", err),
+    )
+
+    await startSession({
       id: user.id,
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
       arn: user.arn,
-    })
-
-    // Set cookie
-    const cookieStore = await cookies()
-    cookieStore.set("session", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-      path: "/",
     })
 
     return NextResponse.json({

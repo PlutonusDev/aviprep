@@ -505,7 +505,7 @@ export default function PricingContent() {
             <div
               role="region"
               aria-label="Your selection"
-              className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur lg:left-64"
+              className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 border-t lg:bottom-0 border-border bg-background/95 backdrop-blur lg:left-64"
             >
               <div className="mx-auto flex max-w-6xl flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between lg:px-8">
                 <div className="min-w-0">

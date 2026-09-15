@@ -13,12 +13,18 @@ interface User {
   phone: string
   arn: string
   isAdmin: boolean
+  /** Content curator: admin panel access limited to courses and questions. */
+  isCurator?: boolean
   isFlightSchoolAdmin: boolean
   hasBundle: boolean
   bundleExpiry: string | null
   createdAt: string
   /** Null until the welcome tour has been finished or skipped. */
   onboardedAt: string | null
+  /** Null until the member clicks the link in the verification email. */
+  emailVerifiedAt: string | null
+  /** A new member who hasn't picked their free subject yet. */
+  canClaimFreeSubject: boolean
 }
 
 interface Purchase {

@@ -1,27 +1,36 @@
 "use client"
 
 import type React from "react"
-
-import { useState, useRef, useEffect } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { AlertCircle, ArrowLeft, ArrowRight, Check, Circle, Eye, EyeOff, Loader2, Pencil } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader } from "@/components/ui/card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2, AlertCircle, Eye, EyeOff, Check, Circle, ArrowLeft, ArrowRight } from "lucide-react"
+import { OtpInput, ResendCode } from "@/components/auth/otp"
 import { useTenant } from "@lib/tenant-context"
 
-
+/*
+ * Step order matters for password managers. Browsers treat the text field just
+ * before the password as the username, so email sits directly above the
+ * password on the last step - otherwise Chrome saved the ARN as the login.
+ */
 const STEPS = [
   { title: "Your name", fields: ["firstName", "lastName"] },
-  { title: "Contact details", fields: ["email", "phone"] },
-  { title: "Licence & password", fields: ["arn", "password", "confirmPassword"] },
+  { title: "Licence & mobile", fields: ["arn", "phone"] },
+  { title: "Confirm your mobile", fields: [] },
+  { title: "Email & password", fields: ["email", "password", "confirmPassword"] },
 ] as const
 
+const VERIFY_STEP = 2
+
+type FieldName = "firstName" | "lastName" | "arn" | "phone" | "email" | "password" | "confirmPassword"
+
 interface FieldProps {
-  name: string
+  name: FieldName
   label: string
   value: string
   error: string | null
@@ -38,7 +47,6 @@ interface FieldProps {
 function Field({ name, label, value, error, onChange, onBlur, hint, ...rest }: FieldProps) {
   const hintId = hint ? `${name}-hint` : undefined
   const errorId = error ? `${name}-error` : undefined
-
   return (
     <div className="space-y-2">
       <Label htmlFor={name}>{label}</Label>
@@ -54,7 +62,6 @@ function Field({ name, label, value, error, onChange, onBlur, hint, ...rest }: F
         className="h-11"
         {...rest}
       />
-      {/* Hint stays visible; the error is added alongside it rather than replacing it. */}
       {hint && !error && (
         <p id={hintId} className="text-xs text-muted-foreground">
           {hint}
@@ -69,54 +76,63 @@ function Field({ name, label, value, error, onChange, onBlur, hint, ...rest }: F
   )
 }
 
+const digits = (v: string) => v.replace(/\D/g, "")
+
 export default function RegisterPage() {
   const router = useRouter()
-  const { tenant, isWhitelabeled } = useTenant()
+  const { tenant } = useTenant()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
   const errorRef = useRef<HTMLDivElement>(null)
-  const [touched, setTouched] = useState<Partial<Record<string, boolean>>>({})
+  const [touched, setTouched] = useState<Partial<Record<FieldName, boolean>>>({})
   const [step, setStep] = useState(0)
   const stepHeadingRef = useRef<HTMLParagraphElement>(null)
   const pendingFocusRef = useRef<string | null>(null)
+
+  // Phone verification state
+  const [challenge, setChallenge] = useState<string | null>(null)
+  const [maskedPhone, setMaskedPhone] = useState<string | null>(null)
+  const [resendWait, setResendWait] = useState(60)
+  const [code, setCode] = useState("")
+  const [codeError, setCodeError] = useState<string | null>(null)
+  const [phoneProof, setPhoneProof] = useState<string | null>(null)
+  /** The number the proof is for; editing the phone afterwards invalidates it. */
+  const [verifiedPhone, setVerifiedPhone] = useState<string | null>(null)
+
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    arn: "",
+    phone: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+  })
 
   useEffect(() => {
     if (error) errorRef.current?.focus()
   }, [error])
 
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-    confirmPassword: "",
-    firstName: "",
-    lastName: "",
-    phone: "",
-    arn: "",
-  })
+  // Mirrors the server rules in lib/auth.ts.
+  const RULES: Record<FieldName, (v: string) => string | null> = {
+    firstName: (v) => (v.trim() ? null : "Enter your first name."),
+    lastName: (v) => (v.trim() ? null : "Enter your last name."),
+    arn: (v) => (/^\d{6,7}$/.test(v) ? null : "Your ARN is 6 or 7 digits."),
+    phone: (v) => (/^(\+?61|0)4\d{8}$/.test(v.replace(/\s/g, "")) ? null : "Enter an Australian mobile, starting 04."),
+    email: (v) => (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v) ? null : "Enter a valid email address."),
+    password: (v) => (v.length >= 8 ? null : "Use at least 8 characters."),
+    confirmPassword: (v) => (v === formData.password ? null : "Passwords don't match."),
+  }
 
-  // Mirrors the server rules in lib/auth.ts, so a fixable mistake is caught
-  // here instead of costing the user a failed round trip.
-  const RULES = {
-    firstName: (v: string) => (v.trim() ? null : "Enter your first name."),
-    lastName: (v: string) => (v.trim() ? null : "Enter your last name."),
-    email: (v: string) => (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v) ? null : "Enter a valid email address."),
-    phone: (v: string) =>
-      /^(\+?61|0)4\d{8}$/.test(v.replace(/\s/g, ""))
-        ? null
-        : "Enter an Australian mobile, starting 04.",
-    arn: (v: string) => (/^\d{6,7}$/.test(v) ? null : "Your ARN is 6 or 7 digits."),
-    password: (v: string) => (v.length >= 8 ? null : "Use at least 8 characters."),
-    confirmPassword: (v: string) => (v === formData.password ? null : "Passwords do not match."),
-  } as const
-
-  type FieldName = keyof typeof RULES
-
-  const errorFor = (name: FieldName) =>
-    touched[name] ? RULES[name](formData[name]) : null
-
+  const errorFor = (name: FieldName) => (touched[name] ? RULES[name](formData[name]) : null)
   const markTouched = (e: React.FocusEvent<HTMLInputElement>) =>
     setTouched((prev) => ({ ...prev, [e.target.name]: true }))
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }))
+    setError(null)
+  }
 
   const fieldProps = (name: FieldName) => ({
     name,
@@ -126,11 +142,16 @@ export default function RegisterPage() {
     onBlur: markTouched,
   })
 
-  const isLastStep = step === STEPS.length - 1
+  const formatPhone = (value: string) => {
+    const cleaned = digits(value).slice(0, 10)
+    if (cleaned.length <= 4) return cleaned
+    if (cleaned.length <= 7) return `${cleaned.slice(0, 4)} ${cleaned.slice(4)}`
+    return `${cleaned.slice(0, 4)} ${cleaned.slice(4, 7)} ${cleaned.slice(7)}`
+  }
 
-  // Only advance when the current step is actually valid; the fields the user
-  // has not reached yet must not block them.
-  const advanceOrReport = (fields: readonly string[]) => {
+  const isVerified = !!phoneProof && verifiedPhone === digits(formData.phone)
+
+  const validate = (fields: readonly string[]) => {
     const invalid = fields.filter((n) => RULES[n as FieldName](formData[n as FieldName]) !== null)
     if (invalid.length === 0) return true
     setTouched((prev) => ({ ...prev, ...Object.fromEntries(fields.map((n) => [n, true])) }))
@@ -138,18 +159,6 @@ export default function RegisterPage() {
     return false
   }
 
-  const goNext = () => {
-    setError(null)
-    if (!advanceOrReport(STEPS[step].fields)) return
-    setStep((n) => Math.min(n + 1, STEPS.length - 1))
-  }
-
-  const goBack = () => {
-    setError(null)
-    setStep((n) => Math.max(n - 1, 0))
-  }
-
-  // Move focus to the new step so screen reader and keyboard users follow along.
   useEffect(() => {
     const pending = pendingFocusRef.current
     if (pending) {
@@ -157,74 +166,108 @@ export default function RegisterPage() {
       document.getElementById(pending)?.focus()
       return
     }
-    stepHeadingRef.current?.focus()
+    if (step !== VERIFY_STEP) stepHeadingRef.current?.focus()
   }, [step])
 
-  const passwordChecks = [
-    { label: "At least 8 characters", met: formData.password.length >= 8 },
-    { label: "Passwords match", met: formData.confirmPassword.length > 0 && formData.password === formData.confirmPassword },
-  ]
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }))
+  async function sendCode() {
+    setIsLoading(true)
     setError(null)
+    try {
+      const res = await fetch("/api/auth/otp/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: digits(formData.phone) }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setError(data.error || "Couldn't send a code.")
+        return false
+      }
+      setChallenge(data.challenge)
+      setMaskedPhone(data.maskedPhone)
+      setResendWait(60)
+      setCode("")
+      setCodeError(null)
+      return true
+    } catch {
+      setError("Couldn't reach the server. Check your connection.")
+      return false
+    } finally {
+      setIsLoading(false)
+    }
   }
 
-  const formatPhone = (value: string) => {
-    // Format as 04XX XXX XXX
-    const cleaned = value.replace(/\D/g, "")
-    if (cleaned.length <= 4) return cleaned
-    if (cleaned.length <= 7) return `${cleaned.slice(0, 4)} ${cleaned.slice(4)}`
-    return `${cleaned.slice(0, 4)} ${cleaned.slice(4, 7)} ${cleaned.slice(7, 10)}`
+  async function verifyCode(value = code) {
+    if (value.length !== 6) return setCodeError("Enter the 6-digit code.")
+    setIsLoading(true)
+    setCodeError(null)
+    try {
+      const res = await fetch("/api/auth/otp/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ challenge, code: value }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setCodeError(data.error || "That code isn't right.")
+        setCode("")
+        return
+      }
+      setPhoneProof(data.phoneProof)
+      setVerifiedPhone(digits(formData.phone))
+      setStep(VERIFY_STEP + 1)
+    } catch {
+      setCodeError("Couldn't reach the server. Check your connection.")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatPhone(e.target.value)
-    setFormData((prev) => ({ ...prev, phone: formatted }))
+  async function goNext() {
     setError(null)
-  }
+    if (!validate(STEPS[step].fields)) return
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    // Enter inside an early step should move forward, not register.
-    if (!isLastStep) {
-      goNext()
+    if (step === 1) {
+      // Already confirmed this exact number: don't text again.
+      if (isVerified) return setStep(VERIFY_STEP + 1)
+      if (await sendCode()) setStep(VERIFY_STEP)
       return
+    }
+    if (step === VERIFY_STEP) return verifyCode()
+    setStep((n) => Math.min(n + 1, STEPS.length - 1))
+  }
+
+  function goBack() {
+    setError(null)
+    // Going back from the account step skips over an already-finished code step.
+    setStep((n) => (n === VERIFY_STEP + 1 && isVerified ? 1 : Math.max(n - 1, 0)))
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (step !== STEPS.length - 1) return goNext()
+
+    const names = Object.keys(RULES) as FieldName[]
+    const invalid = names.filter((n) => RULES[n](formData[n]) !== null)
+    if (invalid.length > 0) {
+      setTouched(Object.fromEntries(names.map((n) => [n, true])))
+      const target = STEPS.findIndex((s) => (s.fields as readonly string[]).includes(invalid[0]))
+      if (target !== -1 && target !== step) {
+        pendingFocusRef.current = invalid[0]
+        setStep(target)
+      } else {
+        document.getElementById(invalid[0])?.focus()
+      }
+      return
+    }
+    if (!isVerified) {
+      pendingFocusRef.current = "phone"
+      setStep(1)
+      return setError("Confirm your mobile number first.")
     }
 
     setIsLoading(true)
     setError(null)
-
-    // Validate everything the server will, so the user fixes it here.
-    const names = Object.keys(RULES) as FieldName[]
-    const invalid = names.filter((n) => RULES[n](formData[n]) !== null)
-
-    if (invalid.length > 0) {
-      setTouched(Object.fromEntries(names.map((n) => [n, true])))
-      setError(
-        invalid.length === 1
-          ? "One field needs your attention before we can continue."
-          : `${invalid.length} fields need your attention before we can continue.`,
-      )
-
-      // The offending field may live on an earlier step, which is not mounted -
-      // go back to that step first, then focus it once it exists.
-      const targetStep = STEPS.findIndex((s) => s.fields.includes(invalid[0] as never))
-      if (targetStep !== -1 && targetStep !== step) {
-        pendingFocusRef.current = invalid[0]
-        setStep(targetStep)
-      } else {
-        document.getElementById(invalid[0])?.focus()
-      }
-
-      setIsLoading(false)
-      return
-    }
-
     try {
       const res = await fetch("/api/auth/register", {
         method: "POST",
@@ -234,80 +277,63 @@ export default function RegisterPage() {
           password: formData.password,
           firstName: formData.firstName,
           lastName: formData.lastName,
-          phone: formData.phone.replace(/\s/g, ""),
+          phone: digits(formData.phone),
           arn: formData.arn,
+          phoneProof,
         }),
       })
-
-      const data = await res.json()
-
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        setError(data.error || "Registration failed")
-        setIsLoading(false)
+        setError(data.error || "Couldn't create your account.")
+        if (data.field === "phone") {
+          // Proof expired (30 minutes) or doesn't match: verify again.
+          setPhoneProof(null)
+          setVerifiedPhone(null)
+          pendingFocusRef.current = "phone"
+          setStep(1)
+        }
         return
       }
-
-      router.push("/dashboard")
+      router.push("/dashboard/choose-subject")
     } catch {
-      setError("An unexpected error occurred. Please try again.")
+      setError("Couldn't reach the server. Check your connection.")
+    } finally {
       setIsLoading(false)
     }
   }
 
+  const passwordChecks = [
+    { label: "At least 8 characters", met: formData.password.length >= 8 },
+    { label: "Passwords match", met: formData.confirmPassword.length > 0 && formData.password === formData.confirmPassword },
+  ]
+
   return (
     <>
-      {/* Mobile logo */}
-      <div className="flex items-center justify-center gap-3 mb-8 lg:hidden">
-        <img
-          className="h-16 w-auto"
-          src="/img/AviPrep-logo.png"
-          alt="AviPrep"
-          width={256}
-          height={64}
-        />
-      </div>
-
-      <Card className="border-0 bg-transparent shadow-none lg:rounded-xl lg:border lg:bg-card lg:p-2 lg:shadow-e3">
-        <CardHeader className="space-y-1.5 px-0 pb-6 lg:px-6">
-          <h1 className="text-display-3 font-bold">Create an Account</h1>
-          {!tenant && (
-            <CardDescription>
-              All fields are required. It takes about a minute.
-            </CardDescription>
-          )}
+      <Card className="overflow-hidden rounded-xl border border-border bg-card shadow-e1">
+        <CardHeader className="space-y-1.5 p-6 pb-5 sm:p-8 sm:pb-6">
+          <h1 className="font-heading text-2xl font-bold tracking-tight">Create an account</h1>
+          {!tenant && <CardDescription>Takes about a minute. We&apos;ll text you a code to confirm your mobile.</CardDescription>}
         </CardHeader>
+
         {tenant ? (
-          <CardContent className="px-0 lg:px-6">
-            <div className="flex flex-col gap-3 mb-8">
+          <CardContent className="px-6 pb-6 sm:px-8 sm:pb-8">
+            <div className="mb-8 flex flex-col gap-3">
               <p className="text-muted-foreground">
                 Accounts are managed by <span className="font-semibold">{tenant.name}</span>
               </p>
-              <p className="text-destructive">
-                Please contact your flight school to create an account.
-              </p>
+              <p className="text-destructive">Please contact your flight school to create an account.</p>
             </div>
           </CardContent>
         ) : (
-          <CardContent className="px-0 lg:px-6">
-            <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Segmented progress: position is carried by text, not colour alone. */}
+          <CardContent className="px-6 pb-6 sm:px-8 sm:pb-8">
+            <form onSubmit={handleSubmit} className="space-y-5" noValidate>
               <div>
                 <ol className="flex gap-1.5" aria-hidden="true">
                   {STEPS.map((s, i) => (
-                    <li
-                      key={s.title}
-                      className={`h-1 flex-1 rounded-full transition-colors ${
-                        i <= step ? "bg-primary" : "bg-muted"
-                      }`}
-                    />
+                    <li key={s.title} className={`h-1 flex-1 rounded-full transition-colors ${i <= step ? "bg-primary" : "bg-muted"}`} />
                   ))}
                 </ol>
-                <p
-                  ref={stepHeadingRef}
-                  tabIndex={-1}
-                  aria-live="polite"
-                  className="mt-3 text-sm font-medium text-foreground outline-none"
-                >
+                <p ref={stepHeadingRef} tabIndex={-1} aria-live="polite" className="mt-3 text-sm font-medium text-foreground outline-none">
                   <span className="text-muted-foreground">
                     Step {step + 1} of {STEPS.length}
                   </span>
@@ -338,12 +364,13 @@ export default function RegisterPage() {
                 {step === 1 && (
                   <>
                     <Field
-                      {...fieldProps("email")}
-                      label="Email"
-                      type="email"
-                      autoComplete="email"
-                      placeholder="pilot@example.com"
-                      hint="You'll use this to sign in."
+                      {...fieldProps("arn")}
+                      label="Aviation Reference Number"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      placeholder="123456"
+                      maxLength={7}
+                      hint="Your 6 or 7 digit CASA ARN, shown in myCASA."
                     />
                     <Field
                       {...fieldProps("phone")}
@@ -351,22 +378,66 @@ export default function RegisterPage() {
                       type="tel"
                       autoComplete="tel-national"
                       placeholder="04XX XXX XXX"
-                      hint="Australian mobile number, starting with 04."
-                      onChange={handlePhoneChange}
+                      hint={isVerified ? "Confirmed." : "We'll text a code to confirm it."}
+                      onChange={(e) => {
+                        setFormData((prev) => ({ ...prev, phone: formatPhone(e.target.value) }))
+                        setError(null)
+                      }}
                       maxLength={12}
                     />
                   </>
                 )}
 
-                {step === 2 && (
+                {step === VERIFY_STEP && (
+                  <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      Enter the code we texted to <span className="font-medium text-foreground">{maskedPhone}</span>.{" "}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          pendingFocusRef.current = "phone"
+                          setStep(1)
+                        }}
+                        className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+                      >
+                        <Pencil className="h-3 w-3" aria-hidden="true" />
+                        Change number
+                      </button>
+                    </p>
+                    <div className="space-y-2">
+                      <Label htmlFor="otp">Code</Label>
+                      <OtpInput
+                        value={code}
+                        onChange={(v) => {
+                          setCode(v)
+                          setCodeError(null)
+                        }}
+                        onComplete={(v) => verifyCode(v)}
+                        error={codeError}
+                        disabled={isLoading}
+                      />
+                    </div>
+                    <ResendCode
+                      key={challenge ?? "none"}
+                      challenge={challenge}
+                      initialWait={resendWait}
+                      onError={(message, restart) => {
+                        setCodeError(message)
+                        if (restart) setStep(1)
+                      }}
+                    />
+                  </div>
+                )}
+
+                {step === 3 && (
                   <>
                     <Field
-                      {...fieldProps("arn")}
-                      label="Aviation Reference Number"
-                      inputMode="numeric"
-                      placeholder="123456"
-                      maxLength={7}
-                      hint="Your 6 or 7 digit CASA ARN, shown on your myCASA account."
+                      {...fieldProps("email")}
+                      label="Email"
+                      type="email"
+                      autoComplete="username"
+                      placeholder="pilot@example.com"
+                      hint="You'll sign in with this."
                     />
 
                     <div className="space-y-2">
@@ -391,13 +462,9 @@ export default function RegisterPage() {
                           onClick={() => setShowPassword(!showPassword)}
                           aria-label={showPassword ? "Hide password" : "Show password"}
                           aria-pressed={showPassword}
-                          className="absolute right-1 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                          className="absolute right-1 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
-                          {showPassword ? (
-                            <EyeOff className="h-4 w-4" aria-hidden="true" />
-                          ) : (
-                            <Eye className="h-4 w-4" aria-hidden="true" />
-                          )}
+                          {showPassword ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
                         </button>
                       </div>
                     </div>
@@ -418,9 +485,7 @@ export default function RegisterPage() {
                           ) : (
                             <Circle className="h-4 w-4 shrink-0 text-muted-foreground/50" aria-hidden="true" />
                           )}
-                          <span className={check.met ? "text-foreground" : "text-muted-foreground"}>
-                            {check.label}
-                          </span>
+                          <span className={check.met ? "text-foreground" : "text-muted-foreground"}>{check.label}</span>
                           <span className="sr-only">{check.met ? "requirement met" : "not yet met"}</span>
                         </li>
                       ))}
@@ -431,50 +496,38 @@ export default function RegisterPage() {
 
               <div className="flex items-center gap-3 pt-1">
                 {step > 0 && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="lg"
-                    onClick={goBack}
-                    disabled={isLoading}
-                    className="h-11 cursor-pointer"
-                  >
+                  <Button type="button" variant="outline" size="lg" onClick={goBack} disabled={isLoading} className="h-11">
                     <ArrowLeft className="mr-1.5 h-4 w-4" aria-hidden="true" />
                     Back
                   </Button>
                 )}
 
-                {isLastStep ? (
-                  <Button type="submit" size="lg" className="h-11 flex-1 cursor-pointer" disabled={isLoading}>
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
-                        Creating account...
-                      </>
-                    ) : (
-                      "Create account"
-                    )}
-                  </Button>
-                ) : (
-                  <Button
-                    type="button"
-                    size="lg"
-                    onClick={goNext}
-                    className="h-11 flex-1 cursor-pointer"
-                    disabled={isLoading}
-                  >
-                    Continue
-                    <ArrowRight className="ml-1.5 h-4 w-4" aria-hidden="true" />
-                  </Button>
-                )}
+                <Button type="submit" size="lg" className="h-11 flex-1" disabled={isLoading}>
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                      {step === 1 ? "Sending code..." : step === VERIFY_STEP ? "Checking..." : "Creating account..."}
+                    </>
+                  ) : step === STEPS.length - 1 ? (
+                    "Create account"
+                  ) : step === VERIFY_STEP ? (
+                    "Confirm"
+                  ) : (
+                    <>
+                      {step === 1 && !isVerified ? "Send code" : "Continue"}
+                      <ArrowRight className="ml-1.5 h-4 w-4" aria-hidden="true" />
+                    </>
+                  )}
+                </Button>
               </div>
             </form>
           </CardContent>
         )}
-        <CardFooter className="mt-6 border-t border-border px-0 pt-6 lg:px-6">
-          <p className="text-center text-sm text-muted-foreground w-full">
+
+        <CardFooter className="border-t border-border bg-muted/30 px-6 py-4 sm:px-8">
+          <p className="w-full text-center text-sm text-muted-foreground">
             Already have an account?{" "}
-            <Link href="/login" className="text-primary hover:underline font-medium">
+            <Link href="/login" className="font-medium text-primary hover:underline">
               Sign in
             </Link>
           </p>

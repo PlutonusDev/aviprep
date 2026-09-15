@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { prisma } from "@lib/prisma"
 import { verifyToken } from "@lib/auth"
+import { getStaff } from "@lib/staff"
 
 export async function GET(
   request: Request,
@@ -35,7 +36,8 @@ export async function GET(
       },
     })
 
-    if (!course) {
+    // Unpublished courses (drafts, curator work in progress) are staff-only.
+    if (!course || (!course.isPublished && !(await getStaff()))) {
       return NextResponse.json({ error: "Course not found" }, { status: 404 })
     }
 
@@ -59,8 +61,21 @@ export async function GET(
     const progress = totalLessons > 0 ? Math.round((completedLessons.length / totalLessons) * 100) : 0
 
     return NextResponse.json({
+      // Explicit fields: spreading the record would also send review data
+      // (proposed revisions, review status) to students.
       course: {
-        ...course,
+        id: course.id,
+        subjectId: course.subjectId,
+        title: course.title,
+        description: course.description,
+        thumbnail: course.thumbnail,
+        estimatedHours: course.estimatedHours,
+        difficulty: course.difficulty,
+        order: course.order,
+        isPublished: course.isPublished,
+        modules: course.modules,
+        createdAt: course.createdAt,
+        updatedAt: course.updatedAt,
         totalLessons,
         progress,
         isEnrolled: !!enrollment,

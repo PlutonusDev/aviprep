@@ -3,6 +3,8 @@
 import React from "react"
 
 import { useState, useEffect } from "react"
+import { toast } from "sonner"
+import { useUser } from "@lib/user-context"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -59,13 +61,18 @@ interface Course {
   difficulty: string
   order: number
   isPublished: boolean
+  reviewStatus?: string | null
+  hasPendingRevision?: boolean
   _count: {
     modules: number
-    enrollments: number
+    /** Admins only. */
+    enrollments?: number
   }
 }
 
 export default function CoursesAdminContent() {
+  const { user } = useUser()
+  const isAdmin = !!user?.isAdmin
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedLicense, setSelectedLicense] = useState("cpl")
@@ -110,6 +117,12 @@ export default function CoursesAdminContent() {
       body: JSON.stringify(formData),
     })
 
+    const saved = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      toast.error(saved.error || "Couldn't save the course")
+      return
+    }
+    if (saved.revisionPending) toast.success("Changes sent to an admin for review")
     if (res.ok) {
       fetchCourses()
       setIsCreateOpen(false)
@@ -128,6 +141,20 @@ export default function CoursesAdminContent() {
     if (!confirm("Are you sure you want to delete this course?")) return
     
     await fetch(`/api/admin/courses/${id}`, { method: "DELETE" })
+    fetchCourses()
+  }
+
+  async function courseAction(id: string, action: "submit" | "apply-revision" | "discard-revision") {
+    const res = await fetch(`/api/admin/courses/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) return toast.error(data.error || "Couldn't update the course")
+    toast.success(
+      action === "submit" ? "Submitted for review" : action === "apply-revision" ? "Changes applied" : "Proposed changes discarded",
+    )
     fetchCourses()
   }
 
@@ -299,9 +326,16 @@ export default function CoursesAdminContent() {
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
                     <CardTitle className="text-lg">{course.title}</CardTitle>
-                    <Badge variant={course.isPublished ? "default" : "secondary"}>
-                      {course.isPublished ? "Published" : "Draft"}
-                    </Badge>
+                    <div className="flex flex-wrap gap-1.5">
+                      <Badge variant={course.isPublished ? "default" : "secondary"}>
+                        {course.isPublished ? "Published" : course.reviewStatus === "review" ? "In review" : "Draft"}
+                      </Badge>
+                      {course.hasPendingRevision && (
+                        <Badge variant="outline" className="border-warning/40 text-warning">
+                          Changes proposed
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -324,16 +358,39 @@ export default function CoursesAdminContent() {
                         <Pencil className="mr-2 h-4 w-4" />
                         Edit
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleTogglePublish(course.id, course.isPublished)}>
-                        {course.isPublished ? "Unpublish" : "Publish"}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={() => handleDelete(course.id)}
-                        className="text-destructive"
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
+                      {isAdmin ? (
+                        <>
+                          <DropdownMenuItem onClick={() => handleTogglePublish(course.id, course.isPublished)}>
+                            {course.isPublished ? "Unpublish" : "Publish"}
+                          </DropdownMenuItem>
+                          {course.hasPendingRevision && (
+                            <>
+                              <DropdownMenuItem onClick={() => courseAction(course.id, "apply-revision")}>
+                                Apply proposed changes
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => courseAction(course.id, "discard-revision")}>
+                                Discard proposed changes
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </>
+                      ) : (
+                        !course.isPublished &&
+                        course.reviewStatus !== "review" && (
+                          <DropdownMenuItem onClick={() => courseAction(course.id, "submit")}>
+                            Submit for review
+                          </DropdownMenuItem>
+                        )
+                      )}
+                      {(isAdmin || !course.isPublished) && (
+                        <DropdownMenuItem
+                          onClick={() => handleDelete(course.id)}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -352,10 +409,12 @@ export default function CoursesAdminContent() {
                     <Layers className="h-4 w-4" />
                     {course._count.modules} modules
                   </span>
-                  <span className="flex items-center gap-1">
-                    <Users className="h-4 w-4" />
-                    {course._count.enrollments}
-                  </span>
+                  {course._count.enrollments !== undefined && (
+                    <span className="flex items-center gap-1">
+                      <Users className="h-4 w-4" />
+                      {course._count.enrollments}
+                    </span>
+                  )}
                 </div>
                 
                 <Link href={`/admin/courses/${course.id}`}>

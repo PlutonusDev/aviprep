@@ -30,12 +30,15 @@ import { SUBJECTS } from "@lib/subjects"
 import { cn } from "@lib/utils"
 import { effectiveStatus, type QuestionStatus } from "@lib/question-validation"
 import QuestionEditor, { type EditableQuestion } from "./question-editor"
+import { useUser } from "@lib/user-context"
+import { toast } from "sonner"
 
 interface SubjectCounts {
   total: number
   draft: number
   review: number
   published: number
+  changes?: number
 }
 
 interface TopicRow {
@@ -69,7 +72,10 @@ const BLANK: EditableQuestion = {
 }
 
 export function QuestionsContent() {
+  const { user } = useUser()
+  const isAdmin = !!user?.isAdmin
   const [subjectId, setSubjectId] = useState("")
+  const [reviewing, setReviewing] = useState(false)
   const [subjectQuery, setSubjectQuery] = useState("")
   const [counts, setCounts] = useState<Record<string, SubjectCounts>>({})
   const [loadingCounts, setLoadingCounts] = useState(true)
@@ -81,6 +87,8 @@ export function QuestionsContent() {
   const [loadingQuestions, setLoadingQuestions] = useState(false)
 
   const [editing, setEditing] = useState<EditableQuestion | null>(null)
+  /** The saved question being edited (null for new ones): decides live vs draft. */
+  const [original, setOriginal] = useState<QuestionRow | null>(null)
   const [saving, setSaving] = useState(false)
   const [serverErrors, setServerErrors] = useState<Record<string, string> | undefined>()
   const [deleteId, setDeleteId] = useState<string | null>(null)
@@ -165,7 +173,11 @@ export function QuestionsContent() {
         return
       }
 
+      if (data.revisionPending) toast.success("Changes sent for review")
+      else if (!isAdmin && status === "review") toast.success("Submitted for review")
+
       await Promise.all([loadTopics(subjectId), loadQuestions(subjectId, activeTopic)])
+      setOriginal(null)
 
       // Keeping the topic and difficulty makes writing a run of questions quick.
       setEditing(
@@ -176,6 +188,33 @@ export function QuestionsContent() {
     } finally {
       setSaving(false)
     }
+  }
+
+  async function reviewRevision(action: "apply-revision" | "discard-revision") {
+    if (!editing?.id) return
+    setReviewing(true)
+    try {
+      const res = await fetch(`/api/admin/questions/${editing.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) return toast.error(data.error || "Couldn't update the question")
+      toast.success(action === "apply-revision" ? "Changes applied" : "Proposed changes discarded")
+      setEditing(null)
+      setOriginal(null)
+      await loadQuestions(subjectId, activeTopic)
+    } finally {
+      setReviewing(false)
+    }
+  }
+
+  function openEditor(q: QuestionRow) {
+    setServerErrors(undefined)
+    setOriginal(q)
+    // A curator picks up where their proposed edit left off.
+    setEditing(!isAdmin && q.pendingRevision ? { ...q, ...q.pendingRevision } : q)
   }
 
   async function handleDelete() {
@@ -232,7 +271,7 @@ export function QuestionsContent() {
                     <Skeleton className="mt-2 h-4 w-24" />
                   ) : (
                     (() => {
-                      const c = counts[s.id] ?? { total: 0, draft: 0, review: 0, published: 0 }
+                      const c: SubjectCounts = counts[s.id] ?? { total: 0, draft: 0, review: 0, published: 0 }
                       return (
                         <div className="mt-2 space-y-1">
                           <p className="text-sm text-foreground" data-tabular>
@@ -242,6 +281,9 @@ export function QuestionsContent() {
                               published of {s.totalQuestions} planned
                             </span>
                           </p>
+                          {!!c.changes && (
+                            <p className="text-xs font-medium text-warning">{c.changes} with proposed changes</p>
+                          )}
                           {(c.draft > 0 || c.review > 0) && (
                             <p className="text-xs text-muted-foreground" data-tabular>
                               {c.review > 0 && <span className="text-warning">{c.review} in review</span>}
@@ -303,10 +345,18 @@ export function QuestionsContent() {
               value={editing}
               onChange={setEditing}
               onSave={handleSave}
-              onCancel={() => setEditing(null)}
+              onCancel={() => {
+                setEditing(null)
+                setOriginal(null)
+              }}
               saving={saving}
               serverErrors={serverErrors}
               knownTopics={topics.map((t) => t.topic)}
+              canPublish={isAdmin}
+              isLive={!!original && effectiveStatus(original.status) === "published"}
+              pendingRevision={isAdmin ? original?.pendingRevision : null}
+              onReviewRevision={reviewRevision}
+              reviewing={reviewing}
             />
           </CardContent>
         </Card>
@@ -467,6 +517,11 @@ export function QuestionsContent() {
                           <Badge className={cn("text-xs", STATUS_STYLES[status])}>
                             {status === "review" ? "In review" : status}
                           </Badge>
+                          {q.pendingRevision && (
+                            <Badge variant="outline" className="border-warning/40 text-xs text-warning">
+                              Changes proposed
+                            </Badge>
+                          )}
                           <Badge variant="outline" className="text-xs">
                             {q.difficulty}
                           </Badge>
@@ -484,10 +539,7 @@ export function QuestionsContent() {
                             variant="outline"
                             size="sm"
                             className="h-9 gap-1.5"
-                            onClick={() => {
-                              setServerErrors(undefined)
-                              setEditing(q)
-                            }}
+                            onClick={() => openEditor(q)}
                           >
                             <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
                             Edit
@@ -498,22 +550,26 @@ export function QuestionsContent() {
                             className="h-9 gap-1.5"
                             onClick={() => {
                               setServerErrors(undefined)
-                              const { id, ...rest } = q
+                              const { id, pendingRevision, pendingRevisionAt, ...rest } = q
+                              setOriginal(null)
                               setEditing({ ...rest, status: "draft" })
                             }}
                           >
                             <Copy className="h-3.5 w-3.5" aria-hidden="true" />
                             Duplicate
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setDeleteId(q.id)}
-                            className="ml-auto h-9 gap-1.5 text-muted-foreground hover:text-destructive"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                            Delete
-                          </Button>
+                          {/* Curators can't remove live questions. */}
+                          {(isAdmin || status !== "published") && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setDeleteId(q.id)}
+                              className="ml-auto h-9 gap-1.5 text-muted-foreground hover:text-destructive"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                              Delete
+                            </Button>
+                          )}
                         </div>
                       </CardContent>
                     </Card>
