@@ -1,303 +1,323 @@
+import type React from "react"
 import type { Metadata } from "next"
+import Link from "next/link"
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
-  description: "Privacy Policy for AviPrep - How we collect, use, and protect your personal information.",
+  description: "How AviPrep collects, uses, shares and protects your personal information.",
 }
+
+const LAST_UPDATED = "15 September 2026"
+
+const H2 = ({ children }: { children: React.ReactNode }) => (
+  <h2 className="mb-4 mt-12 text-xl font-semibold text-foreground">{children}</h2>
+)
+const H3 = ({ children }: { children: React.ReactNode }) => (
+  <h3 className="mb-3 mt-6 text-lg font-medium text-foreground">{children}</h3>
+)
+const P = ({ children }: { children: React.ReactNode }) => (
+  <p className="mt-3 leading-relaxed text-muted-foreground">{children}</p>
+)
+const UL = ({ children }: { children: React.ReactNode }) => (
+  <ul className="mt-3 list-disc space-y-2 pl-5 text-muted-foreground marker:text-muted-foreground/60">{children}</ul>
+)
+const B = ({ children }: { children: React.ReactNode }) => <strong className="font-medium text-foreground">{children}</strong>
+const A = ({ href, children }: { href: string; children: React.ReactNode }) => (
+  <a href={href} className="text-primary underline underline-offset-4 hover:text-primary/80">
+    {children}
+  </a>
+)
 
 export default function PrivacyPolicyPage() {
   return (
-    <article className="prose prose-slate dark:prose-invert max-w-none">
-      <h1 className="text-display-3 font-bold tracking-tight text-foreground mb-2">Privacy Policy</h1>
-      <p className="text-muted-foreground mb-8">Last updated: January 12, 2026</p>
+    <article className="max-w-none">
+      <h1 className="mb-2 text-display-3 font-bold tracking-tight text-foreground">Privacy Policy</h1>
+      <p className="text-muted-foreground">Last updated: {LAST_UPDATED}</p>
 
-      <p className="text-muted-foreground leading-relaxed">
-        AviPrep ("we", "us", or "our") is committed to protecting your privacy and complying with the
-        Australian Privacy Principles (APPs) contained in the Privacy Act 1988 (Cth). This Privacy Policy explains how
-        we collect, use, disclose, and safeguard your personal information when you use our website and services (the
-        "Service").
-      </p>
+      <P>
+        AviPrep (&quot;AviPrep&quot;, &quot;we&quot;, &quot;us&quot; or &quot;our&quot;, ABN 80 167 432 520) provides online theory
+        exam preparation for pilots. We are bound by the <em>Privacy Act 1988</em> (Cth) and the Australian Privacy
+        Principles (APPs). This policy explains what personal information we collect, why, who we share it with, and the
+        choices and rights you have. It applies to our website, web app and installable app (together, the
+        &quot;Service&quot;).
+      </P>
+      <P>
+        In short: we collect what we need to run your account and help you study, we don&apos;t sell your information,
+        and we don&apos;t use it for third-party advertising.
+      </P>
 
-      <h2 className="text-xl font-semibold text-foreground mt-10 mb-4">1. Information We Collect</h2>
+      <H2>1. Information we collect</H2>
 
-      <h3 className="text-lg font-medium text-foreground mt-6 mb-3">1.1 Information You Provide</h3>
-      <p className="text-muted-foreground leading-relaxed">
-        When you register for an account or use our Service, we collect the following personal information:
-      </p>
-      <ul className="text-muted-foreground space-y-2">
+      <H3>1.1 Information you give us</H3>
+      <UL>
         <li>
-          <strong className="text-foreground">Identity Information:</strong> First name, last name, and Aviation
+          <B>Account details:</B> your first and last name, email address, Australian mobile number and Aviation
           Reference Number (ARN).
         </li>
         <li>
-          <strong className="text-foreground">Contact Information:</strong> Email address and Australian mobile phone
-          number.
+          <B>Sign-in details:</B> your password, which we store only as a one-way hash (we can never see it).
         </li>
         <li>
-          <strong className="text-foreground">Account Credentials:</strong> Password (stored in encrypted form).
+          <B>Profile:</B> a profile photo, if you choose to add one.
         </li>
         <li>
-          <strong className="text-foreground">Payment Information:</strong> Payment card details are collected and
-          processed securely by our payment processor, Stripe. We do not store your full card number on our servers.
+          <B>Community content:</B> forum posts, replies, reactions, and private messages you send to other members.
         </li>
-      </ul>
+        <li>
+          <B>Support and requests:</B> anything you tell us when you contact support or request a change to, or closure
+          of, your account.
+        </li>
+        <li>
+          <B>Waitlist:</B> your email address and mobile number if you join our waitlist.
+        </li>
+        <li>
+          <B>Flight school and RTO enquiries:</B> your name, organisation, work email and (optionally) phone number if you
+          contact our partnerships team.
+        </li>
+      </UL>
 
-      <h3 className="text-lg font-medium text-foreground mt-6 mb-3">1.2 Information Collected Automatically</h3>
-      <p className="text-muted-foreground leading-relaxed">
-        When you access our Service, we automatically collect certain information:
-      </p>
-      <ul className="text-muted-foreground space-y-2">
+      <H3>1.2 Information created when you use the Service</H3>
+      <UL>
         <li>
-          <strong className="text-foreground">Usage Data:</strong> Exam attempts, scores, answers, time spent studying,
-          and performance statistics.
+          <B>Study activity:</B> lessons started and completed, exam attempts, the answers you chose, scores, time spent,
+          flagged questions and study streaks.
         </li>
         <li>
-          <strong className="text-foreground">Device Information:</strong> Browser type, operating system, device type,
-          and screen resolution.
+          <B>Purchases and access:</B> the subjects you have access to, when access starts and ends, and your free subject
+          choice. Card details are collected directly by our payment processor, Stripe; we never receive or store your
+          full card number.
         </li>
         <li>
-          <strong className="text-foreground">Log Data:</strong> IP address, access times, pages viewed, and referring
-          URLs.
+          <B>Verification records:</B> when your mobile number and email address were confirmed. One-time SMS codes are
+          stored only in hashed form and expire after 10 minutes.
         </li>
         <li>
-          <strong className="text-foreground">Cookies:</strong> Session cookies for authentication and preferences (see
-          Section 7).
+          <B>Technical data:</B> IP address, browser and device type, and timestamps, which our servers record for
+          security, fraud prevention and troubleshooting.
         </li>
-      </ul>
+      </UL>
 
-      <h3 className="text-lg font-medium text-foreground mt-6 mb-3">1.3 Waitlist Information</h3>
-      <p className="text-muted-foreground leading-relaxed">
-        If you join our waitlist before creating an account, we collect only your email address to notify you when the
-        Service launches.
-      </p>
+      <H3>1.3 Information from flight schools</H3>
+      <P>
+        If you study through a flight school or registered training organisation (&quot;school&quot;) using an AviPrep school
+        portal, your school may create your account and give us your name, email address and contact details, and tell
+        us which subjects to make available to you.
+      </P>
 
-      <h2 className="text-xl font-semibold text-foreground mt-10 mb-4">2. How We Use Your Information</h2>
-      <p className="text-muted-foreground leading-relaxed">
-        We use your personal information for the following purposes:
-      </p>
-      <ul className="text-muted-foreground space-y-2">
+      <H2>2. How we use your information</H2>
+      <UL>
         <li>
-          <strong className="text-foreground">Service Delivery:</strong> To provide, maintain, and improve our exam
-          preparation platform.
+          <B>To provide the Service:</B> create and secure your account, give you access to the subjects you have,
+          save your progress, and show your results, history and statistics.
         </li>
         <li>
-          <strong className="text-foreground">Account Management:</strong> To create and manage your account,
-          authenticate your identity, and process your subscription.
+          <B>To personalise your study:</B> choose practice questions (for example, prioritising questions you
+          haven&apos;t seen or last answered incorrectly) and highlight subjects and topics that need attention. These
+          insights are produced by our own rules and calculations from your study activity. We do not send your
+          personal information to third-party artificial intelligence services to generate them.
         </li>
         <li>
-          <strong className="text-foreground">Personalization:</strong> To analyze your performance and provide
-          AI-powered study recommendations and insights.
+          <B>To keep accounts safe:</B> verify your mobile number and email address, send sign-in and password-reset
+          codes, remember trusted devices, and detect and prevent fraud, abuse and misuse.
         </li>
         <li>
-          <strong className="text-foreground">Progress Tracking:</strong> To track your exam history, scores, and study
-          statistics.
+          <B>To process payments:</B> take payment, manage subscriptions and renewals, and keep records required by law.
         </li>
         <li>
-          <strong className="text-foreground">Communications:</strong> To send you service-related notifications,
-          updates, and (with your consent) promotional materials.
+          <B>To communicate with you:</B> send service messages (such as receipts, verification codes, security alerts,
+          forum and message notifications, and important changes) and respond to support requests.
         </li>
         <li>
-          <strong className="text-foreground">Payment Processing:</strong> To process payments and manage your
-          subscription.
+          <B>Marketing, with your consent:</B> tell you about launches, new subjects and offers. Every marketing email
+          includes an unsubscribe link, in line with the <em>Spam Act 2003</em> (Cth).
         </li>
         <li>
-          <strong className="text-foreground">Support:</strong> To respond to your inquiries and provide customer
-          support.
+          <B>To improve the Service:</B> understand which features and content work well, using aggregated or
+          de-identified information where possible.
         </li>
         <li>
-          <strong className="text-foreground">Legal Compliance:</strong> To comply with applicable laws and regulations.
+          <B>To meet legal obligations:</B> comply with tax, consumer and other laws, and respond to lawful requests.
         </li>
-        <li>
-          <strong className="text-foreground">Security:</strong> To detect, prevent, and address fraud, security issues,
-          and technical problems.
-        </li>
-      </ul>
+      </UL>
 
-      <h2 className="text-xl font-semibold text-foreground mt-10 mb-4">3. Legal Basis for Processing</h2>
-      <p className="text-muted-foreground leading-relaxed">
-        Under Australian privacy law, we process your personal information based on the following lawful grounds:
-      </p>
-      <ul className="text-muted-foreground space-y-2">
-        <li>
-          <strong className="text-foreground">Contractual Necessity:</strong> Processing necessary to fulfill our
-          contract with you (providing the Service).
-        </li>
-        <li>
-          <strong className="text-foreground">Consent:</strong> Where you have given explicit consent for specific
-          processing activities.
-        </li>
-        <li>
-          <strong className="text-foreground">Legitimate Interests:</strong> Processing necessary for our legitimate
-          business interests, such as improving our Service and preventing fraud.
-        </li>
-        <li>
-          <strong className="text-foreground">Legal Obligation:</strong> Processing necessary to comply with applicable
-          laws.
-        </li>
-      </ul>
+      <H2>3. Who can see your information</H2>
 
-      <h2 className="text-xl font-semibold text-foreground mt-10 mb-4">4. How We Share Your Information</h2>
-      <p className="text-muted-foreground leading-relaxed">
-        We do not sell your personal information. We may share your information with:
-      </p>
-      <ul className="text-muted-foreground space-y-2">
-        <li>
-          <strong className="text-foreground">Service Providers:</strong> Third-party vendors who assist in operating
-          our Service, including:
-          <ul className="mt-2 ml-4 space-y-1">
-            <li>Stripe (payment processing)</li>
-            <li>MongoDB Atlas (database hosting)</li>
-            <li>OpenAI (AI-powered analytics features)</li>
-          </ul>
-        </li>
-        <li>
-          <strong className="text-foreground">Legal Requirements:</strong> When required by law, court order, or
-          government request.
-        </li>
-        <li>
-          <strong className="text-foreground">Business Transfers:</strong> In connection with a merger, acquisition, or
-          sale of assets.
-        </li>
-        <li>
-          <strong className="text-foreground">With Your Consent:</strong> For any other purpose with your explicit
-          consent.
-        </li>
-      </ul>
+      <H3>3.1 Other members</H3>
+      <P>
+        Your name and profile photo appear next to your forum posts and messages. Forum posts are visible to other
+        members with forum access. Private messages are visible to you and the person you message. Your exam results,
+        study activity, email address, mobile number and ARN are never shown to other members.
+      </P>
 
-      <h2 className="text-xl font-semibold text-foreground mt-10 mb-4">5. Data Retention</h2>
-      <p className="text-muted-foreground leading-relaxed">
-        We retain your personal information for as long as necessary to provide the Service and fulfill the purposes
-        described in this Privacy Policy. Specifically:
-      </p>
-      <ul className="text-muted-foreground space-y-2">
-        <li>
-          <strong className="text-foreground">Account Data:</strong> Retained while your account is active and for 2
-          years after account closure.
-        </li>
-        <li>
-          <strong className="text-foreground">Exam and Performance Data:</strong> Retained while your account is active
-          to provide progress tracking and analytics.
-        </li>
-        <li>
-          <strong className="text-foreground">Payment Records:</strong> Retained for 7 years as required by Australian
-          tax law.
-        </li>
-        <li>
-          <strong className="text-foreground">Waitlist Data:</strong> Retained until you unsubscribe or for 2 years,
-          whichever is sooner.
-        </li>
-      </ul>
+      <H3>3.2 Your flight school</H3>
+      <P>
+        If your account is provided through a school, that school can see your name, contact details, the subjects
+        assigned to you, and your study progress and exam results, so it can support your training. Your school handles
+        that information under its own privacy obligations.
+      </P>
 
-      <h2 className="text-xl font-semibold text-foreground mt-10 mb-4">6. Data Security</h2>
-      <p className="text-muted-foreground leading-relaxed">
-        We implement appropriate technical and organizational measures to protect your personal information, including:
-      </p>
-      <ul className="text-muted-foreground space-y-2">
-        <li>Encryption of data in transit using TLS/SSL.</li>
-        <li>Encryption of sensitive data at rest.</li>
-        <li>Secure password hashing using bcrypt.</li>
-        <li>HTTP-only cookies for session management.</li>
-        <li>Regular security assessments and updates.</li>
-        <li>Access controls limiting employee access to personal data.</li>
-      </ul>
-      <p className="text-muted-foreground leading-relaxed mt-4">
-        While we strive to protect your personal information, no method of transmission over the Internet or electronic
-        storage is 100% secure. We cannot guarantee absolute security.
-      </p>
+      <H3>3.3 Our team</H3>
+      <P>
+        Access to personal information inside AviPrep is limited by role. Content curators who help write lessons and
+        questions cannot access member accounts, contact details, results or payment information.
+      </P>
 
-      <h2 className="text-xl font-semibold text-foreground mt-10 mb-4">7. Cookies and Tracking</h2>
-      <p className="text-muted-foreground leading-relaxed">We use cookies and similar technologies to:</p>
-      <ul className="text-muted-foreground space-y-2">
+      <H3>3.4 Service providers</H3>
+      <P>We use trusted providers to run the Service. They may only use your information to provide their services to us:</P>
+      <UL>
         <li>
-          <strong className="text-foreground">Essential Cookies:</strong> Required for authentication and security.
-          These cannot be disabled.
+          <B>Stripe</B> (payments and billing), <B>MongoDB Atlas</B> (database hosting), <B>ClickSend</B> (SMS
+          verification codes), <B>Google Workspace</B> (sending email), and <B>Google reCAPTCHA</B> (protecting our public
+          forms from spam and abuse).
         </li>
-        <li>
-          <strong className="text-foreground">Preference Cookies:</strong> Remember your settings and preferences.
-        </li>
-        <li>
-          <strong className="text-foreground">Analytics Cookies:</strong> Help us understand how visitors use our
-          Service (with your consent).
-        </li>
-      </ul>
-      <p className="text-muted-foreground leading-relaxed mt-4">
-        You can manage cookie preferences through your browser settings. Disabling essential cookies may affect Service
-        functionality.
-      </p>
+        <li>Our website and application hosting providers.</li>
+      </UL>
 
-      <h2 className="text-xl font-semibold text-foreground mt-10 mb-4">8. Your Rights</h2>
-      <p className="text-muted-foreground leading-relaxed">Under Australian privacy law, you have the right to:</p>
-      <ul className="text-muted-foreground space-y-2">
+      <H3>3.5 Other disclosures</H3>
+      <UL>
+        <li>When required or authorised by law, such as a court order or a request from a regulator or law enforcement.</li>
+        <li>To protect the safety, rights or property of our members, the public or AviPrep.</li>
         <li>
-          <strong className="text-foreground">Access:</strong> Request access to the personal information we hold about
-          you.
+          If our business is sold or restructured, to the new owner, who must continue to protect your information in
+          line with this policy.
         </li>
-        <li>
-          <strong className="text-foreground">Correction:</strong> Request correction of inaccurate or incomplete
-          personal information.
-        </li>
-        <li>
-          <strong className="text-foreground">Deletion:</strong> Request deletion of your personal information (subject
-          to legal retention requirements).
-        </li>
-        <li>
-          <strong className="text-foreground">Data Portability:</strong> Request a copy of your data in a
-          machine-readable format.
-        </li>
-        <li>
-          <strong className="text-foreground">Withdraw Consent:</strong> Withdraw consent for processing based on
-          consent at any time.
-        </li>
-        <li>
-          <strong className="text-foreground">Opt-Out:</strong> Opt out of marketing communications at any time.
-        </li>
-        <li>
-          <strong className="text-foreground">Complaint:</strong> Lodge a complaint with the Office of the Australian
-          Information Commissioner (OAIC).
-        </li>
-      </ul>
-      <p className="text-muted-foreground leading-relaxed mt-4">
-        To exercise any of these rights, please contact us at privacy@aviprep.com.au. We will respond to your request
-        within 30 days.
-      </p>
+        <li>With your consent.</li>
+      </UL>
+      <P>
+        <B>We do not sell your personal information</B>, and we do not share it with advertisers or data brokers.
+      </P>
 
-      <h2 className="text-xl font-semibold text-foreground mt-10 mb-4">9. International Data Transfers</h2>
-      <p className="text-muted-foreground leading-relaxed">
-        Your personal information may be transferred to and processed in countries outside Australia, including the
-        United States (where some of our service providers are located). When we transfer data internationally, we
-        ensure appropriate safeguards are in place to protect your information in compliance with Australian privacy
-        law.
-      </p>
+      <H2>4. Overseas disclosure</H2>
+      <P>
+        Some of our service providers store or process information outside Australia, including in the United States
+        and other countries where they operate. Before disclosing information overseas we take reasonable steps, as
+        required by APP 8, to ensure it is handled in a way consistent with the APPs, including through contractual
+        protections.
+      </P>
 
-      <h2 className="text-xl font-semibold text-foreground mt-10 mb-4">10. Children's Privacy</h2>
-      <p className="text-muted-foreground leading-relaxed">
-        Our Service is not intended for individuals under 16 years of age. We do not knowingly collect personal
-        information from children under 16. If you become aware that a child has provided us with personal information,
-        please contact us immediately.
-      </p>
+      <H2>5. Cookies and local storage</H2>
+      <P>We keep this to what the Service needs:</P>
+      <UL>
+        <li>
+          <B>Essential cookies:</B> a secure, HTTP-only session cookie that keeps you signed in (up to 7 days), and, if you
+          choose &quot;remember this device&quot;, a trusted-device cookie that skips the sign-in code on that device for up to
+          30 days.
+        </li>
+        <li>
+          <B>Preferences:</B> settings such as light or dark mode, stored in your browser.
+        </li>
+        <li>
+          <B>Security:</B> Google reCAPTCHA sets cookies on pages with public forms to tell people from bots. Its use is
+          subject to Google&apos;s <A href="https://policies.google.com/privacy">Privacy Policy</A> and{" "}
+          <A href="https://policies.google.com/terms">Terms</A>.
+        </li>
+      </UL>
+      <P>
+        We do not use advertising or cross-site tracking cookies. You can clear or block cookies in your browser, but the
+        Service won&apos;t work without essential cookies.
+      </P>
 
-      <h2 className="text-xl font-semibold text-foreground mt-10 mb-4">11. Changes to This Policy</h2>
-      <p className="text-muted-foreground leading-relaxed">
-        We may update this Privacy Policy from time to time. We will notify you of material changes by posting the
-        updated policy on this page and updating the "Last updated" date. We encourage you to review this Privacy Policy
-        periodically.
-      </p>
+      <H2>6. How we protect your information</H2>
+      <UL>
+        <li>Encryption in transit (HTTPS/TLS) across the Service.</li>
+        <li>Passwords stored with a strong one-way hashing algorithm; verification codes stored hashed.</li>
+        <li>SMS verification for sign-up, new-device sign-in, password resets and account closure requests.</li>
+        <li>HTTP-only, secure session cookies and role-based access for our team.</li>
+        <li>Reputable infrastructure providers with their own security certifications.</li>
+      </UL>
+      <P>
+        No system is completely secure, but we work hard to protect your information. If a data breach is likely to
+        result in serious harm, we will notify you and the Office of the Australian Information Commissioner (OAIC) as
+        required by the Notifiable Data Breaches scheme.
+      </P>
 
-      <h2 className="text-xl font-semibold text-foreground mt-10 mb-4">12. Contact Us</h2>
-      <p className="text-muted-foreground leading-relaxed">
-        If you have questions about this Privacy Policy or our privacy practices, please contact us:
-      </p>
-      <div className="bg-card border border-border rounded-lg p-4 mt-4">
-        <p className="text-foreground font-medium">AviPrep</p>
-        <p className="text-muted-foreground">Email: privacy@aviprep.com.au</p>
-        <p className="text-muted-foreground">ABN: 80 167 432 520</p>
-      </div>
+      <H2>7. How long we keep information</H2>
+      <UL>
+        <li>
+          <B>Account and study data:</B> while your account is open. After your account is closed we delete or de-identify
+          it within 90 days, unless we need to keep something longer for the reasons below.
+        </li>
+        <li>
+          <B>Payment and tax records:</B> for at least 5 years, as required by Australian tax law.
+        </li>
+        <li>
+          <B>Forum posts:</B> on account closure, posts that others have replied to may be kept in a de-identified form so
+          discussions still make sense.
+        </li>
+        <li>
+          <B>Verification codes:</B> expire after 10 minutes and are removed periodically.
+        </li>
+        <li>
+          <B>Waitlist details:</B> until you unsubscribe, create an account, or 2 years after you joined, whichever comes
+          first.
+        </li>
+        <li>
+          <B>Enquiries:</B> for as long as needed to respond and manage any resulting relationship, then up to 2 years.
+        </li>
+      </UL>
 
-      <div className="bg-card border border-border rounded-lg p-4 mt-4">
-        <p className="text-foreground font-medium">Office of the Australian Information Commissioner</p>
-        <p className="text-muted-foreground">Website: www.oaic.gov.au</p>
-        <p className="text-muted-foreground">Phone: 1300 363 992</p>
-      </div>
+      <H2>8. Your choices and rights</H2>
+      <UL>
+        <li>
+          <B>Access and correction:</B> you can ask for a copy of the personal information we hold about you, and ask us to
+          correct anything inaccurate. Some details can be viewed in Settings; others we update on request because
+          they&apos;re tied to identity verification.
+        </li>
+        <li>
+          <B>Closing your account:</B> request closure from Settings (we&apos;ll confirm it with a code sent to your
+          mobile) or email us.
+        </li>
+        <li>
+          <B>Marketing:</B> unsubscribe at any time using the link in any marketing email.
+        </li>
+        <li>
+          <B>Anonymity:</B> you can browse our public pages and contact us with general questions without identifying
+          yourself. Using your account requires your details, as we need them to provide the Service securely.
+        </li>
+      </UL>
+      <P>
+        To make a request, email <A href="mailto:privacy@aviprep.com.au">privacy@aviprep.com.au</A>. We may need to
+        verify your identity first. We aim to respond within 30 days, and we won&apos;t charge you to make a request.
+      </P>
+
+      <H2>9. Children</H2>
+      <P>
+        The Service is designed for people aged 16 and over. If you are under 18, please use the Service with the
+        permission of a parent or guardian. If you believe a child under 16 has given us personal information, contact
+        us and we will delete it.
+      </P>
+
+      <H2>10. Complaints</H2>
+      <P>
+        If you have a concern about how we&apos;ve handled your personal information, please contact us first at{" "}
+        <A href="mailto:privacy@aviprep.com.au">privacy@aviprep.com.au</A>. We&apos;ll acknowledge your complaint promptly
+        and aim to resolve it within 30 days.
+      </P>
+      <P>
+        If you&apos;re not satisfied with our response, you can contact the Office of the Australian Information Commissioner
+        at <A href="https://www.oaic.gov.au">www.oaic.gov.au</A> or on 1300 363 992.
+      </P>
+
+      <H2>11. Changes to this policy</H2>
+      <P>
+        We may update this policy as the Service or the law changes. We&apos;ll post the new version here with a new
+        &quot;Last updated&quot; date, and if a change materially affects how we handle your personal information, we&apos;ll let
+        you know by email or in the Service before it takes effect.
+      </P>
+
+      <H2>12. Contact us</H2>
+      <P>
+        AviPrep
+        <br />
+        ABN 80 167 432 520
+        <br />
+        Privacy: <A href="mailto:privacy@aviprep.com.au">privacy@aviprep.com.au</A>
+        <br />
+        Support: <A href="mailto:support@aviprep.com.au">support@aviprep.com.au</A>
+      </P>
+      <P>
+        See also our <Link href="/terms" className="text-primary underline underline-offset-4 hover:text-primary/80">Terms of Service</Link>.
+      </P>
     </article>
   )
 }

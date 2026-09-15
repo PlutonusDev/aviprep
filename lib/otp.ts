@@ -17,7 +17,7 @@ import { sendSms, toE164AustralianMobile } from "@lib/sms"
  * says what the code is for, so no half-finished state lives in a cookie.
  */
 
-export type OtpPurpose = "signup" | "login" | "reset" | "delete"
+export type OtpPurpose = "signup" | "login" | "reset" | "delete" | "waitlist"
 
 export const OTP_LENGTH = 6
 const TTL_MS = 10 * 60_000
@@ -33,6 +33,7 @@ const WHAT_FOR: Record<OtpPurpose, string> = {
   login: "to sign in",
   reset: "to reset your password",
   delete: "to confirm closing your account",
+  waitlist: "to join the waitlist",
 }
 
 function hash(purpose: OtpPurpose, key: string, code: string) {
@@ -145,7 +146,7 @@ export interface Challenge {
   purpose: OtpPurpose
   /** Same key the code was issued under. */
   key: string
-  /** Sign-up only. */
+  /** Sign-up and waitlist only: the number the person just typed in. */
   phone?: string
   /** Login and closure only, where the person has already proven who they are. */
   userId?: string

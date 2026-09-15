@@ -1,211 +1,329 @@
+import type React from "react"
 import type { Metadata } from "next"
+import Link from "next/link"
 
 export const metadata: Metadata = {
   title: "Terms of Service",
-  description: "Terms of Service for AviPrep - Australia's theory exam preparation platform.",
+  description: "The terms that apply when you use AviPrep, Australia's CASA theory exam preparation platform.",
 }
+
+const LAST_UPDATED = "15 September 2026"
+
+const H2 = ({ children }: { children: React.ReactNode }) => (
+  <h2 className="mb-4 mt-12 text-xl font-semibold text-foreground">{children}</h2>
+)
+const H3 = ({ children }: { children: React.ReactNode }) => (
+  <h3 className="mb-3 mt-6 text-lg font-medium text-foreground">{children}</h3>
+)
+const P = ({ children }: { children: React.ReactNode }) => (
+  <p className="mt-3 leading-relaxed text-muted-foreground">{children}</p>
+)
+const UL = ({ children }: { children: React.ReactNode }) => (
+  <ul className="mt-3 list-disc space-y-2 pl-5 text-muted-foreground marker:text-muted-foreground/60">{children}</ul>
+)
+const B = ({ children }: { children: React.ReactNode }) => <strong className="font-medium text-foreground">{children}</strong>
+const A = ({ href, children }: { href: string; children: React.ReactNode }) => (
+  <a href={href} className="text-primary underline underline-offset-4 hover:text-primary/80">
+    {children}
+  </a>
+)
 
 export default function TermsOfServicePage() {
   return (
-    <article className="prose prose-slate dark:prose-invert max-w-none">
-      <h1 className="text-display-3 font-bold tracking-tight text-foreground mb-2">Terms of Service</h1>
-      <p className="text-muted-foreground mb-8">Last updated: January 12, 2026</p>
+    <article className="max-w-none">
+      <h1 className="mb-2 text-display-3 font-bold tracking-tight text-foreground">Terms of Service</h1>
+      <p className="text-muted-foreground">Last updated: {LAST_UPDATED}</p>
 
-      <p className="text-muted-foreground leading-relaxed">
-        Welcome to AviPrep. These Terms of Service ("Terms") govern your use of the AviPrep website,
-        applications, and services (collectively, the "Service") operated by AviPrep ("we", "us", or
-        "our"), an Australian business.
-      </p>
+      <P>
+        These Terms of Service (&quot;Terms&quot;) are an agreement between you and AviPrep (&quot;AviPrep&quot;, &quot;we&quot;,
+        &quot;us&quot; or &quot;our&quot;, ABN 80 167 432 520). They apply to your use of our website, web app, installable app and
+        related services (together, the &quot;Service&quot;). By creating an account or using the Service, you agree to these
+        Terms and to our <Link href="/privacy" className="text-primary underline underline-offset-4 hover:text-primary/80">Privacy Policy</Link>.
+      </P>
+      <P>
+        <B>Your consumer rights come first.</B> Nothing in these Terms excludes, restricts or modifies any right or remedy
+        you have under the Australian Consumer Law (ACL) or any other law that cannot be excluded. Where these Terms seem
+        to say otherwise, the law applies.
+      </P>
 
-      <p className="text-muted-foreground leading-relaxed">
-        By accessing or using our Service, you agree to be bound by these Terms. If you disagree with any part of these
-        Terms, you may not access the Service.
-      </p>
-
-      <h2 className="text-xl font-semibold text-foreground mt-10 mb-4">1. Definitions</h2>
-      <ul className="text-muted-foreground space-y-2">
+      <H2>1. Definitions</H2>
+      <UL>
         <li>
-          <strong className="text-foreground">"Account"</strong> means a unique account created for you to access our
-          Service.
+          <B>Account</B> means your personal AviPrep account.
         </li>
         <li>
-          <strong className="text-foreground">"Content"</strong> means any questions, explanations, study materials, and
-          other educational content available through the Service.
+          <B>Content</B> means the lessons, questions, explanations, flashcards, quizzes and other material we make
+          available through the Service.
         </li>
         <li>
-          <strong className="text-foreground">"Subscription"</strong> means a recurring payment plan that grants access
-          to the Service.
+          <B>Access</B> means your right to use the Content for a subject or group of subjects, whether purchased, provided
+          free, or provided by a school.
         </li>
         <li>
-          <strong className="text-foreground">"User"</strong> or <strong className="text-foreground">"You"</strong>{" "}
-          means any individual who accesses or uses the Service.
+          <B>School</B> means a flight school or registered training organisation that provides AviPrep to its students
+          through a school portal.
         </li>
         <li>
-          <strong className="text-foreground">"ARN"</strong> means Aviation Reference Number issued by the Civil
-          Aviation Safety Authority (CASA).
+          <B>Member Content</B> means anything you post or send through the Service, such as forum posts and messages.
         </li>
-      </ul>
+      </UL>
 
-      <h2 className="text-xl font-semibold text-foreground mt-10 mb-4">2. Account Registration</h2>
-      <p className="text-muted-foreground leading-relaxed">
-        To access certain features of the Service, you must register for an account. When registering, you agree to:
-      </p>
-      <ul className="text-muted-foreground space-y-2">
+      <H2>2. Your account</H2>
+      <UL>
+        <li>You must be at least 16 years old. If you are under 18, you must have a parent or guardian&apos;s permission.</li>
         <li>
-          Provide accurate, current, and complete information, including your legal name, email address, Australian
-          phone number, and Aviation Reference Number (ARN).
-        </li>
-        <li>Maintain and promptly update your account information to keep it accurate and complete.</li>
-        <li>Maintain the security and confidentiality of your account credentials.</li>
-        <li>Accept responsibility for all activities that occur under your account.</li>
-        <li>Notify us immediately of any unauthorized use of your account.</li>
-      </ul>
-      <p className="text-muted-foreground leading-relaxed mt-4">
-        You must be at least 16 years of age to create an account. By creating an account, you represent that you meet
-        this age requirement.
-      </p>
-
-      <h2 className="text-xl font-semibold text-foreground mt-10 mb-4">3. Subscriptions and Payments</h2>
-
-      <h3 className="text-lg font-medium text-foreground mt-6 mb-3">3.1 Subscription Plans</h3>
-      <p className="text-muted-foreground leading-relaxed">We offer the following access options:</p>
-      <ul className="text-muted-foreground space-y-2">
-        <li>
-          <strong className="text-foreground">Individual Subject Access:</strong> One-time payment granting access to a
-          single subject for 12 months from the date of purchase.
+          Provide accurate details, including your legal name, email address, Australian mobile number and CASA Aviation
+          Reference Number (ARN), and keep them up to date.
         </li>
         <li>
-          <strong className="text-foreground">CPL Bundle Subscription:</strong> Quarterly recurring subscription
-          granting access to all subjects and premium features.
+          We verify your mobile number and email address, and may send one-time codes when you sign in on a new device or
+          make security-sensitive changes.
         </li>
-      </ul>
+        <li>
+          Your account is for you alone. Don&apos;t share your password, codes or access with anyone, and let us know
+          straight away at <A href="mailto:support@aviprep.com.au">support@aviprep.com.au</A> if you think someone else
+          has accessed your account.
+        </li>
+        <li>You&apos;re responsible for activity on your account unless it results from our failure to keep the Service secure.</li>
+      </UL>
 
-      <h3 className="text-lg font-medium text-foreground mt-6 mb-3">3.2 Payment Processing</h3>
-      <p className="text-muted-foreground leading-relaxed">
-        All payments are processed securely through Stripe, our third-party payment processor. By providing payment
-        information, you represent that you are authorized to use the payment method and authorize us to charge the
-        applicable fees. All prices are in Australian Dollars (AUD) and include GST where applicable.
-      </p>
+      <H2>3. School accounts</H2>
+      <P>
+        If you use AviPrep through a School, your School decides which subjects and features you can access and may view
+        your progress and results. Your School may add or remove your access in line with its arrangement with you. If
+        your School&apos;s arrangement with us ends, your School-provided access may end too. Questions about School-provided
+        access should go to your School first.
+      </P>
 
-      <h3 className="text-lg font-medium text-foreground mt-6 mb-3">3.3 Automatic Renewal</h3>
-      <p className="text-muted-foreground leading-relaxed">
-        CPL Bundle Subscriptions automatically renew every 3 months unless cancelled before the renewal date. You will
-        be charged the then-current subscription fee upon each renewal. You may cancel your subscription at any time
-        through your account settings.
-      </p>
+      <H2>4. Access, payments and renewals</H2>
 
-      <h3 className="text-lg font-medium text-foreground mt-6 mb-3">3.4 Refunds</h3>
-      <p className="text-muted-foreground leading-relaxed">
-        In accordance with Australian Consumer Law, you may request a refund within 7 days of purchase if you have not
-        substantially used the Service. Refund requests should be submitted to support@aviprep.com.au. We reserve the
-        right to deny refund requests where significant use of the Service has occurred.
-      </p>
+      <H3>4.1 Types of access</H3>
+      <UL>
+        <li>
+          <B>Individual subjects:</B> a one-off payment for access to a subject for 12 months from purchase, unless the
+          product says otherwise.
+        </li>
+        <li>
+          <B>Bundles:</B> a subscription giving access to a group of subjects, billed in advance for each billing period
+          shown at checkout (for example, every 3 months) until you cancel.
+        </li>
+        <li>
+          <B>Free subject:</B> new accounts may choose one subject to access free for 12 months. It&apos;s limited to one per
+          person and can&apos;t be changed once chosen.
+        </li>
+        <li>
+          <B>Offers and discounts</B> (including waitlist offers) apply as described when they&apos;re made, can&apos;t be
+          exchanged for cash, and can&apos;t be combined unless we say so.
+        </li>
+      </UL>
 
-      <h2 className="text-xl font-semibold text-foreground mt-10 mb-4">4. Use of Service</h2>
+      <H3>4.2 Prices and payment</H3>
+      <P>
+        Prices are in Australian dollars and include GST where applicable. Payments are processed by Stripe. By paying,
+        you confirm you&apos;re authorised to use the payment method. We&apos;ll send a receipt for each payment.
+      </P>
 
-      <h3 className="text-lg font-medium text-foreground mt-6 mb-3">4.1 Permitted Use</h3>
-      <p className="text-muted-foreground leading-relaxed">
-        You are granted a limited, non-exclusive, non-transferable license to access and use the Service for your
-        personal, non-commercial educational purposes, specifically for preparing for CASA CPL theory examinations.
-      </p>
+      <H3>4.3 Subscription renewals and cancellation</H3>
+      <UL>
+        <li>Subscriptions renew automatically at the end of each billing period unless you cancel before the renewal date.</li>
+        <li>
+          You can cancel at any time from <B>Settings → Manage billing</B>. You&apos;ll keep access until the end of the
+          period you&apos;ve paid for.
+        </li>
+        <li>
+          If we change the price of your subscription, we&apos;ll tell you at least 30 days before it applies, and you can
+          cancel before then.
+        </li>
+        <li>If a renewal payment fails, we may pause your bundle access until payment is made.</li>
+      </UL>
 
-      <h3 className="text-lg font-medium text-foreground mt-6 mb-3">4.2 Prohibited Conduct</h3>
-      <p className="text-muted-foreground leading-relaxed">You agree not to:</p>
-      <ul className="text-muted-foreground space-y-2">
-        <li>Share, distribute, reproduce, or make available any Content to third parties.</li>
-        <li>Use automated systems, bots, or scripts to access the Service or extract Content.</li>
-        <li>Share your account credentials with others or allow others to access your account.</li>
-        <li>Attempt to circumvent, disable, or interfere with security features of the Service.</li>
-        <li>Use the Service for any illegal purpose or in violation of any applicable laws.</li>
-        <li>Reverse engineer, decompile, or disassemble any portion of the Service.</li>
-        <li>Remove, alter, or obscure any proprietary notices on the Service or Content.</li>
-        <li>Use the Content to create competing products or services.</li>
-      </ul>
+      <H3>4.4 Refunds</H3>
+      <P>
+        If the Service has a major failure, or doesn&apos;t match its description or isn&apos;t fit for purpose, you&apos;re entitled
+        to the remedies the ACL provides, which may include a refund.
+      </P>
+      <P>
+        In addition to your ACL rights, if you change your mind we&apos;ll refund a purchase if you ask within 7 days and
+        haven&apos;t substantially used it (for example, completed a significant part of a course or sat multiple exams in
+        that subject). Email <A href="mailto:support@aviprep.com.au">support@aviprep.com.au</A> to request a refund.
+      </P>
 
-      <h2 className="text-xl font-semibold text-foreground mt-10 mb-4">5. Intellectual Property</h2>
-      <p className="text-muted-foreground leading-relaxed">
-        The Service, including all Content, features, and functionality, is owned by AviPrep and is
-        protected by Australian and international copyright, trademark, and other intellectual property laws. Our
-        trademarks and trade dress may not be used without our prior written consent.
-      </p>
-      <p className="text-muted-foreground leading-relaxed mt-4">
-        All questions, explanations, study materials, and educational content are original works created by AviPrep
-        or licensed from third parties. You acknowledge that you acquire no ownership rights by using the Service.
-      </p>
+      <H2>5. Using the Service</H2>
 
-      <h2 className="text-xl font-semibold text-foreground mt-10 mb-4">6. Educational Disclaimer</h2>
-      <p className="text-muted-foreground leading-relaxed">
-        The Service is designed to supplement your CPL theory exam preparation. While our Content is aligned with the
-        CASA CPL syllabus, we make no guarantee that:
-      </p>
-      <ul className="text-muted-foreground space-y-2">
-        <li>Using the Service will result in passing any CASA examination.</li>
-        <li>The Content covers all topics that may appear on CASA examinations.</li>
-        <li>The Content reflects the most current CASA regulations or examination requirements.</li>
-      </ul>
-      <p className="text-muted-foreground leading-relaxed mt-4">
-        AviPrep is not affiliated with, endorsed by, or sponsored by the Civil Aviation Safety Authority (CASA).
-        You are responsible for ensuring you meet all CASA requirements for examination eligibility.
-      </p>
+      <H3>5.1 Your licence</H3>
+      <P>
+        While you have Access, we give you a personal, non-exclusive, non-transferable licence to use the Content for
+        your own study and exam preparation.
+      </P>
 
-      <h2 className="text-xl font-semibold text-foreground mt-10 mb-4">7. AI-Powered Features</h2>
-      <p className="text-muted-foreground leading-relaxed">
-        Our Service includes AI-powered features that analyze your performance and provide personalized recommendations.
-        These features are provided for informational purposes only. AI-generated insights and recommendations should be
-        used as one of many tools in your study preparation and are not a substitute for comprehensive study of the CASA
-        syllabus.
-      </p>
+      <H3>5.2 Things you must not do</H3>
+      <UL>
+        <li>Copy, share, sell, publish or otherwise distribute Content, including screenshots of questions or explanations.</li>
+        <li>Scrape, download in bulk, or use bots or scripts to access the Service or extract Content.</li>
+        <li>Share your account or let anyone else use your Access.</li>
+        <li>
+          Record, reproduce or share questions from official CASA examinations, or use the Service to breach the
+          integrity of any examination.
+        </li>
+        <li>Interfere with, probe or bypass the security of the Service, or reverse engineer it except where the law allows.</li>
+        <li>Use the Content to build a competing product, or to train or develop artificial intelligence models.</li>
+        <li>Use the Service unlawfully, or to harass, threaten, deceive or harm anyone.</li>
+      </UL>
 
-      <h2 className="text-xl font-semibold text-foreground mt-10 mb-4">8. Limitation of Liability</h2>
-      <p className="text-muted-foreground leading-relaxed">
-        To the maximum extent permitted by Australian law, AviPrep and
-        affiliates shall not be liable for:
-      </p>
-      <ul className="text-muted-foreground space-y-2">
-        <li>Any indirect, incidental, special, consequential, or punitive damages.</li>
-        <li>Any loss of profits, data, or business opportunities.</li>
-        <li>Any damages resulting from your failure to pass any CASA examination.</li>
-        <li>Any interruption or cessation of the Service.</li>
-      </ul>
-      <p className="text-muted-foreground leading-relaxed mt-4">
-        Our total liability for any claims arising from your use of the Service shall not exceed the amount you paid to
-        us in the 12 months preceding the claim.
-      </p>
+      <H2>6. Forums, messages and Member Content</H2>
+      <UL>
+        <li>You keep ownership of your Member Content, and you&apos;re responsible for it.</li>
+        <li>
+          You give us a non-exclusive, royalty-free licence to host, display and distribute your Member Content as needed
+          to run the Service. This licence ends when your content is deleted, except for copies others have quoted or
+          that we must keep by law.
+        </li>
+        <li>
+          Be respectful. Don&apos;t post content that is unlawful, abusive, discriminatory, misleading, infringes someone
+          else&apos;s rights, contains spam or advertising, or shares other people&apos;s personal information.
+        </li>
+        <li>
+          We may remove content that breaks these rules and may suspend posting or messaging privileges. If you see
+          something that breaks these rules, please tell us.
+        </li>
+      </UL>
 
-      <h2 className="text-xl font-semibold text-foreground mt-10 mb-4">9. Termination</h2>
-      <p className="text-muted-foreground leading-relaxed">
-        We may terminate or suspend your account and access to the Service immediately, without prior notice or
-        liability, for any reason, including breach of these Terms. Upon termination, your right to use the Service will
-        immediately cease.
-      </p>
-      <p className="text-muted-foreground leading-relaxed mt-4">
-        You may terminate your account at any time by contacting us at support@aviprep.com.au. Termination does not
-        entitle you to any refund of fees already paid.
-      </p>
+      <H2>7. Intellectual property</H2>
+      <P>
+        The Service and the Content, including questions, explanations, lessons, design and software, are owned by or
+        licensed to AviPrep and protected by copyright and other laws. Apart from the licence in section 5.1, these Terms
+        don&apos;t give you any rights in them. &quot;AviPrep&quot; and our logo are our trade marks.
+      </P>
+      <P>
+        If you believe something on the Service infringes your rights, contact{" "}
+        <A href="mailto:support@aviprep.com.au">support@aviprep.com.au</A> and we&apos;ll look into it promptly.
+      </P>
 
-      <h2 className="text-xl font-semibold text-foreground mt-10 mb-4">10. Changes to Terms</h2>
-      <p className="text-muted-foreground leading-relaxed">
-        We reserve the right to modify these Terms at any time. We will notify you of material changes by posting the
-        updated Terms on this page and updating the "Last updated" date. Your continued use of the Service after such
-        changes constitutes acceptance of the modified Terms.
-      </p>
+      <H2>8. Study content and insights</H2>
+      <UL>
+        <li>
+          AviPrep is an independent study resource. It is <B>not affiliated with, endorsed by or sponsored by the Civil
+          Aviation Safety Authority (CASA)</B>.
+        </li>
+        <li>
+          We write Content against the CASA Part 61 Manual of Standards and work to keep it accurate and current, but
+          syllabuses and regulations change. Always use current official sources (such as the AIP and ERSA) and follow
+          your instructor&apos;s guidance.
+        </li>
+        <li>
+          Practice questions are designed to prepare you, not to reproduce official exam questions. Scores, readiness
+          indicators and study insights are calculated from your activity to guide your study; they&apos;re not a
+          prediction or guarantee of any exam result.
+        </li>
+        <li>
+          The Service is for theory study. It is not flight instruction and must never be relied on for flight planning or
+          operational decisions.
+        </li>
+        <li>
+          If you find an error in the Content, please report it. We&apos;ll review and correct it.
+        </li>
+      </UL>
 
-      <h2 className="text-xl font-semibold text-foreground mt-10 mb-4">11. Governing Law</h2>
-      <p className="text-muted-foreground leading-relaxed">
-        These Terms shall be governed by and construed in accordance with the laws of Queensland, Australia,
-        without regard to conflict of law provisions. Any disputes arising from these Terms or your use of the Service
-        shall be subject to the exclusive jurisdiction of the courts of Queensland.
-      </p>
+      <H2>9. Availability and changes</H2>
+      <P>
+        We aim to keep the Service available and reliable, but it may occasionally be unavailable for maintenance, updates
+        or reasons outside our control. We regularly improve the Service and may add, change or retire features. We
+        won&apos;t make changes that materially reduce the Access you&apos;ve paid for during your current access period without
+        giving you a fair remedy, such as a pro-rata refund.
+      </P>
 
-      <h2 className="text-xl font-semibold text-foreground mt-10 mb-4">12. Contact Us</h2>
-      <p className="text-muted-foreground leading-relaxed">
-        If you have any questions about these Terms, please contact us at:
-      </p>
-      <div className="bg-card border border-border rounded-lg p-4 mt-4">
-        <p className="text-foreground font-medium">AviPrep</p>
-        <p className="text-muted-foreground">Email: support@aviprep.com.au</p>
-        <p className="text-muted-foreground">ABN: 80 167 432 520</p>
-      </div>
+      <H2>10. Suspension and closure</H2>
+      <UL>
+        <li>
+          <B>You</B> can close your account at any time from Settings, or by contacting us. Closing your account ends your
+          Access. Refunds are handled under section 4.4.
+        </li>
+        <li>
+          <B>We</B> may suspend or close your account if you seriously or repeatedly breach these Terms, if required by law,
+          or to protect other members or the Service. Where reasonable, we&apos;ll tell you why first and give you a chance to
+          fix the problem.
+        </li>
+        <li>
+          If we close your account for reasons other than your breach of these Terms, we&apos;ll refund the unused portion of
+          any paid Access.
+        </li>
+      </UL>
+
+      <H2>11. Liability</H2>
+      <P>
+        Our services come with guarantees that cannot be excluded under the ACL. Subject to those guarantees and to the
+        extent the law allows:
+      </P>
+      <UL>
+        <li>
+          Where our liability for failing to meet a guarantee can be limited, it is limited to supplying the relevant
+          services again or paying the cost of having them supplied again.
+        </li>
+        <li>
+          We are not liable for indirect or consequential loss, or for exam results, training delays or licensing
+          outcomes, except where caused by our negligence or breach of these Terms.
+        </li>
+        <li>
+          Nothing in these Terms limits our liability for death or personal injury caused by our negligence, or for fraud.
+        </li>
+      </UL>
+
+      <H2>12. Your responsibility to us</H2>
+      <P>
+        If you deliberately misuse the Service or breach section 5.2 or 6 of these Terms, you are responsible for loss
+        that we or others reasonably suffer as a direct result, to the extent that loss was caused by you.
+      </P>
+
+      <H2>13. Privacy</H2>
+      <P>
+        Our <Link href="/privacy" className="text-primary underline underline-offset-4 hover:text-primary/80">Privacy Policy</Link>{" "}
+        explains how we collect, use and protect your personal information.
+      </P>
+
+      <H2>14. Changes to these Terms</H2>
+      <P>
+        We may update these Terms from time to time. If a change is material, we&apos;ll give you at least 14 days&apos; notice
+        by email or in the Service before it takes effect. If you don&apos;t agree with the change, you can close your account
+        before then, and we&apos;ll refund the unused portion of any paid Access. Otherwise, continuing to use the Service
+        means you accept the updated Terms.
+      </P>
+
+      <H2>15. Disputes</H2>
+      <P>
+        If you have a problem, please contact us first at <A href="mailto:support@aviprep.com.au">support@aviprep.com.au</A>.
+        We&apos;ll respond within 10 business days and work with you in good faith to resolve it. This doesn&apos;t stop you
+        contacting your local consumer protection agency or seeking other remedies.
+      </P>
+      <P>
+        These Terms are governed by the laws of Queensland, Australia. You and we submit to the non-exclusive
+        jurisdiction of the courts of Queensland and the courts that can hear appeals from them. If you live in another
+        Australian state or territory, you may also have rights under the laws of that place.
+      </P>
+
+      <H2>16. General</H2>
+      <UL>
+        <li>If any part of these Terms is unenforceable, the rest continues to apply.</li>
+        <li>If we don&apos;t enforce a right straight away, we haven&apos;t given it up.</li>
+        <li>
+          You may not transfer your account or rights under these Terms. We may transfer our rights and obligations to a
+          new owner of the Service, who must honour your existing Access and these Terms.
+        </li>
+        <li>
+          These Terms, our Privacy Policy and any terms shown at checkout for a specific product are the whole agreement
+          between you and us about the Service.
+        </li>
+      </UL>
+
+      <H2>17. Contact us</H2>
+      <P>
+        AviPrep
+        <br />
+        ABN 80 167 432 520
+        <br />
+        Support: <A href="mailto:support@aviprep.com.au">support@aviprep.com.au</A>
+        <br />
+        Privacy: <A href="mailto:privacy@aviprep.com.au">privacy@aviprep.com.au</A>
+      </P>
     </article>
   )
 }

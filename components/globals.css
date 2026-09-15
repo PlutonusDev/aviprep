@@ -304,6 +304,36 @@
     }
   }
 
+  /* Landing hero chips: a slow drift and a soft brand-coloured glow. Two
+     offset loops (different lengths) so the motion never looks mechanical.
+     Stilled by the reduced-motion guard in the base layer. */
+  .chip-float {
+    animation:
+      chip-drift var(--chip-drift, 8s) ease-in-out var(--chip-delay, 0s) infinite,
+      chip-glow var(--chip-glow, 2.5s) ease-in-out var(--chip-delay, 0s) infinite;
+    will-change: transform;
+  }
+
+  @keyframes chip-drift {
+    0%, 100% { transform: translate3d(0, 0, 0); }
+    25% { transform: translate3d(3px, -5px, 0); }
+    50% { transform: translate3d(-2px, -8px, 0); }
+    75% { transform: translate3d(-4px, -3px, 0); }
+  }
+
+  @keyframes chip-glow {
+    0%, 100% {
+      box-shadow:
+        0 0 0 1px color-mix(in oklab, var(--primary) 25%, transparent),
+        0 4px 14px -4px color-mix(in oklab, var(--primary) 30%, transparent);
+    }
+    50% {
+      box-shadow:
+        0 0 0 1px color-mix(in oklab, var(--primary) 45%, transparent),
+        0 6px 24px -2px color-mix(in oklab, var(--primary) 55%, transparent);
+    }
+  }
+
   .section-raised {
     background-color: color-mix(in oklab, var(--card) 30%, transparent);
     border-block: 1px solid var(--border);

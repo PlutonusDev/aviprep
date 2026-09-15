@@ -302,9 +302,12 @@ model Question {
 }
 
 model Waitlist {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  email     String   @unique
-  createdAt DateTime @default(now())
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  email           String    @unique
+  // Confirmed by SMS code when joining. Optional: earlier sign-ups gave email only.
+  phone           String?
+  phoneVerifiedAt DateTime?
+  createdAt       DateTime  @default(now())
 }
 
 model RtoContact {

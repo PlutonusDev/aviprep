@@ -14,7 +14,7 @@ export async function POST(request: Request) {
 
     // The phone is never in the token (except sign-up), so look it up again.
     let phone: string | null = null
-    if (challenge.purpose === "signup") {
+    if (challenge.purpose === "signup" || challenge.purpose === "waitlist") {
       phone = challenge.phone ?? null
     } else {
       const where = challenge.userId ? { id: challenge.userId } : challenge.email ? { email: challenge.email } : null
