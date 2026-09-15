@@ -4,6 +4,7 @@ import Link from "next/link"
 import { BarChart3, BookOpen, ClipboardList } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { InstallAppButton } from "@/components/pwa/install-app"
+import { useRegistrationStatus } from "@/components/auth/use-registration"
 
 const FEATURES = [
   { icon: ClipboardList, title: "Practice exams", hint: "Exam-style questions for every subject" },
@@ -16,6 +17,7 @@ const FEATURES = [
  * see it: the proxy sends them straight to the dashboard.
  */
 export default function AppWelcome() {
+  const registration = useRegistrationStatus()
   return (
     <main className="flex flex-1 flex-col px-6 pb-8 pt-10 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-500">
       <img src="/img/AviPrep-logo.png" alt="AviPrep" width={176} height={44} className="h-12 w-auto self-start" />
@@ -42,10 +44,12 @@ export default function AppWelcome() {
       </ul>
 
       <div className="mt-auto space-y-3 pt-10">
-        <Button asChild size="lg" className="h-12 w-full text-base">
-          <Link href="/register">Create free account</Link>
-        </Button>
-        <Button asChild variant="outline" size="lg" className="h-12 w-full text-base">
+        {registration.open !== false && (
+          <Button asChild size="lg" className="h-12 w-full text-base">
+            <Link href="/register">Create free account</Link>
+          </Button>
+        )}
+        <Button asChild variant={registration.open === false ? "default" : "outline"} size="lg" className="h-12 w-full text-base">
           <Link href="/m/login">Sign in</Link>
         </Button>
         <InstallAppButton variant="secondary" className="h-12 w-full text-base" />

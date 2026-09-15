@@ -14,6 +14,7 @@ import { Switch } from "@/components/ui/switch"
 import { OtpInput, ResendCode } from "@/components/auth/otp"
 import { useLogin } from "@/components/auth/use-login"
 import { useTenant } from "@lib/tenant-context"
+import { useRegistrationStatus } from "@/components/auth/use-registration"
 import { toast } from "sonner"
 
 /** Only same-site paths, so ?redirect= can't send people to another website. */
@@ -29,6 +30,7 @@ export default function LoginPage() {
   const errorRef = useRef<HTMLDivElement>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
 
+  const registration = useRegistrationStatus()
   const login = useLogin({ onSignedIn: () => router.push(safeRedirect(searchParams.get("redirect"))) })
   const resetDone = searchParams.get("reset") === "1"
   const emailVerified = searchParams.get("email") === "verified"
@@ -216,6 +218,8 @@ export default function LoginPage() {
               <ArrowLeft className="h-4 w-4" aria-hidden="true" />
               Use a different account
             </button>
+          ) : registration.open === false ? (
+            <p className="w-full text-center text-sm text-muted-foreground">New registrations are currently closed.</p>
           ) : (
             <p className="w-full text-center text-sm text-muted-foreground">
               Don&apos;t have an account?{" "}

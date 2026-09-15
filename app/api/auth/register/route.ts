@@ -2,13 +2,17 @@ import { NextResponse } from "next/server"
 import { prisma } from "@lib/prisma"
 import { hashPassword, startSession, isValidAustralianPhone, isValidARN } from "@lib/auth"
 import { readPhoneProof } from "@lib/otp"
+import { REGISTRATION_CLOSED_ERROR, getRegistrationSetting } from "@lib/site-settings"
 import { requestOrigin, sendVerificationEmail } from "@lib/email-verification"
 import { toE164AustralianMobile } from "@lib/sms"
 import { stripe } from "@lib/stripe";
 
 export async function POST(request: Request) {
   try {
-    //return NextResponse.json({ error: "New registrations are disabled" }, { status: 400 });
+    // Switched off from Admin > Site settings. Checked here, not just in the UI.
+    if (!(await getRegistrationSetting()).open) {
+      return NextResponse.json({ error: REGISTRATION_CLOSED_ERROR, closed: true }, { status: 403 })
+    }
 
     const body = await request.json()
     const { email, password, firstName, lastName, phone, arn, phoneProof } = body

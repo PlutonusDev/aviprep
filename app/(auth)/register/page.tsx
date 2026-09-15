@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { OtpInput, ResendCode } from "@/components/auth/otp"
 import { useTenant } from "@lib/tenant-context"
+import { useRegistrationStatus } from "@/components/auth/use-registration"
 
 /*
  * Step order matters for password managers. Browsers treat the text field just
@@ -81,6 +82,7 @@ const digits = (v: string) => v.replace(/\D/g, "")
 export default function RegisterPage() {
   const router = useRouter()
   const { tenant } = useTenant()
+  const registration = useRegistrationStatus()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
@@ -311,11 +313,24 @@ export default function RegisterPage() {
     <>
       <Card className="overflow-hidden rounded-xl border border-border bg-card shadow-e1">
         <CardHeader className="space-y-1.5 p-6 pb-5 sm:p-8 sm:pb-6">
-          <h1 className="font-heading text-2xl font-bold tracking-tight">Create an account</h1>
-          {!tenant && <CardDescription>Takes about a minute. We&apos;ll text you a code to confirm your mobile.</CardDescription>}
+          <h1 className="font-heading text-2xl font-bold tracking-tight">
+            {registration.open === false && !tenant ? "Registrations are closed" : "Create an account"}
+          </h1>
+          {!tenant && registration.open !== false && (
+            <CardDescription>Takes about a minute. We&apos;ll text you a code to confirm your mobile.</CardDescription>
+          )}
         </CardHeader>
 
-        {tenant ? (
+        {!tenant && registration.open === false ? (
+          <CardContent className="px-6 pb-6 sm:px-8 sm:pb-8">
+            <p className="text-muted-foreground">
+              {registration.message || "We're not taking new sign-ups right now. Please check back soon."}
+            </p>
+            <Button asChild className="mt-6 h-11 w-full">
+              <Link href="/login">Sign in to an existing account</Link>
+            </Button>
+          </CardContent>
+        ) : tenant ? (
           <CardContent className="px-6 pb-6 sm:px-8 sm:pb-8">
             <div className="mb-8 flex flex-col gap-3">
               <p className="text-muted-foreground">

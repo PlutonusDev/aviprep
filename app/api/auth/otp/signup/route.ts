@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@lib/prisma"
 import { checkOtp, readChallenge, sendOtp, signChallenge, signPhoneProof } from "@lib/otp"
 import { maskPhone, toE164AustralianMobile } from "@lib/sms"
+import { REGISTRATION_CLOSED_ERROR, getRegistrationSetting } from "@lib/site-settings"
 
 /**
  * Sign-up phone verification.
@@ -11,6 +12,11 @@ import { maskPhone, toE164AustralianMobile } from "@lib/sms"
 export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({}))
+
+    // No sign-up texts (or SMS costs) while registrations are closed.
+    if (!(await getRegistrationSetting()).open) {
+      return NextResponse.json({ error: REGISTRATION_CLOSED_ERROR, closed: true }, { status: 403 })
+    }
 
     if (body.challenge) {
       const challenge = await readChallenge(body.challenge, "signup")

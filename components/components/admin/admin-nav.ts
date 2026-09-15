@@ -11,6 +11,7 @@ import {
   Sparkles,
   Ticket,
   Users,
+  Settings,
 } from "lucide-react"
 
 export interface AdminNavItem {
@@ -34,6 +35,7 @@ export const ADMIN_NAVIGATION: AdminNavItem[] = [
   { name: "Products", href: "/admin/products", icon: Package },
   { name: "Coupons", href: "/admin/coupons", icon: Ticket },
   { name: "Forums", href: "/admin/forums", icon: MessageSquare },
+  { name: "Site settings", href: "/admin/settings", icon: Settings },
 ]
 
 /** Admin-panel paths a curator may open. The APIs enforce the same rule. */

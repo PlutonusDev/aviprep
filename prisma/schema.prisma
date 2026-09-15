@@ -643,3 +643,12 @@ model OtpCode {
 
   @@index([purpose, key, createdAt])
 }
+
+/// Site-wide switches managed from the admin panel (lib/site-settings.ts).
+model SiteSetting {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  key         String   @unique
+  value       Json
+  updatedById String?  @db.ObjectId
+  updatedAt   DateTime @updatedAt
+}

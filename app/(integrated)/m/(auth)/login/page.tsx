@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { OtpInput, ResendCode } from "@/components/auth/otp"
 import { useLogin } from "@/components/auth/use-login"
+import { useRegistrationStatus } from "@/components/auth/use-registration"
 
 function TopBar({ onBack, href }: { onBack?: () => void; href?: string }) {
   const cls =
@@ -34,6 +35,7 @@ export default function MobileLogin() {
   const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
   const login = useLogin({ onSignedIn: () => router.push("/dashboard") })
+  const registration = useRegistrationStatus()
 
   if (login.stage === "code") {
     return (
@@ -174,12 +176,14 @@ export default function MobileLogin() {
             {login.loading && <Loader2 className="mr-2 h-5 w-5 animate-spin" aria-hidden="true" />}
             {login.loading ? "Signing in..." : "Sign in"}
           </Button>
-          <p className="text-center text-sm text-muted-foreground">
-            New to AviPrep?{" "}
-            <Link href="/register" className="font-medium text-primary hover:underline">
-              Create an account
-            </Link>
-          </p>
+          {registration.open !== false && (
+            <p className="text-center text-sm text-muted-foreground">
+              New to AviPrep?{" "}
+              <Link href="/register" className="font-medium text-primary hover:underline">
+                Create an account
+              </Link>
+            </p>
+          )}
         </div>
       </div>
     </form>
