@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { Prisma } from "@prisma/client"
 import { prisma } from "@lib/prisma"
 import { courseIsLive, isResponse, liveContentError, pick, requireStaff } from "@lib/staff"
 
@@ -38,7 +39,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ le
     const lesson = await prisma.lesson.update({
       where: { id: lessonId },
       data: {
-        ...(body.action === "apply-revision" ? pick(revision, LESSON_FIELDS) : {}),
+        ...(body.action === "apply-revision" ? (pick(revision, LESSON_FIELDS) as Prisma.LessonUpdateInput) : {}),
         pendingRevision: null,
         pendingRevisionById: null,
         pendingRevisionAt: null,
@@ -47,10 +48,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ le
     return NextResponse.json({ lesson })
   }
 
-  const changes = pick(body, LESSON_FIELDS)
+  const changes = pick(body, LESSON_FIELDS) as Prisma.LessonUpdateInput
 
   if (!staff.isAdmin && (await courseIsLive({ lessonId }))) {
-    const merged = { ...((existing.pendingRevision as Record<string, unknown>) ?? {}), ...changes }
+    const merged = { ...((existing.pendingRevision as Record<string, unknown>) ?? {}), ...changes } as unknown as Prisma.InputJsonObject
     const lesson = await prisma.lesson.update({
       where: { id: lessonId },
       data: { pendingRevision: merged, pendingRevisionById: staff.userId, pendingRevisionAt: new Date() },

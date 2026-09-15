@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { Prisma } from "@prisma/client"
 import { prisma } from "@lib/prisma"
 import { isResponse, pick, requireStaff } from "@lib/staff"
 
@@ -68,7 +69,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ co
     const details = pick(body, DETAIL_FIELDS)
     if (existing.isPublished) {
       // Live: hold the change for an admin rather than touching what students see.
-      const merged = { ...((existing.pendingRevision as Record<string, unknown>) ?? {}), ...details }
+      const merged = { ...((existing.pendingRevision as Record<string, unknown>) ?? {}), ...details } as unknown as Prisma.InputJsonObject
       const course = await prisma.course.update({
         where: { id: courseId },
         data: { pendingRevision: merged, pendingRevisionById: staff.userId, pendingRevisionAt: new Date() },

@@ -51,7 +51,18 @@ function smsBody(purpose: OtpPurpose, code: string) {
   return lines.join("\n")
 }
 
-export type SendResult = { ok: true } | { ok: false; error: string; retryAfter?: number; status: number }
+/**
+ * Flat rather than a discriminated union: the project compiles with
+ * strict: false, where `if (!result.ok)` doesn't narrow a union.
+ */
+export interface SendResult {
+  ok: boolean
+  /** Set when ok is false. */
+  error?: string
+  retryAfter?: number
+  /** HTTP status to report; 200 when ok. */
+  status: number
+}
 
 export async function sendOtp({ purpose, key, phone }: { purpose: OtpPurpose; key: string; phone: string }): Promise<SendResult> {
   const to = toE164AustralianMobile(phone)
@@ -85,10 +96,13 @@ export async function sendOtp({ purpose, key, phone }: { purpose: OtpPurpose; ke
     await prisma.otpCode.update({ where: { id: record.id }, data: { consumed: true } })
     return { ok: false, error: "We couldn't send the text. Try again shortly.", status: 502 }
   }
-  return { ok: true }
+  return { ok: true, status: 200 }
 }
 
-export type CheckResult = { ok: true } | { ok: false; error: string }
+export interface CheckResult {
+  ok: boolean
+  error?: string
+}
 
 export async function checkOtp({ purpose, key, code }: { purpose: OtpPurpose; key: string; code: string }): Promise<CheckResult> {
   const clean = String(code ?? "").replace(/\D/g, "")
