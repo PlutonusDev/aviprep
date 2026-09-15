@@ -6,7 +6,7 @@
  * absolute image URLs, and no flex or grid.
  */
 
-const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://aviprep.com.au").replace(/\/$/, "")
+import { publicAssetUrl } from "@lib/public-url"
 
 const INK = "#1E293B"
 const MUTED = "#64748B"
@@ -14,12 +14,11 @@ const BORDER = "#E2E8F0"
 const BRAND = "#F78601"
 const SURFACE = "#F8FAFC"
 
-/** School logos are often stored as an upload path; email needs a full URL. */
-function absoluteUrl(src: string | null | undefined): string | null {
-  if (!src) return null
-  if (/^https?:\/\//i.test(src)) return src
-  return `${SITE_URL}${src.startsWith("/") ? "" : "/"}${src}`
-}
+/**
+ * School logos are often stored as an upload path; email needs a full URL that
+ * mail providers can reach, so never localhost (see lib/public-url.ts).
+ */
+const absoluteUrl = (src: string | null | undefined) => publicAssetUrl(src)
 
 function escapeHtml(value: string) {
   return value.replace(
@@ -56,7 +55,7 @@ function coBrandLockup(schoolName: string, schoolLogo: string | null) {
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto;">
     <tr>
       <td style="vertical-align:middle;padding-right:14px;">
-        <img src="${SITE_URL}/email/logo.png" alt="AviPrep" height="34" style="display:block;max-height:34px;border:0;outline:none;text-decoration:none;">
+        <img src="${publicAssetUrl("/email/logo.png")}" alt="AviPrep" height="34" style="display:block;max-height:34px;border:0;outline:none;text-decoration:none;">
       </td>
       <td style="vertical-align:middle;padding-right:14px;font-family:Helvetica,Arial,sans-serif;font-size:20px;line-height:20px;color:${MUTED};">+</td>
       <td style="vertical-align:middle;">${schoolCell}</td>
