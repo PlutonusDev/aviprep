@@ -14,10 +14,15 @@ import path from "path"
  * Point UPLOAD_DIR at a persistent volume in production so uploads survive
  * redeploys. URLs stay `/uploads/...`, so nothing stored in the database changes.
  */
-export const UPLOAD_ROOT = path.resolve(process.env.UPLOAD_DIR || path.join(process.cwd(), "storage", "uploads"))
+// The turbopackIgnore markers stop the bundler treating these runtime paths as
+// build inputs. Without them it traces the whole project (public/ included)
+// into the server output, because the paths come from env vars and requests.
+export const UPLOAD_ROOT = path.resolve(
+  /*turbopackIgnore: true*/ process.env.UPLOAD_DIR || path.join(/*turbopackIgnore: true*/ process.cwd(), "storage", "uploads"),
+)
 
 /** Where uploads used to be written. Still read, so existing URLs keep working. */
-const LEGACY_ROOT = path.resolve(process.cwd(), "public", "uploads")
+const LEGACY_ROOT = path.resolve(/*turbopackIgnore: true*/ process.cwd(), "public", "uploads")
 
 // No leading dot: blocks "..", "." and hidden files. nanoid ids may start with - or _.
 const SAFE_SEGMENT = /^[A-Za-z0-9_-][A-Za-z0-9._-]{0,127}$/
@@ -36,9 +41,9 @@ export async function saveUpload({ folder, filename, data }: { folder?: string; 
   const segments = [...(folder ? folder.split("/") : []), filename]
   if (!segments.every((s) => SAFE_SEGMENT.test(s))) throw new Error(`Unsafe upload path: ${segments.join("/")}`)
 
-  const dir = path.join(UPLOAD_ROOT, ...segments.slice(0, -1))
+  const dir = path.join(/*turbopackIgnore: true*/ UPLOAD_ROOT, ...segments.slice(0, -1))
   await mkdir(dir, { recursive: true })
-  await writeFile(path.join(dir, filename), data)
+  await writeFile(path.join(/*turbopackIgnore: true*/ dir, filename), data)
   return `/uploads/${segments.join("/")}`
 }
 
@@ -54,7 +59,7 @@ export async function resolveUpload(segments: string[]): Promise<{ file: string;
   if (!type) return null
 
   for (const root of [UPLOAD_ROOT, LEGACY_ROOT]) {
-    const file = path.resolve(root, ...segments)
+    const file = path.resolve(/*turbopackIgnore: true*/ root, ...segments)
     if (!file.startsWith(root + path.sep)) continue
     try {
       const info = await stat(file)
