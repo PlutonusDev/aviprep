@@ -81,7 +81,7 @@ export function PreflightChecklist() {
   }, [])
 
   return (
-    <div className="grid gap-10 lg:grid-cols-[18rem_1fr] lg:gap-16">
+    <div className="grid grid-cols-1 gap-10 lg:grid-cols-[18rem_minmax(0,1fr)] lg:gap-16">
       {/* The checklist */}
       <div className="hidden lg:block">
         <div className="sticky top-28 rounded-xl border border-border bg-card p-5 shadow-e1">
@@ -138,7 +138,7 @@ export function PreflightChecklist() {
             ref={(el) => {
               refs.current[i] = el
             }}
-            className="grid scroll-mt-28 items-center gap-8 xl:grid-cols-2"
+            className="grid min-w-0 scroll-mt-28 grid-cols-1 items-center gap-8 xl:grid-cols-2"
           >
             <div>
               <p className="font-mono text-xs font-semibold uppercase tracking-[0.2em] text-primary">

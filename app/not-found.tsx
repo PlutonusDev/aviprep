@@ -35,7 +35,7 @@ export default function NotFound() {
         <div className="w-full max-w-xl text-center">
           {/* Flight path that drifts off the planned route. Decorative. */}
           <svg viewBox="0 0 320 90" className="mx-auto h-20 w-full max-w-sm" aria-hidden="true">
-            <path d="M10 70 L110 70" stroke="var(--muted-foreground)" strokeWidth="2" strokeLinecap="round" />
+            <path d="M10 70 L110 70" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" />
             <path
               d="M110 70 C 160 70, 190 20, 250 28"
               fill="none"
@@ -52,7 +52,9 @@ export default function NotFound() {
             </g>
           </svg>
 
-          <p className="mt-6 font-mono text-sm font-semibold uppercase tracking-[0.3em] text-primary">Error 404</p>
+          <p className="mt-6 font-mono text-sm font-semibold uppercase tracking-[0.3em] text-primary flex items-center justify-center gap-2">
+            Error 404
+          </p>
           <h1 className="mt-3 text-display-2 font-bold text-balance">You&apos;ve drifted off course</h1>
           <p className="mx-auto mt-4 max-w-md text-lg text-muted-foreground text-pretty">
             This page doesn&apos;t exist, or it&apos;s moved. Let&apos;s get you back on your planned route.
@@ -72,11 +74,6 @@ export default function NotFound() {
               </Link>
             </Button>
           </div>
-
-          <p className="mt-10 inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 font-mono text-xs text-muted-foreground">
-            <Compass className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
-            HDG ??? · ROUTE NOT FOUND
-          </p>
         </div>
       </main>
     </div>

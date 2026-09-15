@@ -173,7 +173,7 @@ export function WaitlistForm({ id = "waitlist", className }: { id?: string; clas
 
   return (
     <form onSubmit={start} className={cn("space-y-3 text-left", className)} noValidate>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor={`${id}-email`} className="text-sm">
             Email

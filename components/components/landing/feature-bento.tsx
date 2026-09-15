@@ -145,7 +145,7 @@ const TILES: Tile[] = [
  */
 export function FeatureBento() {
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
       {TILES.map((t, i) => (
         <motion.article
           key={t.title}
@@ -154,7 +154,7 @@ export function FeatureBento() {
           viewport={{ once: true, amount: 0.2 }}
           transition={{ duration: 0.5, delay: i * 0.05, ease: [0.22, 1, 0.36, 1] }}
           className={cn(
-            "group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-e1 transition-[border-color,box-shadow] duration-300 hover:border-primary/40 hover:shadow-e2",
+            "group relative flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-e1 transition-[border-color,box-shadow] duration-300 hover:border-primary/40 hover:shadow-e2",
             t.wide && "md:col-span-2",
           )}
         >

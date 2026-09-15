@@ -28,6 +28,7 @@ import { PreflightChecklist } from "@/components/landing/preflight-checklist"
 import { FeatureBento } from "@/components/landing/feature-bento"
 import { Chip, ExamMock, InsightsMock } from "@/components/landing/mockups"
 import { LICENSE_TYPES, SUBJECTS } from "@lib/subjects"
+import { AppHomeRedirect } from "@/components/pwa/app-home-redirect"
 
 const reveal = {
   initial: { opacity: 0, y: 16 },
@@ -92,7 +93,9 @@ export default function LandingPage() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <div className="min-h-dvh bg-background text-foreground">
+      {/* The installed app never lands here; it goes to sign-in or the dashboard. */}
+      <AppHomeRedirect />
+      <div className="min-h-dvh overflow-x-clip bg-background text-foreground">
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground focus:shadow-e3"
@@ -147,7 +150,7 @@ export default function LandingPage() {
               }}
             />
 
-            <div className="relative mx-auto grid w-full max-w-7xl items-center gap-14 px-4 pb-20 pt-14 sm:px-6 lg:grid-cols-[1.05fr_1fr] lg:gap-12 lg:px-8 lg:py-10">
+            <div className="relative mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-14 px-4 pb-20 pt-14 sm:px-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:gap-12 lg:px-8 lg:py-10">
               <div>
                 {/* LCP: rendered straight away, no animation gate. */}
                 <h1 className="mt-6 text-display-1 font-bold leading-[1.02] text-balance lg:mt-5">
@@ -256,7 +259,7 @@ export default function LandingPage() {
                 title="From your first solo to the airline seat"
                 body="Subjects organised by licence, so you always know what's next."
               />
-              <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+              <div className="mt-14 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
                 {LICENSE_TYPES.map((l, i) => {
                   const count = SUBJECTS.filter((s) => s.licenseType === l.id && !s.comingSoon).length
                   return (
@@ -314,7 +317,7 @@ export default function LandingPage() {
           <section id="flight-schools" className="section-lg scroll-mt-16">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
               <div className="overflow-hidden rounded-2xl border border-primary/30 bg-card shadow-e3">
-                <div className="grid lg:grid-cols-2">
+                <div className="grid grid-cols-1 lg:grid-cols-2">
                   <div className="relative border-b border-border p-8 sm:p-10 lg:border-b-0 lg:border-r">
                     <div
                       aria-hidden="true"
@@ -331,7 +334,7 @@ export default function LandingPage() {
                         A white-label theory portal on your own subdomain, with the control and visibility a training
                         organisation needs.
                       </p>
-                      <ul className="mt-8 grid gap-5 sm:grid-cols-2">
+                      <ul className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2">
                         {[
                           { icon: Palette, title: "Your brand", body: "Your logo, colours and subdomain. Co-branded welcome emails." },
                           { icon: Users, title: "Students & groups", body: "Add students and assign subjects one by one or by class." },
@@ -367,7 +370,7 @@ export default function LandingPage() {
 
           {/* Waitlist */}
           <section id="waitlist" className="section section-raised scroll-mt-16">
-            <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
+            <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-12 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
               <motion.div {...reveal}>
                 <p className="font-mono text-xs font-semibold uppercase tracking-[0.2em] text-primary">Early access</p>
                 <h2 className="mt-3 text-display-2 font-bold text-balance">Get on the list before we take off</h2>

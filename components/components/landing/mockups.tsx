@@ -32,7 +32,7 @@ export function Frame({ path, children, className }: { path: string; children: R
           <span className="h-2.5 w-2.5 rounded-full bg-border" />
           <span className="h-2.5 w-2.5 rounded-full bg-border" />
         </span>
-        <span className="ml-2 truncate w-full rounded bg-background/70 px-2 py-0.5 font-mono text-[11px] text-muted-foreground">
+        <span className="ml-2 min-w-0 flex-1 truncate rounded bg-background/70 px-2 py-0.5 font-mono text-[11px] text-muted-foreground">
           aviprep.com.au{path}
         </span>
       </div>
@@ -44,7 +44,7 @@ export function Frame({ path, children, className }: { path: string; children: R
 export function LessonMock() {
   return (
     <Frame path="/dashboard/learn/cpl-met/lesson/tropopause">
-      <div className="grid sm:grid-cols-[10rem_1fr]">
+      <div className="grid grid-cols-1 sm:grid-cols-[10rem_minmax(0,1fr)]">
         <div className="hidden border-r border-border bg-muted/20 p-3 sm:block">
           <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Atmosphere</p>
           {["Composition", "Pressure & density", "The tropopause", "Lapse rates"].map((l, i) => (

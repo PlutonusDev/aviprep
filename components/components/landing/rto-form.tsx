@@ -62,7 +62,7 @@ export function RtoForm() {
 
   return (
     <form onSubmit={submit} className="space-y-4" noValidate>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="rto-name">Your name</Label>
           <Input id="rto-name" autoComplete="name" value={values.name} onChange={set("name")} className="h-11" />
