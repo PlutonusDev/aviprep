@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -17,9 +16,11 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Search, Edit, ChevronLeft, ChevronRight, UserPlus, Loader2 } from "lucide-react"
+import { Search, Edit, ChevronLeft, ChevronRight, UserPlus, Loader2, Check } from "lucide-react"
 import { SUBJECTS } from "@lib/products"
 import { cn } from "@lib/utils"
+import { Skeleton } from "@/components/ui/skeleton"
+import { PageHeader, PageShell } from "@/components/hub/page-primitives"
 
 interface Member {
   id: string
@@ -29,7 +30,6 @@ interface Member {
   phone: string
   arn: string
   isAdmin: boolean
-  isCurator: boolean | null
   hasBundle: boolean
   bundleExpiry: string | null
   createdAt: string
@@ -100,7 +100,6 @@ export function MembersContent() {
           phone: editMember.phone,
           arn: editMember.arn,
           isAdmin: editMember.isAdmin,
-          isCurator: !!editMember.isCurator,
           hasBundle: editMember.hasBundle,
         }),
       })
@@ -137,152 +136,166 @@ export function MembersContent() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Members</h2>
-          <p className="text-muted-foreground">Manage user accounts and access</p>
-        </div>
+    <PageShell>
+      <PageHeader title="Members" description={`${pagination.total.toLocaleString()} accounts`} />
+
+      <div className="relative w-full max-w-md">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+        <Label htmlFor="member-search" className="sr-only">
+          Search members
+        </Label>
+        <Input
+          id="member-search"
+          placeholder="Name, email or ARN"
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value)
+            setPagination((prev) => ({ ...prev, page: 1 }))
+          }}
+          className="h-11 pl-9"
+        />
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <CardTitle>All Members</CardTitle>
-              <CardDescription>{pagination.total} total members</CardDescription>
-            </div>
-            <div className="relative w-full sm:w-72">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search by name, email, or ARN..."
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value)
-                  setPagination((prev) => ({ ...prev, page: 1 }))
-                }}
-                className="pl-9"
-              />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-e1">
+        <div className="overflow-x-auto">
+          <Table className="min-w-[760px]">
+            <TableHeader>
+              <TableRow className="bg-muted/40 hover:bg-muted/40">
+                <TableHead>Member</TableHead>
+                <TableHead>ARN</TableHead>
+                <TableHead>Access</TableHead>
+                <TableHead className="text-right">Exams</TableHead>
+                <TableHead>Joined</TableHead>
+                <TableHead className="w-[60px]">
+                  <span className="sr-only">Actions</span>
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                Array.from({ length: 6 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell colSpan={6}>
+                      <Skeleton className="h-9 w-full" />
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : members.length === 0 ? (
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>ARN</TableHead>
-                  <TableHead>Access</TableHead>
-                  <TableHead>Exams</TableHead>
-                  <TableHead>Joined</TableHead>
-                  <TableHead className="w-[80px]">Actions</TableHead>
+                  <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
+                    {search ? "No one matches that search." : "No members yet."}
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center">
-                      <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
-                    </TableCell>
-                  </TableRow>
-                ) : members.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                      No members found
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  members.map((member) => (
-                    <TableRow key={member.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">
-                            {member.firstName} {member.lastName}
-                          </span>
-                          {member.isAdmin && (
-                            <Badge variant="outline" className="text-xs">
-                              Admin
-                            </Badge>
-                          )}
-                          {!member.isAdmin && member.isCurator && (
-                            <Badge variant="outline" className="text-xs">
-                              Curator
-                            </Badge>
-                          )}
+              ) : (
+                members.map((member) => (
+                  <TableRow key={member.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <span
+                          aria-hidden="true"
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-foreground"
+                        >
+                          {`${member.firstName[0] ?? ""}${member.lastName[0] ?? ""}`.toUpperCase()}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="flex items-center gap-2 font-medium text-foreground">
+                            <span className="truncate">
+                              {member.firstName} {member.lastName}
+                            </span>
+                            {member.isAdmin && (
+                              <Badge variant="outline" className="border-primary/30 bg-primary/10 text-[11px]">
+                                Admin
+                              </Badge>
+                            )}
+                          </p>
+                          <p className="truncate text-xs text-muted-foreground">{member.email}</p>
                         </div>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{member.email}</TableCell>
-                      <TableCell className="font-mono text-sm">{member.arn}</TableCell>
-                      <TableCell>
-                        {member.hasBundle ? (
-                          <Badge className="bg-primary">Bundle</Badge>
-                        ) : member.purchases.length > 0 ? (
-                          <Badge variant="secondary">{member.purchases.length} subjects</Badge>
-                        ) : (
-                          <Badge variant="outline">None</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>{member._count.examAttempts}</TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {new Date(member.createdAt).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>
-                        <Button className="cursor-pointer" variant="ghost" size="icon" onClick={() => setEditMember(member)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-mono text-sm">{member.arn}</TableCell>
+                    <TableCell>
+                      {member.hasBundle ? (
+                        <Badge variant="outline" className="border-success/30 bg-success/10">
+                          Bundle
+                        </Badge>
+                      ) : member.purchases.length > 0 ? (
+                        <Badge variant="secondary">
+                          {member.purchases.length} subject{member.purchases.length === 1 ? "" : "s"}
+                        </Badge>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">None</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right" data-tabular>
+                      {member._count.examAttempts}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground" data-tabular>
+                      {new Date(member.createdAt).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setEditMember(member)}
+                        aria-label={`Edit ${member.firstName} ${member.lastName}`}
+                      >
+                        <Edit className="h-4 w-4" aria-hidden="true" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
 
-          {/* Pagination */}
-          <div className="flex items-center justify-between pt-4">
-            <p className="text-sm text-muted-foreground">
-              Showing {(pagination.page - 1) * pagination.pageSize + 1} to{" "}
-              {Math.min(pagination.page * pagination.pageSize, pagination.total)} of {pagination.total}
+        {pagination.totalPages > 1 && (
+          <div className="flex flex-col gap-3 border-t border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-muted-foreground" data-tabular>
+              {(pagination.page - 1) * pagination.pageSize + 1}–{Math.min(pagination.page * pagination.pageSize, pagination.total)} of{" "}
+              {pagination.total.toLocaleString()}
             </p>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
+                className="h-9"
                 onClick={() => setPagination((prev) => ({ ...prev, page: prev.page - 1 }))}
                 disabled={pagination.page === 1}
+                aria-label="Previous page"
               >
-                <ChevronLeft className="h-4 w-4" />
+                <ChevronLeft className="h-4 w-4" aria-hidden="true" />
               </Button>
-              <span className="text-sm">
-                Page {pagination.page} of {pagination.totalPages}
+              <span className="text-sm text-muted-foreground" data-tabular>
+                {pagination.page} / {pagination.totalPages}
               </span>
               <Button
                 variant="outline"
                 size="sm"
+                className="h-9"
                 onClick={() => setPagination((prev) => ({ ...prev, page: prev.page + 1 }))}
                 disabled={pagination.page === pagination.totalPages}
+                aria-label="Next page"
               >
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="h-4 w-4" aria-hidden="true" />
               </Button>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        )}
+      </div>
 
       {/* Edit Member Dialog */}
       <Dialog open={!!editMember} onOpenChange={() => setEditMember(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Edit Member</DialogTitle>
-            <DialogDescription>Update member information and access</DialogDescription>
+            <DialogTitle>Edit member</DialogTitle>
+            <DialogDescription>Details, roles and access.</DialogDescription>
           </DialogHeader>
           {editMember && (
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="firstName">First Name</Label>
+                  <Label htmlFor="firstName">First name</Label>
                   <Input
                     id="firstName"
                     value={editMember.firstName}
@@ -290,7 +303,7 @@ export function MembersContent() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="lastName">Last Name</Label>
+                  <Label htmlFor="lastName">Last name</Label>
                   <Input
                     id="lastName"
                     value={editMember.lastName}
@@ -328,7 +341,7 @@ export function MembersContent() {
               <div className="flex items-center justify-between rounded-lg border p-3">
                 <div>
                   <Label>Administrator</Label>
-                  <p className="text-sm text-muted-foreground">Grant admin panel access</p>
+                  <p className="text-sm text-muted-foreground">Full access to the admin panel.</p>
                 </div>
                 <Switch
                   checked={editMember.isAdmin}
@@ -337,21 +350,8 @@ export function MembersContent() {
               </div>
               <div className="flex items-center justify-between rounded-lg border p-3">
                 <div>
-                  <Label>Curator</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Write courses and questions and submit them for review. No publishing, and no access to members or business data.
-                  </p>
-                </div>
-                <Switch
-                  checked={!!editMember.isCurator}
-                  disabled={editMember.isAdmin}
-                  onCheckedChange={(checked) => setEditMember({ ...editMember, isCurator: checked })}
-                />
-              </div>
-              <div className="flex items-center justify-between rounded-lg border p-3">
-                <div>
-                  <Label>Bundle Access</Label>
-                  <p className="text-sm text-muted-foreground">Full access to all subjects</p>
+                  <Label>Bundle</Label>
+                  <p className="text-sm text-muted-foreground">Every subject.</p>
                 </div>
                 <Switch
                   checked={editMember.hasBundle}
@@ -362,15 +362,15 @@ export function MembersContent() {
               {/* Current Access */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label>Subject Access</Label>
+                  <Label>Subjects</Label>
                   <Button className="cursor-pointer" variant="outline" size="sm" onClick={() => setGrantAccessOpen(true)}>
-                    <UserPlus className="mr-2 h-4 w-4" />
-                    Grant Access
+                    <UserPlus className="mr-2 h-4 w-4" aria-hidden="true" />
+                    Add subject
                   </Button>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {editMember.purchases.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No individual subject access</p>
+                    <p className="text-sm text-muted-foreground">None</p>
                   ) : (
                     editMember.purchases.map((p) => {
                       const subject = SUBJECTS.find((s) => s.id === p.subjectId)
@@ -391,7 +391,7 @@ export function MembersContent() {
             </Button>
             <Button className="cursor-pointer" onClick={handleSaveMember} disabled={saving}>
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Save Changes
+              Save
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -404,21 +404,21 @@ export function MembersContent() {
       }}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Grant Subject Access</DialogTitle>
+            <DialogTitle>Add a subject</DialogTitle>
             <DialogDescription>
-              Grant {editMember?.firstName} access to a subject for 12 months.
+              Gives {editMember?.firstName} 12 months of access.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="subject-search">Search Subject</Label>
+              <Label htmlFor="subject-search">Subject</Label>
               <div className="relative">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="subject-search"
-                  placeholder="Search by name or code..."
+                  placeholder="Name or code"
                   className="pl-8"
-                  value={selectedSubjectSearch} // You'll need to add this state: const [selectedSubjectSearch, setSelectedSubjectSearch] = useState("")
+                  value={selectedSubjectSearch}
                   onChange={(e) => setSelectedSubjectSearch(e.target.value)}
                 />
               </div>
@@ -434,9 +434,11 @@ export function MembersContent() {
                     <button
                       key={subject.id}
                       className={cn(
-                        "flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-sm transition-colors hover:bg-accent/20",
-                        selectedSubject === subject.id ? "bg-accent/50 text-primary" : "transparent"
+                        "flex w-full items-center justify-between rounded-md px-2.5 py-2 text-left text-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        selectedSubject === subject.id && "bg-primary/10"
                       )}
+                      type="button"
+                      aria-pressed={selectedSubject === subject.id}
                       onClick={() => setSelectedSubject(subject.id)}
                     >
                       <div className="flex flex-col items-start">
@@ -444,7 +446,7 @@ export function MembersContent() {
                         <span className="text-xs text-muted-foreground">{subject.code}</span>
                       </div>
                       {selectedSubject === subject.id && (
-                        <div className="h-2 w-2 rounded-full bg-primary" />
+                        <Check className="h-4 w-4 text-primary" aria-hidden="true" />
                       )}
                     </button>
                   ))}
@@ -452,7 +454,7 @@ export function MembersContent() {
                     s.name.toLowerCase().includes(selectedSubjectSearch.toLowerCase()) ||
                     s.code.toLowerCase().includes(selectedSubjectSearch.toLowerCase())
                   ).length === 0 && (
-                      <p className="p-4 text-center text-sm text-muted-foreground">No subjects found.</p>
+                      <p className="p-4 text-center text-sm text-muted-foreground">No matches.</p>
                     )}
                 </div>
               </div>
@@ -467,11 +469,11 @@ export function MembersContent() {
               disabled={saving || !selectedSubject}
             >
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Grant Access
+              Add
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageShell>
   )
 }

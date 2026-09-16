@@ -1,14 +1,12 @@
 "use client"
 
-import { useEffect } from "react"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
 import Link from "next/link"
 import { Loader2, Lock } from "lucide-react"
 import { AdminHeader } from "@/components/admin/header"
 import { AdminSidebar } from "@/components/admin/sidebar"
 import { curatorCanOpen } from "@/components/admin/admin-nav"
 import { Button } from "@/components/ui/button"
-import { BackgroundBeams } from "@/ui/background-beams"
 import { useUser } from "@lib/user-context"
 
 function Blocked({ title, text, href, cta }: { title: string; text: string; href: string; cta: string }) {
@@ -35,19 +33,13 @@ function Blocked({ title, text, href, cta }: { title: string; text: string; href
  */
 export default ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname()
-  const router = useRouter()
   const { user, isLoading } = useUser()
 
   const isAdmin = !!user?.isAdmin
   const isCurator = !isAdmin && !!user?.isCurator
 
-  // A curator opening the panel root lands on their workspace.
-  useEffect(() => {
-    if (isCurator && pathname === "/admin") router.replace("/admin/questions")
-  }, [isCurator, pathname, router])
-
   let content: React.ReactNode = children
-  if (isLoading || (isCurator && pathname === "/admin")) {
+  if (isLoading) {
     content = (
       <div role="status" className="flex min-h-[60vh] items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-hidden="true" />
@@ -61,23 +53,18 @@ export default ({ children }: { children: React.ReactNode }) => {
       <Blocked
         title="Not part of the content studio"
         text="Curators work on courses and questions. Everything else is admin-only."
-        href="/admin/questions"
-        cta="Go to questions"
+        href="/admin"
+        cta="Go to your home"
       />
     )
   }
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-background">
+    <div className="relative overflow-x-clip bg-background">
       <AdminSidebar />
       <div className="lg:pl-64">
         <AdminHeader />
-        <div className="relative overflow-hidden">
-          <main>{content}</main>
-        </div>
-      </div>
-      <div className="pointer-events-none absolute left-0 top-0 h-full w-screen opacity-70">
-        <BackgroundBeams />
+        <main className="min-h-[calc(100dvh-4rem)]">{content}</main>
       </div>
     </div>
   )

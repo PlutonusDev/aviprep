@@ -5,7 +5,6 @@ import React from "react"
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { useUser } from "@lib/user-context"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -50,6 +49,10 @@ import {
 } from "lucide-react"
 import { LICENSE_TYPES, getSubjectsByLicense } from "@lib/subjects"
 import Link from "@/components/meta/link"
+import { Skeleton } from "@/components/ui/skeleton"
+import { EmptyState, PageHeader, PageShell } from "@/components/hub/page-primitives"
+import { CourseArtHeader } from "@/components/hub/course-art-header"
+import { cn } from "@lib/utils"
 
 interface Course {
   id: string
@@ -78,7 +81,7 @@ export default function CoursesAdminContent() {
   const [selectedLicense, setSelectedLicense] = useState("cpl")
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [editingCourse, setEditingCourse] = useState<Course | null>(null)
-  
+
   const [formData, setFormData] = useState({
     subjectId: "",
     title: "",
@@ -106,11 +109,11 @@ export default function CoursesAdminContent() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    
-    const url = editingCourse 
+
+    const url = editingCourse
       ? `/api/admin/courses/${editingCourse.id}`
       : "/api/admin/courses"
-    
+
     const res = await fetch(url, {
       method: editingCourse ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
@@ -139,7 +142,7 @@ export default function CoursesAdminContent() {
 
   async function handleDelete(id: string) {
     if (!confirm("Are you sure you want to delete this course?")) return
-    
+
     await fetch(`/api/admin/courses/${id}`, { method: "DELETE" })
     fetchCourses()
   }
@@ -159,11 +162,17 @@ export default function CoursesAdminContent() {
   }
 
   async function handleTogglePublish(id: string, isPublished: boolean) {
-    await fetch(`/api/admin/courses/${id}`, {
+    const res = await fetch(`/api/admin/courses/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isPublished: !isPublished }),
     })
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      toast.error(data.error || "Couldn't update the course", { duration: 8000 })
+      return
+    }
+    toast.success(isPublished ? "Course unpublished" : "Course is live")
     fetchCourses()
   }
 
@@ -171,13 +180,8 @@ export default function CoursesAdminContent() {
   const availableLicenses = LICENSE_TYPES/*.filter(l => l.available)*/
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Course Management</h1>
-          <p className="text-muted-foreground">Create and manage learning courses</p>
-        </div>
-        
+    <PageShell>
+      <PageHeader title="Courses" description={isAdmin ? "Learning content by licence." : "Write and submit learning content."}>
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => {
@@ -189,14 +193,14 @@ export default function CoursesAdminContent() {
                 estimatedHours: 1,
                 difficulty: "beginner",
               })
-            }}>
-              <Plus className="mr-2 h-4 w-4" />
-              New Course
+            }} className="h-10 gap-2 self-start">
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              New course
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>{editingCourse ? "Edit Course" : "Create Course"}</DialogTitle>
+              <DialogTitle>{editingCourse ? "Edit course" : "New course"}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
@@ -206,7 +210,7 @@ export default function CoursesAdminContent() {
                   onValueChange={(v) => setFormData({ ...formData, subjectId: v })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select subject" />
+                    <SelectValue placeholder="Choose a subject" />
                   </SelectTrigger>
                   <SelectContent>
                     {subjects.map((s) => (
@@ -215,30 +219,30 @@ export default function CoursesAdminContent() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="space-y-2">
                 <Label>Title</Label>
                 <Input
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="Course title"
+                  placeholder="e.g. Aerodynamics fundamentals"
                   required
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label>Description</Label>
                 <Textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Course description"
+                  placeholder="What students will learn"
                   rows={3}
                 />
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Estimated Hours</Label>
+                  <Label>Hours</Label>
                   <Input
                     type="number"
                     min={1}
@@ -246,7 +250,7 @@ export default function CoursesAdminContent() {
                     onChange={(e) => setFormData({ ...formData, estimatedHours: parseInt(e.target.value) || 1 })}
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label>Difficulty</Label>
                   <Select
@@ -264,170 +268,173 @@ export default function CoursesAdminContent() {
                   </Select>
                 </div>
               </div>
-              
+
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>
                   Cancel
                 </Button>
                 <Button type="submit">
-                  {editingCourse ? "Save Changes" : "Create Course"}
+                  {editingCourse ? "Save" : "Create"}
                 </Button>
               </div>
             </form>
           </DialogContent>
         </Dialog>
+      </PageHeader>
+
+      <div role="group" aria-label="Licence" className="flex flex-wrap gap-1.5">
+        {availableLicenses.map((license) => {
+          const active = selectedLicense === license.id
+          return (
+            <button
+              key={license.id}
+              type="button"
+              aria-pressed={active}
+              onClick={() => setSelectedLicense(license.id)}
+              className={cn(
+                "inline-flex h-9 items-center rounded-full border px-3.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                active ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-foreground hover:bg-muted",
+              )}
+            >
+              {license.name}
+            </button>
+          )
+        })}
       </div>
 
-      {/* License Tabs */}
-      <div className="flex gap-2">
-        {availableLicenses.map((license) => (
-          <Button
-            key={license.id}
-            variant={selectedLicense === license.id ? "default" : "outline"}
-            onClick={() => setSelectedLicense(license.id)}
-            className="gap-2"
-          >
-            {license.name}
-          </Button>
-        ))}
-      </div>
-
-      {/* Courses Grid */}
       {loading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {[1, 2, 3].map((i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="p-6">
-                <div className="h-4 bg-muted rounded w-3/4 mb-2" />
-                <div className="h-3 bg-muted rounded w-1/2" />
-              </CardContent>
-            </Card>
+            <Skeleton key={i} className="h-72 rounded-xl" />
           ))}
         </div>
       ) : courses.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <BookOpen className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="font-semibold mb-1">No courses yet</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Create your first course for {LICENSE_TYPES.find(l => l.id === selectedLicense)?.name}
-            </p>
-            <Button onClick={() => setIsCreateOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Create Course
-            </Button>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={BookOpen}
+          title="No courses yet"
+          description={`Nothing for ${LICENSE_TYPES.find((l) => l.id === selectedLicense)?.name ?? "this licence"} yet.`}
+        >
+          <Button onClick={() => setIsCreateOpen(true)} className="h-10 gap-2">
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            New course
+          </Button>
+        </EmptyState>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {courses.map((course) => (
-            <Card key={course.id} className="group relative">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-1">
-                    <CardTitle className="text-lg">{course.title}</CardTitle>
-                    <div className="flex flex-wrap gap-1.5">
-                      <Badge variant={course.isPublished ? "default" : "secondary"}>
-                        {course.isPublished ? "Published" : course.reviewStatus === "review" ? "In review" : "Draft"}
-                      </Badge>
-                      {course.hasPendingRevision && (
-                        <Badge variant="outline" className="border-warning/40 text-warning">
-                          Changes proposed
-                        </Badge>
+        <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {courses.map((course) => {
+            const subject = subjects.find((x) => x.id === course.subjectId)
+            const status = course.isPublished ? "Live" : course.reviewStatus === "review" ? "In review" : "Draft"
+            return (
+              <li key={course.id} className="min-w-0">
+                <article className="group flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card shadow-e1 transition-[border-color,box-shadow] hover:border-primary/40 hover:shadow-e2">
+                  <CourseArtHeader thumbnail={course.thumbnail} title={subject?.name ?? course.title} code={subject?.code} licenseType={subject?.licenseType} />
+                  <div className="flex flex-1 flex-col p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-foreground">
+                            <span
+                              aria-hidden="true"
+                              className={cn(
+                                "h-1.5 w-1.5 rounded-full",
+                                course.isPublished ? "bg-success" : course.reviewStatus === "review" ? "bg-warning" : "bg-muted-foreground/50",
+                              )}
+                            />
+                            {status}
+                          </span>
+                          {course.hasPendingRevision && (
+                            <Badge variant="outline" className="border-warning/40 bg-warning/10 text-[11px] text-foreground">
+                              Edits proposed
+                            </Badge>
+                          )}
+                        </div>
+                        <h2 className="mt-1 line-clamp-2 font-semibold text-foreground">{course.title}</h2>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="-mr-2 h-8 w-8 shrink-0" aria-label={`Actions for ${course.title}`}>
+                            <MoreVertical className="h-4 w-4" aria-hidden="true" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setEditingCourse(course)
+                              setFormData({
+                                subjectId: course.subjectId,
+                                title: course.title,
+                                description: course.description,
+                                estimatedHours: course.estimatedHours,
+                                difficulty: course.difficulty,
+                              })
+                              setIsCreateOpen(true)
+                            }}
+                          >
+                            <Pencil className="mr-2 h-4 w-4" aria-hidden="true" />
+                            Edit details
+                          </DropdownMenuItem>
+                          {isAdmin ? (
+                            <>
+                              <DropdownMenuItem onClick={() => handleTogglePublish(course.id, course.isPublished)}>
+                                {course.isPublished ? "Unpublish" : "Publish"}
+                              </DropdownMenuItem>
+                              {course.hasPendingRevision && (
+                                <>
+                                  <DropdownMenuItem onClick={() => courseAction(course.id, "apply-revision")}>Apply proposed edits</DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => courseAction(course.id, "discard-revision")}>Discard proposed edits</DropdownMenuItem>
+                                </>
+                              )}
+                            </>
+                          ) : (
+                            !course.isPublished &&
+                            course.reviewStatus !== "review" && (
+                              <DropdownMenuItem onClick={() => courseAction(course.id, "submit")}>Submit for review</DropdownMenuItem>
+                            )
+                          )}
+                          {(isAdmin || !course.isPublished) && (
+                            <DropdownMenuItem onClick={() => handleDelete(course.id)} className="text-destructive">
+                              <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
+                              Delete
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+
+                    {course.description && <p className="mt-1.5 line-clamp-2 text-sm text-muted-foreground">{course.description}</p>}
+
+                    <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground" data-tabular>
+                      <span className="flex items-center gap-1">
+                        <Layers className="h-3.5 w-3.5" aria-hidden="true" />
+                        {course._count.modules} module{course._count.modules === 1 ? "" : "s"}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+                        {course.estimatedHours}h
+                      </span>
+                      {course._count.enrollments !== undefined && (
+                        <span className="flex items-center gap-1">
+                          <Users className="h-3.5 w-3.5" aria-hidden="true" />
+                          {course._count.enrollments} enrolled
+                        </span>
                       )}
+                    </p>
+
+                    <div className="mt-auto pt-4">
+                      <Button asChild variant="outline" className="h-10 w-full gap-1.5">
+                        <Link href={`/admin/courses/${course.id}`}>
+                          Open course
+                          <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                        </Link>
+                      </Button>
                     </div>
                   </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => {
-                        setEditingCourse(course)
-                        setFormData({
-                          subjectId: course.subjectId,
-                          title: course.title,
-                          description: course.description,
-                          estimatedHours: course.estimatedHours,
-                          difficulty: course.difficulty,
-                        })
-                        setIsCreateOpen(true)
-                      }}>
-                        <Pencil className="mr-2 h-4 w-4" />
-                        Edit
-                      </DropdownMenuItem>
-                      {isAdmin ? (
-                        <>
-                          <DropdownMenuItem onClick={() => handleTogglePublish(course.id, course.isPublished)}>
-                            {course.isPublished ? "Unpublish" : "Publish"}
-                          </DropdownMenuItem>
-                          {course.hasPendingRevision && (
-                            <>
-                              <DropdownMenuItem onClick={() => courseAction(course.id, "apply-revision")}>
-                                Apply proposed changes
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => courseAction(course.id, "discard-revision")}>
-                                Discard proposed changes
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                        </>
-                      ) : (
-                        !course.isPublished &&
-                        course.reviewStatus !== "review" && (
-                          <DropdownMenuItem onClick={() => courseAction(course.id, "submit")}>
-                            Submit for review
-                          </DropdownMenuItem>
-                        )
-                      )}
-                      {(isAdmin || !course.isPublished) && (
-                        <DropdownMenuItem
-                          onClick={() => handleDelete(course.id)}
-                          className="text-destructive"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
-                  {course.description || "No description"}
-                </p>
-                
-                <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-4 w-4" />
-                    {course.estimatedHours}h
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Layers className="h-4 w-4" />
-                    {course._count.modules} modules
-                  </span>
-                  {course._count.enrollments !== undefined && (
-                    <span className="flex items-center gap-1">
-                      <Users className="h-4 w-4" />
-                      {course._count.enrollments}
-                    </span>
-                  )}
-                </div>
-                
-                <Link href={`/admin/courses/${course.id}`}>
-                  <Button variant="outline" className="w-full bg-transparent">
-                    Manage Content
-                    <ChevronRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                </article>
+              </li>
+            )
+          })}
+        </ul>
       )}
-    </div>
+    </PageShell>
   )
 }

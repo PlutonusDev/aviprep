@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -11,6 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Sparkles, Plus, Check, X, ArrowLeft } from "lucide-react"
 import { SUBJECTS } from "@lib/products"
 import Link from "@/components/meta/link"
+import { Skeleton } from "@/components/ui/skeleton"
+import { EmptyState, PageHeader, PageShell } from "@/components/hub/page-primitives"
+import { cn } from "@lib/utils"
 
 interface GeneratedQuestion {
   subjectId: string
@@ -107,229 +109,213 @@ export function AIQuestionGenerator() {
   }
 
   const subject = SUBJECTS.find((s) => s.id === subjectId)
+  const unsaved = generatedQuestions.length - savedIndexes.size
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href="/admin/questions">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">AI Question Generator</h2>
-          <p className="text-muted-foreground">Generate exam questions using AI with RAG context</p>
-        </div>
-      </div>
+    <PageShell>
+      <Button asChild variant="ghost" className="-ml-2 h-9 w-fit gap-1.5 text-muted-foreground">
+        <Link href="/admin/questions">
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          Questions
+        </Link>
+      </Button>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Input Panel */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Generation Settings</CardTitle>
-            <CardDescription>Configure how questions should be generated</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Subject</Label>
-                <Select value={subjectId} onValueChange={setSubjectId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select subject" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SUBJECTS.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Difficulty</Label>
-                <Select value={difficulty} onValueChange={setDifficulty}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="easy">Easy</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="hard">Hard</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+      <PageHeader title="AI generator" description="Draft questions from the Part 61 MOS. Everything saves as a draft for review." />
 
+      <div className="grid gap-6 lg:grid-cols-5">
+        <section className="h-fit space-y-4 rounded-xl border border-border bg-card p-4 shadow-e1 sm:p-5 lg:sticky lg:top-20 lg:col-span-2" aria-label="Settings">
+          <div className="space-y-2">
+            <Label htmlFor="gen-subject">Subject</Label>
+            <Select value={subjectId} onValueChange={setSubjectId}>
+              <SelectTrigger id="gen-subject" className="h-11">
+                <SelectValue placeholder="Choose a subject" />
+              </SelectTrigger>
+              <SelectContent>
+                {SUBJECTS.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="gen-topic">Topic</Label>
+            <Input
+              id="gen-topic"
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              placeholder="e.g. Weather fronts"
+              className="h-11"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label>Topic</Label>
-              <Input
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-                placeholder="e.g., Bernoulli's Principle, Weather Fronts, VOR Navigation"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Number of Questions</Label>
-              <Select value={count} onValueChange={setCount}>
-                <SelectTrigger>
+              <Label htmlFor="gen-difficulty">Difficulty</Label>
+              <Select value={difficulty} onValueChange={setDifficulty}>
+                <SelectTrigger id="gen-difficulty" className="h-11">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="1">1 question</SelectItem>
-                  <SelectItem value="3">3 questions</SelectItem>
-                  <SelectItem value="5">5 questions</SelectItem>
-                  <SelectItem value="10">10 questions</SelectItem>
+                  <SelectItem value="easy">Easy</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="hard">Hard</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-
             <div className="space-y-2">
-              <Label>Additional Context (Optional)</Label>
-              <Textarea
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                placeholder="Add any specific requirements, reference materials, or context for the AI to consider when generating questions..."
-                rows={4}
-              />
-              <p className="text-xs text-muted-foreground">
-                The AI will use CASA CPL syllabus content as RAG context along with any additional info you provide
-              </p>
+              <Label htmlFor="gen-count">How many</Label>
+              <Select value={count} onValueChange={setCount}>
+                <SelectTrigger id="gen-count" className="h-11">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {["1", "3", "5", "10"].map((n) => (
+                    <SelectItem key={n} value={n}>
+                      {n}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
+          </div>
 
-            <Button onClick={handleGenerate} disabled={generating || !subjectId || !topic} className="w-full">
-              {generating ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  Generate Questions
-                </>
-              )}
-            </Button>
-          </CardContent>
-        </Card>
+          <div className="space-y-2">
+            <Label htmlFor="gen-context">Extra instructions</Label>
+            <Textarea
+              id="gen-context"
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder="Optional. e.g. focus on calculations"
+              rows={4}
+            />
+          </div>
 
-        {/* Generated Questions Panel */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Generated Questions</CardTitle>
-                <CardDescription>
-                  {generatedQuestions.length > 0
-                    ? `${generatedQuestions.length} questions generated`
-                    : "Questions will appear here"}
-                </CardDescription>
-              </div>
+          <Button onClick={handleGenerate} disabled={generating || !subjectId || !topic} className="h-11 w-full gap-2">
+            {generating ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Sparkles className="h-4 w-4" aria-hidden="true" />}
+            {generating ? "Generating" : "Generate"}
+          </Button>
+        </section>
+
+        <section className="space-y-4 lg:col-span-3" aria-label="Results" aria-busy={generating}>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-base font-semibold text-foreground">
+              Results
               {generatedQuestions.length > 0 && (
-                <Button onClick={handleSaveAll} size="sm">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Save All
-                </Button>
+                <span className="ml-2 text-sm font-normal text-muted-foreground" data-tabular>
+                  {savedIndexes.size} of {generatedQuestions.length} saved
+                </span>
               )}
+            </h2>
+            {unsaved > 0 && (
+              <Button onClick={handleSaveAll} size="sm" variant="outline" className="h-9 gap-1.5">
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                Save all {unsaved}
+              </Button>
+            )}
+          </div>
+
+          {generating ? (
+            <div className="space-y-3">
+              {Array.from({ length: Math.min(3, Number.parseInt(count)) }).map((_, i) => (
+                <Skeleton key={i} className="h-56 rounded-xl" />
+              ))}
             </div>
-          </CardHeader>
-          <CardContent>
-            {generatedQuestions.length === 0 ? (
-              <div className="flex h-64 items-center justify-center rounded-lg border border-dashed">
-                <div className="text-center">
-                  <Sparkles className="mx-auto h-8 w-8 text-muted-foreground" />
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    Configure settings and click generate to create questions
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
-                {generatedQuestions.map((question, index) => (
-                  <div key={index} className="rounded-lg border p-4 space-y-3">
+          ) : generatedQuestions.length === 0 ? (
+            <EmptyState icon={Sparkles} title="Nothing yet" description="Pick a subject and topic, then generate." />
+          ) : (
+            <ol className="space-y-3">
+              {generatedQuestions.map((question, index) => {
+                const saved = savedIndexes.has(index)
+                return (
+                  <li
+                    key={index}
+                    className={cn(
+                      "space-y-3 rounded-xl border bg-card p-4 shadow-e1 transition-colors",
+                      saved ? "border-success/40" : "border-border",
+                    )}
+                  >
                     <div className="flex items-start justify-between gap-2">
-                      <div className="flex flex-wrap gap-2">
-                        <Badge variant="outline">{subject?.code}</Badge>
-                        <Badge
-                          className={
-                            question.difficulty === "easy"
-                              ? "bg-green-500/10 text-green-500"
-                              : question.difficulty === "medium"
-                                ? "bg-yellow-500/10 text-yellow-500"
-                                : "bg-red-500/10 text-red-500"
-                          }
-                        >
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <Badge variant="outline" className="font-mono">
+                          {subject?.code}
+                        </Badge>
+                        <Badge variant="outline" className="capitalize">
                           {question.difficulty}
                         </Badge>
-                        <Badge variant="secondary">{question.topic}</Badge>
+                        <span className="text-xs text-muted-foreground">{question.topic}</span>
                       </div>
-                      <div className="flex gap-1">
-                        {savedIndexes.has(index) ? (
-                          <Badge className="bg-green-500">
-                            <Check className="mr-1 h-3 w-3" />
-                            Saved
-                          </Badge>
-                        ) : (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => handleSaveQuestion(index)}
-                              disabled={savingIndex === index}
-                            >
-                              {savingIndex === index ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Plus className="h-4 w-4" />
-                              )}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-red-500"
-                              onClick={() => handleRemoveQuestion(index)}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    <p className="font-medium">{question.questionText}</p>
-
-                    <div className="space-y-1">
-                      {question.options.map((option, optIndex) => (
-                        <div
-                          key={optIndex}
-                          className={`rounded px-3 py-1.5 text-sm ${
-                            optIndex === question.correctIndex
-                              ? "bg-green-500/10 text-green-500 font-medium"
-                              : "bg-muted"
-                          }`}
-                        >
-                          {String.fromCharCode(65 + optIndex)}. {option}
+                      {saved ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-foreground">
+                          <Check className="h-3.5 w-3.5 text-success" aria-hidden="true" />
+                          Saved as draft
+                        </span>
+                      ) : (
+                        <div className="flex gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 gap-1"
+                            onClick={() => handleSaveQuestion(index)}
+                            disabled={savingIndex === index}
+                          >
+                            {savingIndex === index ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                            ) : (
+                              <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                            )}
+                            Save
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                            onClick={() => handleRemoveQuestion(index)}
+                            aria-label="Discard question"
+                          >
+                            <X className="h-4 w-4" aria-hidden="true" />
+                          </Button>
                         </div>
-                      ))}
+                      )}
                     </div>
 
-                    <div className="rounded bg-muted/50 p-3">
-                      <p className="text-xs font-medium text-muted-foreground">Explanation:</p>
-                      <p className="text-sm">{question.explanation}</p>
-                    </div>
-                    <div className="rounded bg-muted/50 p-3">
-                      <p className="text-xs font-medium text-muted-foreground">Reference:</p>
-                      <p className="text-sm">{question.reference}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                    <p className="font-medium text-foreground">{question.questionText}</p>
+
+                    <ul className="space-y-1.5">
+                      {question.options.map((option, optIndex) => {
+                        const correct = optIndex === question.correctIndex
+                        return (
+                          <li
+                            key={optIndex}
+                            className={cn(
+                              "flex items-start gap-2 rounded-md border px-3 py-2 text-sm",
+                              correct ? "border-success/40 bg-success/10 text-foreground" : "border-border text-foreground",
+                            )}
+                          >
+                            <span className="font-mono text-xs text-muted-foreground">{String.fromCharCode(65 + optIndex)}</span>
+                            <span className="flex-1">{option}</span>
+                            {correct && <Check className="h-4 w-4 shrink-0 text-success" aria-label="Correct answer" />}
+                          </li>
+                        )
+                      })}
+                    </ul>
+
+                    <details className="group rounded-md bg-muted/40 px-3 py-2 text-sm">
+                      <summary className="cursor-pointer list-none text-xs font-medium text-muted-foreground group-open:mb-1.5">
+                        Explanation and reference
+                      </summary>
+                      <p className="text-foreground">{question.explanation}</p>
+                      {question.reference && <p className="mt-1.5 text-xs text-muted-foreground">{question.reference}</p>}
+                    </details>
+                  </li>
+                )
+              })}
+            </ol>
+          )}
+        </section>
       </div>
-    </div>
+    </PageShell>
   )
 }

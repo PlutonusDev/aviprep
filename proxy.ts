@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { jwtVerify } from "jose"
 import { prisma } from "@lib/prisma"
-import { getSubdomain, isAllowedSubdomain } from "@lib/tenant"
+import { CURATOR_SUBDOMAIN, getSubdomain, isAllowedSubdomain } from "@lib/tenant"
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "your-secret-key-min-32-chars-long!")
 
@@ -53,12 +53,81 @@ async function schoolOwnsSubdomain(subdomain: string): Promise<boolean> {
   }
 }
 
+/*
+ * curators.aviprep.com.au: the content studio. Curator accounts only, with their
+ * own cookie. Its sign-in and join pages live under app/curators and are served
+ * here at /login and /join/<token>; the studio itself is the admin panel.
+ */
+const CURATOR_HOME = "/admin"
+const CURATOR_PUBLIC = ["/terms", "/privacy"]
+
+async function hasCuratorSession(request: NextRequest) {
+  const token = request.cookies.get("curator_session")?.value
+  if (!token) return false
+  try {
+    const { payload } = await jwtVerify(token, JWT_SECRET)
+    return payload.kind === "curator-session"
+  } catch {
+    return false
+  }
+}
+
+async function curatorProxy(request: NextRequest) {
+  const { pathname } = request.nextUrl
+  // Static files (logos, uploads, the service worker) pass straight through.
+  if (/\.[a-z0-9]+$/i.test(pathname)) return NextResponse.next()
+
+  const signedIn = await hasCuratorSession(request)
+  const to = (path: string, params?: Record<string, string>) => {
+    const url = request.nextUrl.clone()
+    url.pathname = path
+    url.search = ""
+    for (const [k, v] of Object.entries(params ?? {})) url.searchParams.set(k, v)
+    return url
+  }
+
+  if (pathname === "/") return NextResponse.redirect(to(signedIn ? CURATOR_HOME : "/login"))
+
+  if (pathname === "/login") {
+    if (signedIn) return NextResponse.redirect(to(CURATOR_HOME))
+    const url = request.nextUrl.clone()
+    url.pathname = "/curators/login"
+    return NextResponse.rewrite(url)
+  }
+
+  if (pathname.startsWith("/join/")) {
+    const url = request.nextUrl.clone()
+    url.pathname = `/curators${pathname}`
+    return NextResponse.rewrite(url)
+  }
+
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+    if (!signedIn) return NextResponse.redirect(to("/login", { redirect: pathname }))
+    return NextResponse.next()
+  }
+
+  if (CURATOR_PUBLIC.includes(pathname)) return NextResponse.next()
+
+  // Nothing else from the main site exists here.
+  return NextResponse.redirect(to("/"))
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl
   const host = request.headers.get("host") || ""
   const sessionToken = request.cookies.get("session")?.value
 
   const rawSubdomain = getSubdomain(host)
+
+  if (rawSubdomain === CURATOR_SUBDOMAIN) return curatorProxy(request)
+
+  // The curator pages are only reachable through the curators subdomain.
+  if (pathname === "/curators" || pathname.startsWith("/curators/")) {
+    const url = request.nextUrl.clone()
+    url.pathname = "/"
+    url.search = ""
+    return NextResponse.redirect(url)
+  }
 
   // An allowlisted subdomain behaves as the main site, not as a school portal.
   const allowlisted = rawSubdomain ? isAllowedSubdomain(rawSubdomain) : false

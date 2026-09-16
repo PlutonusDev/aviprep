@@ -52,7 +52,6 @@ import {
     SECONDARY_NAV,
     SCHOOL_NAV,
     ADMIN_NAV,
-    CURATOR_NAV,
     isNavItemActive,
     filterNavItems,
 } from "./nav-items"
@@ -581,7 +580,7 @@ export default function Header() {
                                     {filterNavItems([
                                         ...SECONDARY_NAV,
                                         ...(user?.isFlightSchoolAdmin ? [SCHOOL_NAV] : []),
-                                        ...(user?.isAdmin ? [ADMIN_NAV] : user?.isCurator ? [CURATOR_NAV] : []),
+                                        ...(user?.isAdmin ? [ADMIN_NAV] : []),
                                     ], navFilter).map((item) => {
                                         const isActive = isNavItemActive(pathname, item.href)
                                         return (

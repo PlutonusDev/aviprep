@@ -17,7 +17,7 @@ import { sendSms, toE164AustralianMobile } from "@lib/sms"
  * says what the code is for, so no half-finished state lives in a cookie.
  */
 
-export type OtpPurpose = "signup" | "login" | "reset" | "delete" | "waitlist"
+export type OtpPurpose = "signup" | "login" | "reset" | "delete" | "waitlist" | "curator-join" | "curator-login"
 
 export const OTP_LENGTH = 6
 const TTL_MS = 10 * 60_000
@@ -34,6 +34,8 @@ const WHAT_FOR: Record<OtpPurpose, string> = {
   reset: "to reset your password",
   delete: "to confirm closing your account",
   waitlist: "to join the waitlist",
+  "curator-join": "to set up your curator account",
+  "curator-login": "to sign in to the content studio",
 }
 
 function hash(purpose: OtpPurpose, key: string, code: string) {
@@ -146,9 +148,9 @@ export interface Challenge {
   purpose: OtpPurpose
   /** Same key the code was issued under. */
   key: string
-  /** Sign-up and waitlist only: the number the person just typed in. */
+  /** Sign-up, waitlist and curator join only: the number the person just typed in. */
   phone?: string
-  /** Login and closure only, where the person has already proven who they are. */
+  /** Login and closure only, where the person has already proven who they are. A Curator id for curator-login. */
   userId?: string
   /** Password reset: the email typed in, whether or not it has an account. */
   email?: string

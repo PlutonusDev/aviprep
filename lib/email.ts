@@ -17,9 +17,10 @@ interface EmailOptions {
     subject: string
     text?: string
     html: string
+    attachments?: { filename: string; content: Buffer; contentType?: string }[]
 }
 
-export async function sendEmailWelcome({ to, subject, text, html }: EmailOptions) {
+export async function sendEmailWelcome({ to, subject, text, html, attachments }: EmailOptions) {
     try {
         const info = await transporter.sendMail({
             from: '"AviPrep" <welcome@aviprep.com.au>',
@@ -27,6 +28,7 @@ export async function sendEmailWelcome({ to, subject, text, html }: EmailOptions
             subject,
             text: text || "",
             html,
+            attachments,
         })
         console.log("Email sent:", info.messageId)
         return { success: true, messageId: info.messageId }
@@ -36,7 +38,7 @@ export async function sendEmailWelcome({ to, subject, text, html }: EmailOptions
     }
 }
 
-export async function sendEmailSupport({ to, subject, text, html }: EmailOptions) {
+export async function sendEmailSupport({ to, subject, text, html, attachments }: EmailOptions) {
     try {
         const info = await transporter.sendMail({
             from: '"AviPrep" <support@aviprep.com.au>',
@@ -44,6 +46,7 @@ export async function sendEmailSupport({ to, subject, text, html }: EmailOptions
             subject,
             text: text || "",
             html,
+            attachments,
         })
         console.log("Email sent:", info.messageId)
         return { success: true, messageId: info.messageId }
@@ -53,7 +56,7 @@ export async function sendEmailSupport({ to, subject, text, html }: EmailOptions
     }
 }
 
-export async function sendEmailPartnership({ to, subject, text, html }: EmailOptions) {
+export async function sendEmailPartnership({ to, subject, text, html, attachments }: EmailOptions) {
     try {
         const info = await transporter.sendMail({
             from: '"AviPrep" <partnerships@aviprep.com.au>',
@@ -61,6 +64,7 @@ export async function sendEmailPartnership({ to, subject, text, html }: EmailOpt
             subject,
             text: text || "",
             html,
+            attachments,
         })
         console.log("Email sent:", info.messageId)
         return { success: true, messageId: info.messageId }

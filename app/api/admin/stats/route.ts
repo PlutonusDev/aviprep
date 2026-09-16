@@ -28,8 +28,24 @@ export async function GET() {
     }
 
     // Fetch stats
-    const [totalMembers, totalQuestions, purchases, activeSubscriptions, waitlistCount] = await Promise.all([
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    const [
+      totalMembers,
+      newMembers,
+      totalQuestions,
+      purchases,
+      activeSubscriptions,
+      waitlistCount,
+      questionsInReview,
+      questionChanges,
+      coursesInReview,
+      courseChanges,
+      lessonChanges,
+      mosReviews,
+      rtoContacts,
+    ] = await Promise.all([
       prisma.user.count(),
+      prisma.user.count({ where: { createdAt: { gte: weekAgo } } }),
       prisma.question.count(),
       prisma.purchase.aggregate({
         _sum: { priceAud: true },
@@ -41,14 +57,24 @@ export async function GET() {
         },
       }),
       prisma.waitlist.count(),
+      prisma.question.count({ where: { status: "review" } }),
+      prisma.question.count({ where: { pendingRevisionAt: { not: null } } }),
+      prisma.course.count({ where: { reviewStatus: "review", isPublished: false } }),
+      prisma.course.count({ where: { pendingRevisionAt: { not: null } } }),
+      prisma.lesson.count({ where: { pendingRevisionAt: { not: null } } }),
+      prisma.mosMapping.count({ where: { needsReview: true } }),
+      prisma.rtoContact.count(),
     ])
 
     return NextResponse.json({
       totalMembers,
+      newMembers,
       totalQuestions,
       totalRevenue: purchases._sum.priceAud ?? 0,
       activeSubscriptions,
       waitlistCount,
+      rtoContacts,
+      queue: { questionsInReview, questionChanges, coursesInReview, courseChanges, lessonChanges, mosReviews },
     })
   } catch (error) {
     console.error("Admin stats error:", error)

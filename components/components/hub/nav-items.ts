@@ -11,7 +11,6 @@ import {
   Settings,
   Building2,
   ShieldCheck,
-  PenLine,
 } from "lucide-react"
 import type React from "react"
 import type { TenantFeature } from "@lib/tenant-features"
@@ -74,12 +73,6 @@ export const SCHOOL_NAV: NavItem = {
   name: "Manage flight school",
   href: "/school",
   icon: Building2,
-}
-
-export const CURATOR_NAV: NavItem = {
-  name: "Content studio",
-  href: "/admin/questions",
-  icon: PenLine,
 }
 
 export const ADMIN_NAV: NavItem = {

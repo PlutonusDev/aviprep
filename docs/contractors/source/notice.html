@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<title>Before we pay you · AviPrep</title>
+<style>
+  @font-face { font-family: "Inter"; font-weight: 400; src: url("Inter-400.ttf") format("truetype"); }
+  @font-face { font-family: "Inter"; font-weight: 600; src: url("Inter-600.ttf") format("truetype"); }
+
+  :root {
+    --orange: #F78601;
+    --orange-ink: #B45F00;
+    --blue: #1B5F99;
+    --ink: #0F172A;
+    --text: #334155;
+    --muted: #64748B;
+    --faint: #94A3B8;
+    --line: #E2E8F0;
+    --ato: #CBD5E1;
+    --warm: #FFF7EC;
+  }
+
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    font-family: "Inter", Arial, sans-serif;
+    font-size: 10pt;
+    line-height: 1.55;
+    color: var(--text);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .page { position: relative; width: 210mm; height: 297mm; overflow: hidden; }
+  .letterhead { position: absolute; inset: 0 0 auto 0; width: 210mm; height: 40mm; }
+  .content { position: absolute; top: 52mm; left: 20mm; right: 20mm; bottom: 14mm; display: flex; flex-direction: column; }
+
+  h1, h2 { margin: 0; color: var(--ink); font-weight: 600; letter-spacing: -0.015em; }
+  p { margin: 0; text-wrap: pretty; }
+  h1, h2 { text-wrap: balance; }
+  a { color: var(--blue); font-weight: 600; text-decoration: none; }
+  strong { color: var(--ink); font-weight: 600; }
+
+  /* Intro */
+  h1 { font-size: 30pt; line-height: 1.05; }
+  .intro { margin-top: 5mm; max-width: 140mm; font-size: 12pt; line-height: 1.5; color: var(--muted); }
+  .intro strong { color: var(--ink); }
+
+  /* Options */
+  .options { margin-top: 10mm; }
+  .option {
+    display: grid;
+    grid-template-columns: 50mm 1fr;
+    gap: 8mm;
+    padding: 7mm 0;
+    border-bottom: 0.3mm solid var(--line);
+  }
+  .option.pick {
+    margin: 0 -6mm;
+    padding: 7mm 6mm;
+    border-bottom: 0;
+    border-radius: 4mm;
+    background: var(--warm);
+  }
+
+  .label .n { font-size: 8.5pt; font-weight: 600; letter-spacing: 0.08em; color: var(--muted); }
+  .pick .label .n { color: var(--orange-ink); }
+  .label h2 { margin-top: 1.5mm; font-size: 15pt; line-height: 1.2; }
+  .tag {
+    display: inline-block;
+    margin-top: 2.5mm;
+    padding: 0.6mm 2.6mm;
+    border-radius: 999px;
+    font-size: 7.5pt;
+    font-weight: 600;
+    color: #fff;
+    background: var(--orange);
+  }
+
+  .detail p + p { margin-top: 1.8mm; }
+  .detail .small { font-size: 8.8pt; color: var(--muted); }
+
+  /* What $400 becomes */
+  .payout { margin-top: 4.5mm; }
+  .bar { display: flex; height: 3.2mm; border-radius: 999px; overflow: hidden; background: var(--ato); }
+  .bar .you { background: var(--orange); }
+  .bar .ato { background: var(--ato); }
+  .legend { display: flex; justify-content: space-between; margin-top: 2mm; font-size: 8.8pt; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .legend b { color: var(--ink); font-weight: 600; }
+  .legend .you-key::before,
+  .legend .ato-key::before {
+    content: ""; display: inline-block; width: 2.2mm; height: 2.2mm; border-radius: 0.6mm;
+    margin-right: 1.4mm; vertical-align: -0.2mm;
+  }
+  .legend .you-key::before { background: var(--orange); }
+  .legend .ato-key::before { background: var(--ato); }
+
+  /* Close */
+  .close {
+    margin-top: auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 10mm;
+    padding-top: 6mm;
+  }
+  .close h2 { font-size: 12pt; }
+  .close p { margin-top: 1mm; }
+  .fine { font-size: 8pt; color: var(--muted); text-align: right; max-width: 62mm; }
+</style>
+</head>
+<body>
+<section class="page">
+  <img class="letterhead" src="aviprep-letterhead-header.png" alt="AviPrep">
+
+  <div class="content">
+    <h1>Before we pay you</h1>
+    <p class="intro">We need your <strong>ABN</strong> or a <strong>signed hobby form</strong> before your first royalty payment. Without one, the law says we have to hold back 47% of anything over $75 and send it to the ATO.</p>
+
+    <div class="options">
+
+      <div class="option pick">
+        <div class="label">
+          <div class="n">OPTION 1</div>
+          <h2>Get an ABN</h2>
+          <span class="tag">Recommended</span>
+        </div>
+        <div class="detail">
+          <p>It’s free and takes about ten minutes at <a href="https://www.abr.gov.au/">abr.gov.au</a>. Apply as a sole trader, then send us the number.</p>
+          <p class="small">You declare your royalties in your tax return, so it’s worth putting a bit aside. You don’t need GST unless your turnover hits $75,000 a year.</p>
+          <div class="payout">
+            <div class="bar"><div class="you" style="width: 100%"></div></div>
+            <div class="legend"><span class="you-key">You get <b>$400</b> of a $400 royalty</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="option">
+        <div class="label">
+          <div class="n">OPTION 2</div>
+          <h2>Sign the hobby form</h2>
+        </div>
+        <div class="detail">
+          <p>If this is a hobby for you rather than a business, sign the ATO’s <em>Statement by a supplier</em> (NAT 3346). We’ll send it over.</p>
+          <p class="small">If you’re earning regularly with us, the ATO may see it as a business, and the form won’t cover you.</p>
+          <div class="payout">
+            <div class="bar"><div class="you" style="width: 100%"></div></div>
+            <div class="legend"><span class="you-key">You get <b>$400</b> of a $400 royalty</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="option">
+        <div class="label">
+          <div class="n">OPTION 3</div>
+          <h2>Do neither</h2>
+        </div>
+        <div class="detail">
+          <p>We hold back 47% of each payment and pay it to the ATO for you.</p>
+          <p class="small">It counts towards your tax when you lodge your return. We’ll send you a payment summary after 30 June.</p>
+          <div class="payout">
+            <div class="bar"><div class="you" style="width: 53%"></div><div class="ato" style="width: 47%"></div></div>
+            <div class="legend"><span class="you-key">You get <b>$212</b> of a $400 royalty</span><span class="ato-key"><b>$188</b> to the ATO</span></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="close">
+      <div>
+        <h2>Questions?</h2>
+        <p>Email us at <a href="mailto:hello@aviprep.com.au">hello@aviprep.com.au</a></p>
+      </div>
+      <p class="fine">General information, not tax advice. A tax agent or the ATO can help with your situation.</p>
+    </div>
+  </div>
+</section>
+</body>
+</html>

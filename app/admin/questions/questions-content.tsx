@@ -1,6 +1,7 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -51,6 +52,8 @@ interface TopicRow {
 
 interface QuestionRow extends EditableQuestion {
   id: string
+  /** Has a primary Part 61 MOS item. */
+  mosMapped?: boolean
 }
 
 const STATUS_STYLES: Record<QuestionStatus, string> = {
@@ -94,6 +97,50 @@ export function QuestionsContent() {
   const [deleteId, setDeleteId] = useState<string | null>(null)
 
   const subject = SUBJECTS.find((s) => s.id === subjectId)
+
+  // Deep links from MOS coverage:
+  //   ?subject=cpl-aerodynamics&new=1&mos=<itemId>  write a question for a gap
+  //   ?subject=cpl-aerodynamics&edit=<questionId>   map an existing question
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const deepLinked = useRef(false)
+  useEffect(() => {
+    if (deepLinked.current) return
+    const target = searchParams.get("subject")
+    if (!target || !SUBJECTS.some((s) => s.id === target)) return
+    deepLinked.current = true
+    setSubjectId(target)
+    const editId = searchParams.get("edit")
+    const itemId = searchParams.get("mos")
+    router.replace("/admin/questions", { scroll: false })
+
+    if (editId) {
+      fetch(`/api/admin/questions?id=${encodeURIComponent(editId)}&pageSize=1`)
+        .then((r) => (r.ok ? r.json() : Promise.reject()))
+        .then((d) => {
+          const q = d.questions?.[0]
+          if (!q) return toast.error("That question no longer exists")
+          setOriginal(q)
+          setEditing(!isAdmin && q.pendingRevision ? { ...q, ...q.pendingRevision } : q)
+        })
+        .catch(() => toast.error("Couldn't open that question"))
+    } else if (searchParams.get("new") === "1") {
+      const draft: EditableQuestion = { ...BLANK, subjectId: target }
+      setEditing(draft)
+      if (itemId) {
+        fetch(`/api/admin/mos/items?subjectId=${encodeURIComponent(target)}&ids=${encodeURIComponent(itemId)}`)
+          .then((r) => (r.ok ? r.json() : Promise.reject()))
+          .then((d) => {
+            const item = d.items?.[0]
+            if (!item) return
+            setEditing((e) =>
+              e && !e.id ? { ...e, topic: e.topic || item.subtopicTitle || item.topicTitle, mos: [{ itemId: item.id, primary: true, source: "manual", confidence: null, item }] } : e,
+            )
+          })
+          .catch(() => {})
+      }
+    }
+  }, [searchParams, router, isAdmin])
 
   const filteredSubjects = useMemo(() => {
     const q = subjectQuery.trim().toLowerCase()
@@ -190,25 +237,30 @@ export function QuestionsContent() {
     }
   }
 
-  async function reviewRevision(action: "apply-revision" | "discard-revision") {
+  async function reviewAction(body: Record<string, unknown>, done: string) {
     if (!editing?.id) return
     setReviewing(true)
     try {
       const res = await fetch(`/api/admin/questions/${editing.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action }),
+        body: JSON.stringify(body),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) return toast.error(data.error || "Couldn't update the question")
-      toast.success(action === "apply-revision" ? "Changes applied" : "Proposed changes discarded")
+      toast.success(done)
       setEditing(null)
       setOriginal(null)
-      await loadQuestions(subjectId, activeTopic)
+      await Promise.all([loadTopics(subjectId), loadQuestions(subjectId, activeTopic)])
     } finally {
       setReviewing(false)
     }
   }
+
+  const reviewRevision = (action: "apply-revision" | "discard-revision", reason?: string) =>
+    reviewAction({ action, reason }, action === "apply-revision" ? "Changes applied" : "Proposed changes discarded")
+
+  const sendBack = (reason: string) => reviewAction({ action: "send-back", reason }, "Sent back with your feedback")
 
   function openEditor(q: QuestionRow) {
     setServerErrors(undefined)
@@ -356,6 +408,8 @@ export function QuestionsContent() {
               isLive={!!original && effectiveStatus(original.status) === "published"}
               pendingRevision={isAdmin ? original?.pendingRevision : null}
               onReviewRevision={reviewRevision}
+              onSendBack={sendBack}
+              inReview={!!original && original.status === "review"}
               reviewing={reviewing}
             />
           </CardContent>
@@ -520,6 +574,11 @@ export function QuestionsContent() {
                           {q.pendingRevision && (
                             <Badge variant="outline" className="border-warning/40 text-xs text-warning">
                               Changes proposed
+                            </Badge>
+                          )}
+                          {q.mosMapped === false && (
+                            <Badge variant="outline" className="border-warning/40 bg-warning/10 text-xs text-foreground">
+                              No MOS link
                             </Badge>
                           )}
                           <Badge variant="outline" className="text-xs">

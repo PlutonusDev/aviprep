@@ -3,7 +3,6 @@
 import React from "react"
 
 import { useEffect, useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -53,6 +52,9 @@ import {
 } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { toast } from "sonner"
+import { Skeleton } from "@/components/ui/skeleton"
+import { EmptyState, PageHeader, PageShell, StatTile } from "@/components/hub/page-primitives"
+import { cn } from "@lib/utils"
 
 interface FlightSchool {
   id: string
@@ -176,91 +178,54 @@ export default function FlightSchoolsContent() {
     }
   }
 
+  const totalStudents = schools.reduce((sum, s) => sum + s.studentCount, 0)
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Flight Schools</h1>
-          <p className="text-muted-foreground">Manage flight school institution accounts</p>
-        </div>
-        <Button onClick={() => setShowCreateDialog(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Flight School
+    <PageShell>
+      <PageHeader title="Flight schools" description="School accounts and their students.">
+        <Button onClick={() => setShowCreateDialog(true)} className="h-10 gap-2 self-start">
+          <Plus className="h-4 w-4" aria-hidden="true" />
+          Add school
         </Button>
+      </PageHeader>
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+        <StatTile icon={Building2} label="Schools" value={isLoading ? "–" : String(schools.length)} />
+        <StatTile icon={CheckCircle} label="Active" value={isLoading ? "–" : String(schools.filter((s) => s.isActive).length)} />
+        <StatTile icon={Users} label="Students" value={isLoading ? "–" : totalStudents.toLocaleString()} />
       </div>
 
-      {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Schools</p>
-                <p className="text-2xl font-bold">{schools.length}</p>
-              </div>
-              <Building2 className="h-8 w-8 text-muted-foreground/50" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Students</p>
-                <p className="text-2xl font-bold">{schools.reduce((sum, s) => sum + s.studentCount, 0)}</p>
-              </div>
-              <Users className="h-8 w-8 text-muted-foreground/50" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Active Schools</p>
-                <p className="text-2xl font-bold">{schools.filter((s) => s.isActive).length}</p>
-              </div>
-              <CheckCircle className="h-8 w-8 text-muted-foreground/50" />
-            </div>
-          </CardContent>
-        </Card>
+      <div className="relative w-full max-w-md">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+        <Label htmlFor="school-search" className="sr-only">
+          Search schools
+        </Label>
+        <Input id="school-search" placeholder="Search schools" value={search} onChange={(e) => setSearch(e.target.value)} className="h-11 pl-9" />
       </div>
 
-      {/* Schools Table */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search schools..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : schools.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              {search ? "No schools match your search" : "No flight schools yet"}
-            </div>
-          ) : (
-            <Table>
+      {isLoading ? (
+        <Skeleton className="h-64 rounded-xl" />
+      ) : schools.length === 0 ? (
+        <EmptyState
+          icon={Building2}
+          title={search ? "No matches" : "No schools yet"}
+          description={search ? "Try a different search." : "Add a school to give it a branded portal."}
+        />
+      ) : (
+        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-e1">
+          <div className="overflow-x-auto">
+            <Table className="min-w-[820px]">
               <TableHeader>
-                <TableRow>
+                <TableRow className="bg-muted/40 hover:bg-muted/40">
                   <TableHead>School</TableHead>
                   <TableHead>Admin</TableHead>
-                  <TableHead className="text-center">Students</TableHead>
+                  <TableHead className="text-right">Students</TableHead>
                   <TableHead>Plan</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Created</TableHead>
-                  <TableHead className="w-10" />
+                  <TableHead className="w-10">
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -268,23 +233,22 @@ export default function FlightSchoolsContent() {
                   <TableRow key={school.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                          <Building2 className="h-5 w-5 text-primary" />
-                        </div>
-                        <div>
-                          <p className="font-medium">{school.name}</p>
-                          <p className="text-xs text-muted-foreground">{school.email}</p>
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                          <Building2 className="h-4 w-4 text-primary" aria-hidden="true" />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-foreground">{school.name}</p>
+                          <p className="truncate text-xs text-muted-foreground">{school.email}</p>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div>
-                        <p className="text-sm">{school.adminName}</p>
-                        <p className="text-xs text-muted-foreground">{school.adminEmail}</p>
-                      </div>
+                      <p className="text-sm text-foreground">{school.adminName}</p>
+                      <p className="text-xs text-muted-foreground">{school.adminEmail}</p>
                     </TableCell>
-                    <TableCell className="text-center">
-                      {school.studentCount} / {school.maxStudents}
+                    <TableCell className="text-right" data-tabular>
+                      {school.studentCount}
+                      <span className="text-muted-foreground"> / {school.maxStudents}</span>
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className="capitalize">
@@ -292,9 +256,10 @@ export default function FlightSchoolsContent() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={school.isActive ? "default" : "secondary"}>
+                      <span className="inline-flex items-center gap-1.5 text-sm text-foreground">
+                        <span className={cn("h-1.5 w-1.5 rounded-full", school.isActive ? "bg-success" : "bg-muted-foreground/50")} aria-hidden="true" />
                         {school.isActive ? "Active" : "Suspended"}
-                      </Badge>
+                      </span>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {formatDistanceToNow(new Date(school.createdAt), { addSuffix: true })}
@@ -302,45 +267,33 @@ export default function FlightSchoolsContent() {
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
+                          <Button variant="ghost" size="icon" aria-label={`Actions for ${school.name}`}>
+                            <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem asChild>
-                            <a href={`/school`} target="_blank">
-                              <ExternalLink className="mr-2 h-4 w-4" />
-                              View Dashboard
+                            <a href="/school" target="_blank" rel="noreferrer">
+                              <ExternalLink className="mr-2 h-4 w-4" aria-hidden="true" />
+                              Open portal
                             </a>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setSelectedSchool(school)
-                              setShowEditDialog(true)
-                            }}
-                          >
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit Settings
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => handleToggleActive(school)}>
                             {school.isActive ? (
                               <>
-                                <Ban className="mr-2 h-4 w-4" />
+                                <Ban className="mr-2 h-4 w-4" aria-hidden="true" />
                                 Suspend
                               </>
                             ) : (
                               <>
-                                <CheckCircle className="mr-2 h-4 w-4" />
+                                <CheckCircle className="mr-2 h-4 w-4" aria-hidden="true" />
                                 Activate
                               </>
                             )}
                           </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => handleDelete(school)}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
+                          <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(school)}>
+                            <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
                             Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -350,17 +303,17 @@ export default function FlightSchoolsContent() {
                 ))}
               </TableBody>
             </Table>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        </div>
+      )}
 
       {/* Create Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Flight School</DialogTitle>
+            <DialogTitle>Add a flight school</DialogTitle>
             <DialogDescription>
-              Create a new flight school institution account. The admin user will receive an email with login instructions.
+              The school's admin gets an email with sign-in details.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreate}>
@@ -369,7 +322,7 @@ export default function FlightSchoolsContent() {
                 <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm">{error}</div>
               )}
               <div className="space-y-2">
-                <Label htmlFor="name">School Name</Label>
+                <Label htmlFor="name">School name</Label>
                 <Input
                   id="name"
                   value={createForm.name}
@@ -379,7 +332,7 @@ export default function FlightSchoolsContent() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email">School Email</Label>
+                <Label htmlFor="email">School email</Label>
                 <Input
                   id="email"
                   type="email"
@@ -390,7 +343,7 @@ export default function FlightSchoolsContent() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="adminEmail">Admin User Email</Label>
+                <Label htmlFor="adminEmail">Admin email</Label>
                 <Input
                   id="adminEmail"
                   type="email"
@@ -400,12 +353,12 @@ export default function FlightSchoolsContent() {
                   required
                 />
                 <p className="text-xs text-muted-foreground">
-                  Must be an existing AviPrep user who will manage this school
+                  Must already have an AviPrep account.
                 </p>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>Subscription Tier</Label>
+                  <Label>Plan</Label>
                   <Select
                     value={createForm.subscriptionTier}
                     onValueChange={(v) => setCreateForm((f) => ({ ...f, subscriptionTier: v }))}
@@ -421,7 +374,7 @@ export default function FlightSchoolsContent() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="maxStudents">Max Students</Label>
+                  <Label htmlFor="maxStudents">Student limit</Label>
                   <Input
                     id="maxStudents"
                     type="number"
@@ -438,12 +391,12 @@ export default function FlightSchoolsContent() {
               </Button>
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Create School
+                Add school
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageShell>
   )
 }

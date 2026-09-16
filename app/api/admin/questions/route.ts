@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { prisma } from "@lib/prisma"
 import { isResponse, requireStaff } from "@lib/staff"
 import { validateQuestion, isValid } from "@lib/question-validation"
+import { MOS_PUBLISH_ERROR, checkLinksForSubject, parseMosInput, saveMappings, withPrimaryMapping } from "@lib/mos/mappings"
 
 export async function GET(request: NextRequest) {
   const staff = await requireStaff({ curators: true })
@@ -15,8 +16,10 @@ export async function GET(request: NextRequest) {
   const subjectId = searchParams.get("subjectId") || ""
   const topic = searchParams.get("topic") || ""
   const status = searchParams.get("status") || ""
+  const id = searchParams.get("id") || ""
 
   const where = {
+    ...(/^[a-f0-9]{24}$/i.test(id) && { id }),
     ...(search && {
       OR: [
         { questionText: { contains: search, mode: "insensitive" as const } },
@@ -46,8 +49,11 @@ export async function GET(request: NextRequest) {
     prisma.question.count({ where }),
   ])
 
+  // Lets the list flag questions that still need a Part 61 MOS link.
+  const mapped = await withPrimaryMapping("question", questions.map((q) => q.id))
+
   return NextResponse.json({
-    questions,
+    questions: questions.map((q) => ({ ...q, mosMapped: mapped.has(q.id) })),
     total,
     page,
     pageSize,
@@ -72,6 +78,13 @@ export async function POST(request: NextRequest) {
     const requested = body.status === "review" || body.status === "published" ? body.status : "draft"
     const status = !staff.isAdmin && requested === "published" ? "review" : requested
 
+    const mos = parseMosInput(body.mos)
+    const mosError = mos ? await checkLinksForSubject(mos, body.subjectId) : null
+    if (mosError) return NextResponse.json({ error: mosError, fieldErrors: { mos: mosError } }, { status: 422 })
+    if (status === "published" && !mos?.some((l) => l.primary)) {
+      return NextResponse.json({ error: MOS_PUBLISH_ERROR, fieldErrors: { mos: MOS_PUBLISH_ERROR } }, { status: 422 })
+    }
+
     const question = await prisma.question.create({
       data: {
         subjectId: body.subjectId,
@@ -86,8 +99,13 @@ export async function POST(request: NextRequest) {
         authorId: staff.userId,
         authorNote: body.authorNote || null,
         ...(status === "published" ? { reviewedById: staff.userId } : {}),
+        ...(staff.isAdmin && (body.points === 1 || body.points === 3) ? { points: body.points } : {}),
       },
     })
+
+    if (mos) {
+      await saveMappings({ contentType: "question", contentId: question.id, subjectId: question.subjectId, links: mos, userId: staff.userId })
+    }
 
     return NextResponse.json(question)
   } catch (error) {

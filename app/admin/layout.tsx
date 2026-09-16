@@ -16,12 +16,7 @@ export const metadata: Metadata = {
 export default ({ children }: { children: React.ReactNode }) => {
     return (
         <UserProvider>
-            <AdminLayout>
-              <div className="absolute top-0 inset-0 bg-gradient-to-b from-blue-900/20 to-transparent pointer-events-none" />
-              <div className="p-6">
-                {children}
-              </div>
-            </AdminLayout>
+            <AdminLayout>{children}</AdminLayout>
         </UserProvider>
     )
 }

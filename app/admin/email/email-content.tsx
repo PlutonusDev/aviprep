@@ -3,21 +3,11 @@
 import React from "react"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import {
   Dialog,
   DialogContent,
@@ -26,7 +16,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Mail, Send, Users, Clock, CheckCircle, XCircle, Eye, Upload, Code } from "lucide-react"
+import { Mail, Send, Users, Clock, CheckCircle, XCircle, Eye, Upload, Loader2 } from "lucide-react"
+import { PageHeader, PageShell } from "@/components/hub/page-primitives"
+import { cn } from "@lib/utils"
 
 interface SendResult {
   email: string
@@ -128,78 +120,55 @@ export function EmailContent() {
     reader.readAsText(file)
   }
 
+  const recipientCount = getRecipientCount()
+  const audiences = [
+    { id: "all_users", label: "Members", detail: `${stats.users.toLocaleString()} people`, icon: Users },
+    { id: "all_waitlist", label: "Waitlist", detail: `${stats.waitlist.toLocaleString()} people`, icon: Clock },
+    { id: "specific", label: "Specific people", detail: "Paste addresses", icon: Mail },
+  ] as const
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Email</h1>
-        <p className="text-muted-foreground">Send emails to users and waitlist members</p>
-      </div>
+    <PageShell>
+      <PageHeader title="Email" description="Send a one-off email to members or the waitlist." />
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Stats Cards */}
-        <Card>
-          <CardContent className="flex items-center gap-4 p-6">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-              <Users className="h-6 w-6 text-primary" />
+      <div className="grid gap-6 xl:grid-cols-5">
+        <section className="space-y-6 rounded-xl border border-border bg-card p-4 shadow-e1 sm:p-6 xl:col-span-3" aria-label="Compose">
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-medium text-foreground">To</legend>
+            <div role="radiogroup" className="grid gap-2 sm:grid-cols-3">
+              {audiences.map((a) => {
+                const active = recipients === a.id
+                return (
+                  <button
+                    key={a.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => setRecipients(a.id)}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      active ? "border-primary bg-primary/5" : "border-border hover:border-primary/40",
+                    )}
+                  >
+                    <a.icon className={cn("h-4 w-4 shrink-0", active ? "text-primary" : "text-muted-foreground")} aria-hidden="true" />
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium text-foreground">{a.label}</span>
+                      <span className="block text-xs text-muted-foreground" data-tabular>
+                        {a.detail}
+                      </span>
+                    </span>
+                  </button>
+                )
+              })}
             </div>
-            <div>
-              <p className="text-2xl font-bold">{stats.users}</p>
-              <p className="text-sm text-muted-foreground">Registered Users</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-4 p-6">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-amber-500/10">
-              <Clock className="h-6 w-6 text-amber-500" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{stats.waitlist}</p>
-              <p className="text-sm text-muted-foreground">Waitlist Members</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-4 p-6">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-green-500/10">
-              <Mail className="h-6 w-6 text-green-500" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{getRecipientCount()}</p>
-              <p className="text-sm text-muted-foreground">Selected Recipients</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Compose Email</CardTitle>
-          <CardDescription>
-            Send custom HTML emails to your users. Use {"{{firstName}}"} for personalization.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Recipients */}
-          <div className="space-y-2">
-            <Label>Recipients</Label>
-            <Select value={recipients} onValueChange={(v) => setRecipients(v as typeof recipients)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all_users">All Registered Users ({stats.users})</SelectItem>
-                <SelectItem value="all_waitlist">All Waitlist Members ({stats.waitlist})</SelectItem>
-                <SelectItem value="specific">Specific Email Addresses</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          </fieldset>
 
           {recipients === "specific" && (
             <div className="space-y-2">
-              <Label>Email Addresses</Label>
+              <Label htmlFor="specific-emails">Addresses</Label>
               <Textarea
-                placeholder="Enter email addresses, one per line or comma-separated"
+                id="specific-emails"
+                placeholder="One per line, or separated by commas"
                 value={specificEmails}
                 onChange={(e) => setSpecificEmails(e.target.value)}
                 rows={4}
@@ -207,211 +176,174 @@ export function EmailContent() {
             </div>
           )}
 
-          {/* Subject */}
           <div className="space-y-2">
             <Label htmlFor="subject">Subject</Label>
-            <Input
-              id="subject"
-              placeholder="Enter email subject"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-            />
+            <Input id="subject" value={subject} onChange={(e) => setSubject(e.target.value)} className="h-11" />
           </div>
 
-          {/* HTML Content */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label>HTML Content</Label>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Label htmlFor="html-content">HTML</Label>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" asChild>
+                <Button variant="outline" size="sm" asChild className="h-8">
                   <label className="cursor-pointer">
-                    <Upload className="mr-2 h-4 w-4" />
-                    Upload HTML
-                    <input
-                      type="file"
-                      accept=".html,.htm"
-                      className="hidden"
-                      onChange={handleFileUpload}
-                    />
+                    <Upload className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+                    Upload file
+                    <input type="file" accept=".html,.htm" className="sr-only" onChange={handleFileUpload} />
                   </label>
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowPreview(true)}
-                  disabled={!htmlContent}
-                >
-                  <Eye className="mr-2 h-4 w-4" />
+                <Button variant="outline" size="sm" className="h-8 xl:hidden" onClick={() => setShowPreview(true)} disabled={!htmlContent}>
+                  <Eye className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
                   Preview
                 </Button>
               </div>
             </div>
-            <Tabs defaultValue="code" className="w-full">
-              <TabsList>
-                <TabsTrigger value="code">
-                  <Code className="mr-2 h-4 w-4" />
-                  Code
-                </TabsTrigger>
-              </TabsList>
-              <TabsContent value="code">
-                <Textarea
-                  placeholder="Paste your HTML email content here..."
-                  value={htmlContent}
-                  onChange={(e) => setHtmlContent(e.target.value)}
-                  rows={16}
-                  className="font-mono text-sm"
-                />
-              </TabsContent>
-            </Tabs>
+            <Textarea
+              id="html-content"
+              placeholder="<p>Hi {{firstName}},</p>"
+              value={htmlContent}
+              onChange={(e) => setHtmlContent(e.target.value)}
+              rows={16}
+              className="font-mono text-sm"
+            />
           </div>
 
-          {/* Options */}
-          <div className="flex flex-wrap gap-6">
-            <div className="flex items-center gap-2">
-              <Switch
-                id="personalize"
-                checked={personalize}
-                onCheckedChange={setPersonalize}
-              />
-              <Label htmlFor="personalize">
-                Personalize with {"{{firstName}}"}
+          <div className="space-y-3 rounded-lg border border-border p-3">
+            <div className="flex items-center justify-between gap-4">
+              <Label htmlFor="personalize" className="font-normal">
+                Replace {"{{firstName}}"} with each person&apos;s name
               </Label>
+              <Switch id="personalize" checked={personalize} onCheckedChange={setPersonalize} />
             </div>
-            <div className="flex items-center gap-2">
-              <Switch
-                id="useWrapper"
-                checked={useWrapper}
-                onCheckedChange={setUseWrapper}
-              />
-              <Label htmlFor="useWrapper">
-                Wrap in AviPrep template
+            <div className="flex items-center justify-between gap-4">
+              <Label htmlFor="useWrapper" className="font-normal">
+                Use the AviPrep email template
               </Label>
+              <Switch id="useWrapper" checked={useWrapper} onCheckedChange={setUseWrapper} />
             </div>
           </div>
 
-          {/* Send Button */}
-          <div className="flex items-center justify-between border-t pt-6">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Mail className="h-4 w-4" />
-              <span>Will send to {getRecipientCount()} recipient(s)</span>
-            </div>
+          <div className="flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-muted-foreground" data-tabular>
+              {recipientCount === 0 ? "No recipients yet" : `Sends to ${recipientCount.toLocaleString()} ${recipientCount === 1 ? "person" : "people"}`}
+            </p>
             <Button
               onClick={() => setShowConfirm(true)}
-              disabled={!subject || !htmlContent || getRecipientCount() === 0 || sending}
+              disabled={!subject || !htmlContent || recipientCount === 0 || sending}
+              className="h-10 gap-2"
             >
-              {sending ? (
-                <>Sending...</>
-              ) : (
-                <>
-                  <Send className="mr-2 h-4 w-4" />
-                  Send Email
-                </>
-              )}
+              {sending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Send className="h-4 w-4" aria-hidden="true" />}
+              {sending ? "Sending" : "Review and send"}
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </section>
 
-      {/* Preview Dialog */}
+        <section className="hidden xl:col-span-2 xl:block" aria-label="Preview">
+          <div className="sticky top-20 overflow-hidden rounded-xl border border-border bg-card shadow-e1">
+            <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
+              <p className="text-sm font-medium text-foreground">Preview</p>
+              <p className="truncate pl-4 text-xs text-muted-foreground">{subject || "No subject"}</p>
+            </div>
+            {htmlContent ? (
+              <iframe srcDoc={htmlContent} sandbox="" className="h-[640px] w-full bg-white" title="Email preview" />
+            ) : (
+              <p className="flex h-[640px] items-center justify-center px-6 text-center text-sm text-muted-foreground">
+                Your email shows here as you write it.
+              </p>
+            )}
+          </div>
+        </section>
+      </div>
+
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-auto">
+        <DialogContent className="max-h-[85vh] max-w-3xl overflow-auto">
           <DialogHeader>
-            <DialogTitle>Email Preview</DialogTitle>
-            <DialogDescription>
-              Preview how your email will look
-            </DialogDescription>
+            <DialogTitle>Preview</DialogTitle>
+            <DialogDescription>{subject || "No subject"}</DialogDescription>
           </DialogHeader>
-          <div className="rounded-lg border bg-white">
-            <iframe
-              srcDoc={htmlContent}
-              className="h-[500px] w-full"
-              title="Email Preview"
-            />
+          <div className="overflow-hidden rounded-lg border border-border bg-white">
+            <iframe srcDoc={htmlContent} sandbox="" className="h-[500px] w-full" title="Email preview" />
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Confirmation Dialog */}
       <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirm Send</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to send this email?
-            </DialogDescription>
+            <DialogTitle>Send this email?</DialogTitle>
+            <DialogDescription>This can&apos;t be undone.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="rounded-lg bg-muted p-4 space-y-2">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Subject:</span>
-                <span className="font-medium">{subject}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Recipients:</span>
-                <span className="font-medium">{getRecipientCount()} people</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Personalized:</span>
-                <Badge variant={personalize ? "default" : "secondary"}>
-                  {personalize ? "Yes" : "No"}
-                </Badge>
-              </div>
+          <dl className="space-y-2 rounded-lg bg-muted/60 p-4 text-sm">
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted-foreground">Subject</dt>
+              <dd className="truncate font-medium text-foreground">{subject}</dd>
             </div>
-          </div>
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted-foreground">Recipients</dt>
+              <dd className="font-medium text-foreground" data-tabular>
+                {recipientCount.toLocaleString()}
+              </dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted-foreground">Personalised</dt>
+              <dd className="font-medium text-foreground">{personalize ? "Yes" : "No"}</dd>
+            </div>
+          </dl>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowConfirm(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSend}>
-              <Send className="mr-2 h-4 w-4" />
-              Send Now
+            <Button onClick={handleSend} className="gap-2">
+              <Send className="h-4 w-4" aria-hidden="true" />
+              Send
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Results Dialog */}
       <Dialog open={showResults} onOpenChange={setShowResults}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Email Sent</DialogTitle>
-            <DialogDescription>
-              Results of your email campaign
-            </DialogDescription>
+            <DialogTitle>Sent</DialogTitle>
+            <DialogDescription>Here&apos;s how it went.</DialogDescription>
           </DialogHeader>
           {results && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="rounded-lg bg-green-500/10 p-4 text-center">
-                  <CheckCircle className="mx-auto h-8 w-8 text-green-500 mb-2" />
-                  <p className="text-2xl font-bold text-green-500">{results.sent}</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-lg border border-success/30 bg-success/10 p-4 text-center">
+                  <CheckCircle className="mx-auto mb-2 h-6 w-6 text-success" aria-hidden="true" />
+                  <p className="text-2xl font-semibold text-foreground" data-tabular>
+                    {results.sent}
+                  </p>
                   <p className="text-sm text-muted-foreground">Sent</p>
                 </div>
-                <div className="rounded-lg bg-red-500/10 p-4 text-center">
-                  <XCircle className="mx-auto h-8 w-8 text-red-500 mb-2" />
-                  <p className="text-2xl font-bold text-red-500">{results.failed}</p>
+                <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-center">
+                  <XCircle className="mx-auto mb-2 h-6 w-6 text-destructive" aria-hidden="true" />
+                  <p className="text-2xl font-semibold text-foreground" data-tabular>
+                    {results.failed}
+                  </p>
                   <p className="text-sm text-muted-foreground">Failed</p>
                 </div>
               </div>
               {results.failed > 0 && (
-                <div className="max-h-40 overflow-auto rounded-lg border p-3">
-                  <p className="text-sm font-medium mb-2">Failed addresses:</p>
+                <div className="max-h-40 overflow-auto rounded-lg border border-border p-3">
+                  <p className="mb-2 text-sm font-medium text-foreground">Didn&apos;t send</p>
                   {results.results
                     .filter((r) => !r.success)
                     .map((r) => (
-                      <div key={r.email} className="text-sm text-muted-foreground">
+                      <p key={r.email} className="text-sm text-muted-foreground">
                         {r.email}: {r.error}
-                      </div>
+                      </p>
                     ))}
                 </div>
               )}
             </div>
           )}
           <DialogFooter>
-            <Button onClick={() => setShowResults(false)}>Close</Button>
+            <Button onClick={() => setShowResults(false)}>Done</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageShell>
   )
 }

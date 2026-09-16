@@ -18,9 +18,8 @@ model User {
   phone                 String    // Australian phone number format
   stripeCustomerId      String?   @unique // Stripe customer ID for payments
   isAdmin               Boolean   @default(false)
-  // Content curator: writes courses and questions, submits them for review,
-  // never publishes and never sees members or business data. Optional so
-  // existing accounts read as null (not a curator).
+  // Legacy: curators now have their own Curator accounts on the curators
+  // subdomain. Kept only so old documents still read; nothing checks it.
   isCurator             Boolean?
   profilePicture        String?   // URL to profile picture
   isSuspendedFromForum  Boolean   @default(false) // Forum posting suspension
@@ -286,6 +285,13 @@ model Question {
   authorId     String?   @db.ObjectId
   reviewedById String?   @db.ObjectId
   authorNote   String?
+  /// Royalty points (Contractor Agreement 3.4): 1 standard, 3 complex. Null reads as 1.
+  points       Int?
+  /// Why an admin sent it back, or discarded a proposed edit. Cleared when the
+  /// curator resubmits. rejectionForId is whoever the feedback is for.
+  rejectionReason String?
+  rejectedAt      DateTime?
+  rejectionForId  String?  @db.ObjectId
 
   // Review workflow (lib/staff.ts). Edits a curator makes to live content are
   // held here as proposed changes until an admin applies or discards them.
@@ -299,6 +305,7 @@ model Question {
   @@index([subjectId])
   @@index([topic])
   @@index([status])
+  @@index([authorId])
 }
 
 model Waitlist {
@@ -536,6 +543,13 @@ model Lesson {
   // Estimated time in minutes
   estimatedMins Int    @default(5)
 
+  /// Who created it. Lessons earn 10 royalty points while their course is live.
+  authorId        String?   @db.ObjectId
+  /// Why an admin discarded a proposed edit; see Question.rejectionReason.
+  rejectionReason String?
+  rejectedAt      DateTime?
+  rejectionForId  String?   @db.ObjectId
+
   // Review workflow (lib/staff.ts). Edits a curator makes to live content are
   // held here as proposed changes until an admin applies or discards them.
   pendingRevision     Json?
@@ -632,7 +646,7 @@ model Notification {
 /// One-time SMS codes (lib/otp.ts). Codes are stored hashed, never in plain text.
 model OtpCode {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  /// "signup" | "login" | "reset" | "delete"
+  /// "signup" | "login" | "reset" | "delete" | "waitlist" | "curator-join" | "curator-login"
   purpose   String
   /// Who the code is for within the purpose: a user id, or the phone at sign-up.
   key       String
@@ -654,4 +668,178 @@ model SiteSetting {
   value       Json
   updatedById String?  @db.ObjectId
   updatedAt   DateTime @updatedAt
+}
+
+/// Part 61 MOS Schedule 3 units, loaded from lib/mos/data/schedule3.json (lib/mos/library.ts).
+model MosUnit {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  /// "1.3.2" in the loaded compilation. CASA can renumber units, so this isn't the identity.
+  number      String
+  /// "1" | "2" | "3". Codes are unique within an appendix (AAGA appears in 1 and 2),
+  /// so appendix + code identifies a unit across compilations.
+  appendix    String?
+  code        String
+  title       String
+  section     String
+  /// "rpl" | "ppl" | "cpl" | "atpl" | "irex" | "fe" | "rating"
+  licence     String
+  reserved    Boolean  @default(false)
+  order       Int      @default(0)
+  compilation String?
+  /// No longer in the loaded compilation.
+  retired     Boolean?
+  updatedAt   DateTime @updatedAt
+
+  @@index([code])
+  @@index([number])
+}
+
+/// The mappable level of Schedule 3: a lettered paragraph, or an element that has none.
+model MosItem {
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+  /// Stable identifier assigned when the item first appeared. Never rewritten: the
+  /// item's current position lives in appendix/unitCode/ref, which a MOS update may change.
+  key            String    @unique
+  appendix       String?
+  unitNumber     String
+  unitCode       String
+  /// "2.1.1(a)"
+  ref            String
+  topicNumber    String
+  topicTitle     String
+  subtopicNumber String
+  subtopicTitle  String
+  elementNumber  String
+  elementText    String
+  /// The paragraph's own words ("" when the element has no paragraphs).
+  text           String
+  /// Stem and paragraph together, readable on its own.
+  fullText       String
+  order          Int       @default(0)
+  compilation    String?
+  retired        Boolean?
+  /// Admin decision: not assessable on its own (e.g. a list other paragraphs refer to).
+  excluded       Boolean?
+  excludedReason String?
+  excludedById   String?   @db.ObjectId
+
+  /// Compilation this item first appeared in.
+  introducedIn   String?
+  /// Earlier positions and wording, newest last: [{ compilation, unitCode, ref, fullText, change, at }].
+  history        Json?
+
+  embedding      Float[]
+  embeddingModel String?
+  /// Hash of the text that was embedded, so edits to the library re-embed.
+  embeddedHash   String?
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([unitNumber])
+}
+
+/// A curator-confirmed link from a question or lesson to a Schedule 3 item.
+model MosMapping {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  itemId      String   @db.ObjectId
+  /// "question" | "lesson"
+  contentType String
+  contentId   String   @db.ObjectId
+  subjectId   String
+  /// Each mapped question or lesson has exactly one primary item.
+  primary     Boolean  @default(false)
+  /// "suggested" (confirmed from an AI suggestion) | "manual"
+  source      String
+  /// Suggestion score at the time it was confirmed, 0-1.
+  confidence  Float?
+  createdById String?  @db.ObjectId
+  createdAt   DateTime @default(now())
+
+  // Set by a MOS update when this link may no longer fit (lib/mos/library.ts).
+  // The link keeps counting while it's reviewed, unless its item was removed.
+  needsReview      Boolean?
+  /// "reworded" | "removed"
+  reviewReason     String?
+  reviewNote       String?
+  /// Likely replacements when the item was removed, best first.
+  suggestedItemIds String[]  @db.ObjectId
+  flaggedAt        DateTime?
+  reviewedById     String?   @db.ObjectId
+  reviewedAt       DateTime?
+
+  @@unique([contentType, contentId, itemId])
+  @@index([needsReview])
+  @@index([itemId])
+  @@index([subjectId])
+  @@index([contentType, contentId])
+}
+
+/// One applied update of the Schedule 3 library, kept as an audit trail.
+model MosRevision {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  compilation     String?
+  registered      String?
+  /// Build stamp of the data file that was applied.
+  builtAt         String
+  fromCompilation String?
+  unchanged       Int
+  moved           Int
+  reworded        Int
+  added           Int
+  removed         Int
+  restored        Int
+  /// Links flagged for review by this update.
+  flaggedLinks    Int
+  /// Per-item changes (capped), for the record.
+  changes         Json?
+  appliedById     String   @db.ObjectId
+  appliedAt       DateTime @default(now())
+
+  @@index([appliedAt])
+}
+
+/// Content curators. Deliberately separate from User: curators sign in on
+/// curators.aviprep.com.au with their own session, never have a student
+/// account, and only reach the content studio (lib/staff.ts).
+model Curator {
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  email           String    @unique
+  passwordHash    String
+  firstName       String
+  lastName        String
+  /// E.164 Australian mobile. Every sign-in texts a code here.
+  phone           String
+  phoneVerifiedAt DateTime
+  /// Aviation credentials picked at sign-up (lib/curators/details.ts CREDENTIALS).
+  credentials     String[]  @default([])
+  /// Deactivated curators can't sign in, and live sessions stop working.
+  isActive        Boolean   @default(true)
+  lastLoginAt     DateTime?
+  invitedById     String?   @db.ObjectId
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+/// An emailed invitation to create a Curator account. Only a hash of the link
+/// token is stored; a resend issues a new link and retires the old one.
+model CuratorInvite {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  email       String
+  firstName   String?
+  lastName    String?
+  phone       String?
+  /// Optional personal note shown in the email and on the join page.
+  note        String?
+  tokenHash   String    @unique
+  invitedById String    @db.ObjectId
+  expiresAt   DateTime
+  sentAt      DateTime  @default(now())
+  sendCount   Int       @default(1)
+  acceptedAt  DateTime?
+  revokedAt   DateTime?
+  curatorId   String?   @db.ObjectId
+  createdAt   DateTime  @default(now())
+
+  @@index([email])
 }

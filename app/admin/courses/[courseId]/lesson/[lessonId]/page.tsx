@@ -24,12 +24,20 @@ import {
   Loader2,
   Sparkles,
   Wand2,
+  Layers,
+  ListChecks,
+  MessageSquareWarning,
 } from "lucide-react"
 import Link from "next/link"
 import RichTextEditor from "@/components/forum/rich-text-editor"
 import { toast } from "sonner"
 import { cn } from "@lib/utils"
 import { SUBJECTS } from "@lib/subjects"
+import { Skeleton } from "@/components/ui/skeleton"
+import { EmptyState, PageHeader, PageShell } from "@/components/hub/page-primitives"
+import { MosTagger } from "@/components/admin/mos-tagger"
+import { lessonMatchText } from "@lib/mos/content-text"
+import type { MosLink } from "@lib/mos/subjects"
 
 interface Lesson {
   id: string
@@ -40,6 +48,8 @@ interface Lesson {
   estimatedMins: number
   /** A curator's proposed edit to a lesson in a live course. */
   pendingRevision?: { contentType?: string; content?: any } | null
+  /** Why an admin declined the curator's last proposed edit. */
+  rejectionReason?: string | null
   module: {
     course: {
       id: string
@@ -49,10 +59,10 @@ interface Lesson {
   }
 }
 
-export default function LessonEditorPage({ 
-  params 
-}: { 
-  params: Promise<{ courseId: string; lessonId: string }> 
+export default function LessonEditorPage({
+  params
+}: {
+  params: Promise<{ courseId: string; lessonId: string }>
 }) {
   const { courseId, lessonId } = use(params)
   const [lesson, setLesson] = useState<Lesson | null>(null)
@@ -61,8 +71,12 @@ export default function LessonEditorPage({
   const [role, setRole] = useState<"admin" | "curator">("admin")
   const [isLive, setIsLive] = useState(false)
   const [reviewing, setReviewing] = useState(false)
+  const [discarding, setDiscarding] = useState(false)
+  const [discardReason, setDiscardReason] = useState("")
   const [content, setContent] = useState<any>({})
   const [contentType, setContentType] = useState("text")
+  /** Part 61 MOS links; undefined until loaded. */
+  const [mos, setMos] = useState<MosLink[] | undefined>()
 
   useEffect(() => {
     fetchLesson()
@@ -92,16 +106,19 @@ export default function LessonEditorPage({
   async function handleSave() {
     if (!lesson) return
     setSaving(true)
-    
+
     try {
       const res = await fetch(`/api/admin/lessons/${lessonId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content, contentType }),
+        body: JSON.stringify({ content, contentType, ...(mos !== undefined ? { mos } : {}) }),
       })
-      
+
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error || "Failed to save")
+      if (!res.ok) {
+        toast.error(data.error || "Failed to save lesson")
+        return
+      }
       if (data.revisionPending) {
         toast.success("Changes sent to an admin for review")
         setLesson((l) => (l ? { ...l, pendingRevision: data.lesson?.pendingRevision } : l))
@@ -116,17 +133,19 @@ export default function LessonEditorPage({
     }
   }
 
-  async function reviewRevision(action: "apply-revision" | "discard-revision") {
+  async function reviewRevision(action: "apply-revision" | "discard-revision", reason?: string) {
     setReviewing(true)
     try {
       const res = await fetch(`/api/admin/lessons/${lessonId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action }),
+        body: JSON.stringify({ action, reason }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || "Failed")
       toast.success(action === "apply-revision" ? "Changes applied" : "Proposed changes discarded")
+      setDiscarding(false)
+      setDiscardReason("")
       await fetchLesson()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Couldn't update the lesson")
@@ -137,62 +156,67 @@ export default function LessonEditorPage({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
+      <PageShell>
+        <Skeleton className="h-9 w-40" />
+        <Skeleton className="h-8 w-80 max-w-full" />
+        <Skeleton className="h-40 rounded-xl" />
+        <Skeleton className="h-96 rounded-xl" />
+      </PageShell>
     )
   }
 
   if (!lesson) {
     return (
-      <div className="text-center py-12">
-        <p className="text-muted-foreground">Lesson not found</p>
-        <Link href={`/admin/courses/${courseId}`}>
-          <Button variant="outline" className="mt-4 bg-transparent">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Course
+      <PageShell>
+        <EmptyState icon={FileText} title="Lesson not found" description="It may have been deleted.">
+          <Button asChild variant="outline" className="h-10">
+            <Link href={`/admin/courses/${courseId}`}>Back to course</Link>
           </Button>
-        </Link>
-      </div>
+        </EmptyState>
+      </PageShell>
     )
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
+    <PageShell>
+      <Button asChild variant="ghost" className="-ml-2 h-9 w-fit gap-1.5 text-muted-foreground">
         <Link href={`/admin/courses/${courseId}`}>
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          {lesson.module.course.title}
         </Link>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold">{lesson.title}</h1>
-          <p className="text-muted-foreground">
-            {lesson.module.course.title}
-          </p>
-        </div>
-        <Button onClick={handleSave} disabled={saving}>
-          {saving ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <Save className="mr-2 h-4 w-4" />
-          )}
-          {saving ? "Saving..." : role === "curator" && isLive ? "Submit for review" : "Save Changes"}
+      </Button>
+
+      <PageHeader
+        title={lesson.title}
+        description={isLive ? "In a live course" : "In a draft course"}
+      >
+        <Button onClick={handleSave} disabled={saving} className="h-10 gap-2 self-start">
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Save className="h-4 w-4" aria-hidden="true" />}
+          {saving ? "Saving" : role === "curator" && isLive ? "Submit for review" : "Save"}
         </Button>
-      </div>
+      </PageHeader>
+
+      {role === "curator" && lesson.rejectionReason && !lesson.pendingRevision && (
+        <div className="flex items-start gap-3 rounded-lg border border-warning/40 bg-warning/10 p-4 text-sm">
+          <MessageSquareWarning className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
+          <div className="min-w-0 space-y-1">
+            <p className="font-medium text-foreground">Your last edit wasn&apos;t accepted</p>
+            <p className="whitespace-pre-line text-foreground/90">{lesson.rejectionReason}</p>
+            <p className="text-muted-foreground">Make the changes and submit them again.</p>
+          </div>
+        </div>
+      )}
 
       {role === "curator" && isLive && (
         <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm text-foreground">
-          This lesson is in a live course. Saving sends your changes to an admin; students keep seeing the current version
-          until they&apos;re approved.
+          This course is live, so saving sends your edits to an admin.
           {lesson.pendingRevision ? " You're editing your proposed version." : ""}
         </div>
       )}
 
       {role === "admin" && lesson.pendingRevision && (
         <div className="space-y-3 rounded-lg border border-warning/40 bg-warning/10 p-4 text-sm">
-          <p className="font-medium text-foreground">A curator has proposed changes to this lesson.</p>
+          <p className="font-medium text-foreground">A curator proposed edits to this lesson.</p>
           <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
@@ -200,67 +224,103 @@ export default function LessonEditorPage({
               onClick={() => {
                 setContent(lesson.pendingRevision?.content ?? content)
                 setContentType(lesson.pendingRevision?.contentType ?? contentType)
-                toast.info("Proposed version loaded. Nothing is saved until you apply or save.")
+                toast.info("Proposed version loaded. Nothing is saved yet.")
               }}
             >
               <Eye className="mr-2 h-4 w-4" />
-              Preview proposed version
+              Preview edits
             </Button>
             <Button size="sm" disabled={reviewing} onClick={() => reviewRevision("apply-revision")}>
               <CheckCircle2 className="mr-2 h-4 w-4" />
-              Apply changes
+              Apply edits
             </Button>
-            <Button variant="ghost" size="sm" disabled={reviewing} onClick={() => reviewRevision("discard-revision")}>
+            <Button variant="ghost" size="sm" disabled={reviewing || discarding} onClick={() => setDiscarding(true)}>
               Discard
             </Button>
           </div>
+          {discarding && (
+            <div className="space-y-2 border-t border-warning/30 pt-3">
+              <Label htmlFor="discard-reason">Why aren&apos;t these edits going ahead?</Label>
+              <Textarea
+                id="discard-reason"
+                rows={3}
+                autoFocus
+                maxLength={1000}
+                value={discardReason}
+                onChange={(e) => setDiscardReason(e.target.value)}
+                aria-describedby="discard-reason-hint"
+                className="resize-none bg-background"
+              />
+              <p id="discard-reason-hint" className="text-xs text-muted-foreground">
+                Optional. The curator sees this on their home screen.
+              </p>
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setDiscarding(false)} disabled={reviewing}>
+                  Cancel
+                </Button>
+                <Button size="sm" disabled={reviewing} onClick={() => reviewRevision("discard-revision", discardReason.trim() || undefined)}>
+                  {reviewing && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
+                  Discard edits
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Content Type Selector */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Lesson Type</CardTitle>
-          <CardDescription>
-            Choose the type of content for this lesson
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            {[
-              { id: "text", label: "Text", icon: FileText, desc: "Rich text content" },
-              { id: "media", label: "Media", icon: ImageIcon, desc: "Images, videos, links" },
-              { id: "quiz", label: "Quiz", icon: CheckCircle2, desc: "Multiple choice" },
-              { id: "flashcards", label: "Flashcards", icon: GripVertical, desc: "Study cards" },
-              { id: "exercise", label: "Exercise", icon: GripVertical, desc: "Interactive tasks" },
-            ].map((type) => (
+      <MosTagger
+        subjectId={lesson.module.course.subjectId}
+        matchText={lessonMatchText({ title: lesson.title, description: lesson.description, content })}
+        value={mos}
+        onChange={setMos}
+        contentType="lesson"
+        contentId={lesson.id}
+        isAdmin={role === "admin"}
+      />
+
+      <section aria-labelledby="lesson-type-title">
+        <h2 id="lesson-type-title" className="mb-3 text-base font-semibold text-foreground">
+          Lesson type
+        </h2>
+        <div role="radiogroup" aria-labelledby="lesson-type-title" className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+          {[
+            { id: "text", label: "Text", icon: FileText, desc: "Rich text" },
+            { id: "media", label: "Media", icon: ImageIcon, desc: "Images, video, links" },
+            { id: "quiz", label: "Quiz", icon: CheckCircle2, desc: "Multiple choice" },
+            { id: "flashcards", label: "Flashcards", icon: Layers, desc: "Study cards" },
+            { id: "exercise", label: "Exercise", icon: ListChecks, desc: "Steps, matching, ordering" },
+          ].map((type) => {
+            const active = contentType === type.id
+            return (
               <button
                 key={type.id}
+                type="button"
+                role="radio"
+                aria-checked={active}
                 onClick={() => setContentType(type.id)}
                 className={cn(
-                  "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all",
-                  contentType === type.id 
-                    ? "border-primary bg-primary/5" 
-                    : "border-border hover:border-primary/50"
+                  "flex items-center gap-3 rounded-xl border bg-card p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  active ? "border-primary bg-primary/5 shadow-e1" : "border-border hover:border-primary/40",
                 )}
               >
-                <type.icon className={cn(
-                  "h-6 w-6",
-                  contentType === type.id ? "text-primary" : "text-muted-foreground"
-                )} />
-                <span className="font-medium text-sm">{type.label}</span>
-                <span className="text-xs text-muted-foreground">{type.desc}</span>
+                <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-lg", active ? "bg-primary/15" : "bg-muted")}>
+                  <type.icon className={cn("h-4 w-4", active ? "text-primary" : "text-muted-foreground")} aria-hidden="true" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-foreground">{type.label}</span>
+                  <span className="block truncate text-xs text-muted-foreground">{type.desc}</span>
+                </span>
               </button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+            )
+          })}
+        </div>
+      </section>
 
       {/* Content Editors */}
       {contentType === "text" && (
-        <TextEditor 
-          content={content} 
-          setContent={setContent} 
+        <TextEditor
+          content={content}
+          setContent={setContent}
           lessonTitle={lesson.title}
           subjectId={lesson.module.course.subjectId}
         />
@@ -271,8 +331,8 @@ export default function LessonEditorPage({
       )}
 
       {contentType === "quiz" && (
-        <QuizEditor 
-          content={content} 
+        <QuizEditor
+          content={content}
           setContent={setContent}
           lessonTitle={lesson.title}
           subjectId={lesson.module.course.subjectId}
@@ -280,8 +340,8 @@ export default function LessonEditorPage({
       )}
 
       {contentType === "flashcards" && (
-        <FlashcardsEditor 
-          content={content} 
+        <FlashcardsEditor
+          content={content}
           setContent={setContent}
           lessonTitle={lesson.title}
           subjectId={lesson.module.course.subjectId}
@@ -289,24 +349,24 @@ export default function LessonEditorPage({
       )}
 
       {contentType === "exercise" && (
-        <ExerciseEditor 
-          content={content} 
+        <ExerciseEditor
+          content={content}
           setContent={setContent}
           lessonTitle={lesson.title}
           subjectId={lesson.module.course.subjectId}
         />
       )}
-    </div>
+    </PageShell>
   )
 }
 
 // Text Editor
-function TextEditor({ 
-  content, 
+function TextEditor({
+  content,
   setContent,
   lessonTitle,
   subjectId,
-}: { 
+}: {
   content: any
   setContent: (c: any) => void
   lessonTitle: string
@@ -329,7 +389,7 @@ function TextEditor({
           lessonTitle,
         }),
       })
-      
+
       if (res.ok) {
         const data = await res.json()
         setContent({ ...content, html: data.content.html })
@@ -346,13 +406,13 @@ function TextEditor({
   }
 
   return (
-    <Card>
+    <Card className="shadow-e1">
       <CardHeader>
         <div className="flex items-start justify-between">
           <div>
-            <CardTitle>Text Content</CardTitle>
+            <CardTitle>Content</CardTitle>
             <CardDescription>
-              Write your lesson content using the rich text editor
+              Headings, lists, images and tables.
             </CardDescription>
           </div>
         </div>
@@ -423,12 +483,12 @@ function MediaEditor({ content, setContent }: { content: any; setContent: (c: an
   }
 
   return (
-    <Card>
+    <Card className="shadow-e1">
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardTitle>Media Content</CardTitle>
+          <CardTitle>Media</CardTitle>
           <CardDescription>
-            Add images, videos, links, and documents
+            Images, video, links and documents.
           </CardDescription>
         </div>
         <div className="flex gap-2">
@@ -484,7 +544,7 @@ function MediaEditor({ content, setContent }: { content: any; setContent: (c: an
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
-                      
+
                       <div className="space-y-2">
                         <Label>URL</Label>
                         <Input
@@ -538,12 +598,12 @@ function MediaEditor({ content, setContent }: { content: any; setContent: (c: an
 }
 
 // Quiz Editor
-function QuizEditor({ 
-  content, 
+function QuizEditor({
+  content,
   setContent,
   lessonTitle,
   subjectId,
-}: { 
+}: {
   content: any
   setContent: (c: any) => void
   lessonTitle: string
@@ -566,7 +626,7 @@ function QuizEditor({
           lessonTitle,
         }),
       })
-      
+
       if (res.ok) {
         const data = await res.json()
         setContent({ ...content, questions: data.content.questions })
@@ -610,12 +670,12 @@ function QuizEditor({
   }
 
   return (
-    <Card>
+    <Card className="shadow-e1">
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardTitle>Quiz Questions</CardTitle>
+          <CardTitle>Questions</CardTitle>
           <CardDescription>
-            Create multiple choice questions with explanations
+            Multiple choice, with explanations.
           </CardDescription>
         </div>
         <Button onClick={addQuestion}>
@@ -684,8 +744,8 @@ function QuizEditor({
                         onClick={() => updateQuestion(qIndex, { correctIndex: oIndex })}
                         className={cn(
                           "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 text-sm font-medium transition-colors",
-                          q.correctIndex === oIndex 
-                            ? "border-success bg-success text-success-foreground" 
+                          q.correctIndex === oIndex
+                            ? "border-success bg-success text-success-foreground"
                             : "border-muted-foreground/30 hover:border-success/50"
                         )}
                       >
@@ -726,12 +786,12 @@ function QuizEditor({
 }
 
 // Flashcards Editor
-function FlashcardsEditor({ 
-  content, 
+function FlashcardsEditor({
+  content,
   setContent,
   lessonTitle,
   subjectId,
-}: { 
+}: {
   content: any
   setContent: (c: any) => void
   lessonTitle: string
@@ -754,7 +814,7 @@ function FlashcardsEditor({
           lessonTitle,
         }),
       })
-      
+
       if (res.ok) {
         const data = await res.json()
         setContent({ ...content, cards: data.content.cards })
@@ -790,12 +850,12 @@ function FlashcardsEditor({
   }
 
   return (
-    <Card>
+    <Card className="shadow-e1">
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle>Flashcards</CardTitle>
           <CardDescription>
-            Create study cards with questions/terms on front and answers/definitions on back
+            Term on the front, answer on the back.
           </CardDescription>
         </div>
         <Button onClick={addCard}>
@@ -845,7 +905,7 @@ function FlashcardsEditor({
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label className="text-xs uppercase text-muted-foreground">Front (Question/Term)</Label>
                     <Textarea
@@ -855,7 +915,7 @@ function FlashcardsEditor({
                       rows={3}
                     />
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label className="text-xs uppercase text-muted-foreground">Back (Answer/Definition)</Label>
                     <Textarea
@@ -876,12 +936,12 @@ function FlashcardsEditor({
 }
 
 // Exercise Editor
-function ExerciseEditor({ 
-  content, 
+function ExerciseEditor({
+  content,
   setContent,
   lessonTitle,
   subjectId,
-}: { 
+}: {
   content: any
   setContent: (c: any) => void
   lessonTitle: string
@@ -905,7 +965,7 @@ function ExerciseEditor({
           exerciseType,
         }),
       })
-      
+
       if (res.ok) {
         const data = await res.json()
         setContent(data.content)
@@ -921,11 +981,11 @@ function ExerciseEditor({
   }
 
   return (
-    <Card>
+    <Card className="shadow-e1">
       <CardHeader>
-        <CardTitle>Exercise Content</CardTitle>
+        <CardTitle>Exercise</CardTitle>
         <CardDescription>
-          Create interactive exercises for students
+          Steps, matching or ordering.
         </CardDescription>
       </CardHeader>
 <CardContent className="space-y-6">

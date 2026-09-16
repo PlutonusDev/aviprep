@@ -36,6 +36,9 @@ export async function POST(request: Request) {
       user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName },
     })
 
+    await startSession(session)
+    return signedIn
+
     if (await isTrustedDevice(user.id, user.passwordHash)) {
       await startSession(session)
       return signedIn

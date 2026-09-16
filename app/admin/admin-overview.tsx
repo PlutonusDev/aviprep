@@ -1,130 +1,162 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Users, HelpCircle, DollarSign, TrendingUp } from "lucide-react"
+import Link from "next/link"
+import {
+  AlertTriangle,
+  ArrowRight,
+  Building2,
+  CheckCircle2,
+  DollarSign,
+  FileEdit,
+  GraduationCap,
+  HelpCircle,
+  ListChecks,
+  Mail,
+  Package,
+  ShieldCheck,
+  Sparkles,
+  Ticket,
+  Users,
+} from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
+import { EmptyState, PageHeader, PageShell, SectionHeading, StatTile } from "@/components/hub/page-primitives"
+import { useUser } from "@lib/user-context"
 
 interface Stats {
   totalMembers: number
+  newMembers: number
   totalQuestions: number
   totalRevenue: number
   activeSubscriptions: number
+  waitlistCount: number
+  rtoContacts: number
+  queue: {
+    questionsInReview: number
+    questionChanges: number
+    coursesInReview: number
+    courseChanges: number
+    lessonChanges: number
+    mosReviews: number
+  }
 }
 
+const SHORTCUTS = [
+  { name: "Write questions", href: "/admin/questions", icon: HelpCircle },
+  { name: "Edit courses", href: "/admin/courses", icon: GraduationCap },
+  { name: "AI generator", href: "/admin/questions/generate", icon: Sparkles },
+  { name: "MOS coverage", href: "/admin/mos", icon: ShieldCheck },
+  { name: "Members", href: "/admin/members", icon: Users },
+  { name: "Flight schools", href: "/admin/flight-schools", icon: Building2 },
+  { name: "Products", href: "/admin/products", icon: Package },
+  { name: "Coupons", href: "/admin/coupons", icon: Ticket },
+  { name: "Send email", href: "/admin/email", icon: Mail },
+]
+
+const aud = (cents: number) =>
+  (cents / 100).toLocaleString("en-AU", { style: "currency", currency: "AUD", maximumFractionDigits: 0 })
+
 export function AdminOverview() {
+  const { user } = useUser()
   const [stats, setStats] = useState<Stats | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
 
   useEffect(() => {
-    async function fetchStats() {
-      try {
-        const res = await fetch("/api/admin/stats")
-        if (res.ok) {
-          const data = await res.json()
-          setStats(data)
-        }
-      } catch (error) {
-        console.error("Failed to fetch stats:", error)
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchStats()
+    fetch("/api/admin/stats")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then(setStats)
+      .catch(() => setError(true))
   }, [])
 
-  const statCards = [
-    {
-      title: "Total Members",
-      value: stats?.totalMembers ?? 0,
-      icon: Users,
-      description: "Registered users",
-    },
-    {
-      title: "Total Questions",
-      value: stats?.totalQuestions ?? 0,
-      icon: HelpCircle,
-      description: "In question bank",
-    },
-    {
-      title: "Revenue (AUD)",
-      value: `$${((stats?.totalRevenue ?? 0) / 100).toLocaleString()}`,
-      icon: DollarSign,
-      description: "Total earnings",
-    },
-    {
-      title: "Active Bundles",
-      value: stats?.activeSubscriptions ?? 0,
-      icon: TrendingUp,
-      description: "Active subscriptions",
-    },
-  ]
+  const q = stats?.queue
+  const queue = q
+    ? [
+        { label: "Questions in review", count: q.questionsInReview, href: "/admin/questions", icon: HelpCircle },
+        { label: "Proposed question edits", count: q.questionChanges, href: "/admin/questions", icon: FileEdit },
+        { label: "Courses in review", count: q.coursesInReview, href: "/admin/courses", icon: GraduationCap },
+        { label: "Proposed course and lesson edits", count: q.courseChanges + q.lessonChanges, href: "/admin/courses", icon: FileEdit },
+        { label: "MOS links to review", count: q.mosReviews, href: "/admin/mos", icon: ShieldCheck },
+      ].filter((i) => i.count > 0)
+    : []
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">Dashboard Overview</h2>
-        <p className="text-muted-foreground">Manage the AviPrep platform</p>
-      </div>
+    <PageShell>
+      <PageHeader title={user ? `G'day, ${user.firstName}` : "Overview"} description="What's happening on AviPrep." />
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {statCards.map((stat) => (
-          <Card key={stat.title}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">{stat.title}</CardTitle>
-              <stat.icon className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{loading ? "..." : stat.value}</div>
-              <p className="text-xs text-muted-foreground">{stat.description}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {error ? (
+        <div role="alert">
+          <EmptyState icon={AlertTriangle} title="Couldn't load stats" description="Refresh to try again." />
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {stats ? (
+              <>
+                <StatTile icon={Users} label="Members" value={stats.totalMembers.toLocaleString()} detail={`${stats.newMembers} this week`} />
+                <StatTile icon={CheckCircle2} label="Active bundles" value={stats.activeSubscriptions.toLocaleString()} />
+                <StatTile icon={DollarSign} label="Revenue" value={aud(stats.totalRevenue)} detail="All time" />
+                <StatTile icon={HelpCircle} label="Questions" value={stats.totalQuestions.toLocaleString()} />
+              </>
+            ) : (
+              [0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-[88px] rounded-lg" />)
+            )}
+          </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-            <CardDescription>Common administrative tasks</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-2">
-            <a
-              href="/admin/questions/generate"
-              className="flex items-center gap-3 rounded-lg border border-border p-3 transition-colors hover:bg-accent"
-            >
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                <HelpCircle className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="font-medium">Generate Questions with AI</p>
-                <p className="text-sm text-muted-foreground">Use AI to create new exam questions</p>
-              </div>
-            </a>
-            <a
-              href="/admin/members"
-              className="flex items-center gap-3 rounded-lg border border-border p-3 transition-colors hover:bg-accent"
-            >
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                <Users className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="font-medium">Manage Members</p>
-                <p className="text-sm text-muted-foreground">View and edit user accounts</p>
-              </div>
-            </a>
-          </CardContent>
-        </Card>
+          <div className="grid gap-6 lg:grid-cols-5">
+            <section className="lg:col-span-3">
+              <SectionHeading title="Needs you" count={queue.length ? String(queue.reduce((n, i) => n + i.count, 0)) : undefined} />
+              {!stats ? (
+                <Skeleton className="h-48 rounded-xl" />
+              ) : queue.length === 0 ? (
+                <EmptyState icon={ListChecks} title="All clear" description="Nothing waiting for review." />
+              ) : (
+                <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card shadow-e1">
+                  {queue.map((item) => (
+                    <li key={item.label}>
+                      <Link
+                        href={item.href}
+                        className="group flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                      >
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                          <item.icon className="h-4 w-4 text-primary" aria-hidden="true" />
+                        </span>
+                        <span className="flex-1 text-sm font-medium text-foreground">{item.label}</span>
+                        <span className="rounded-full bg-warning/15 px-2.5 py-0.5 text-sm font-semibold text-foreground" data-tabular>
+                          {item.count}
+                        </span>
+                        <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-            <CardDescription>Latest platform events</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">Activity feed will appear here once the platform is live.</p>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+              {stats && (stats.waitlistCount > 0 || stats.rtoContacts > 0) && (
+                <p className="mt-3 text-sm text-muted-foreground" data-tabular>
+                  {stats.waitlistCount.toLocaleString()} on the waitlist · {stats.rtoContacts} RTO enquir{stats.rtoContacts === 1 ? "y" : "ies"}
+                </p>
+              )}
+            </section>
+
+            <section className="lg:col-span-2">
+              <SectionHeading title="Jump to" />
+              <ul className="grid grid-cols-2 gap-2">
+                {SHORTCUTS.map((s) => (
+                  <li key={s.href} className="min-w-0">
+                    <Link
+                      href={s.href}
+                      className="flex h-full items-center gap-2.5 rounded-lg border border-border bg-card px-3 py-3 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <s.icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                      <span className="truncate">{s.name}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          </div>
+        </>
+      )}
+    </PageShell>
   )
 }

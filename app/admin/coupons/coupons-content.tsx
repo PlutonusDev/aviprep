@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -16,7 +15,10 @@ import {
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Edit, Loader2, Copy, Check } from "lucide-react"
+import { Plus, Edit, Loader2, Copy, Check, Ticket, CheckCircle2, Receipt } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
+import { EmptyState, PageHeader, PageShell, StatTile } from "@/components/hub/page-primitives"
+import { cn } from "@lib/utils"
 
 interface Coupon {
   id: string
@@ -121,111 +123,117 @@ export function CouponsContent() {
   }
 
   const getCouponStatus = (coupon: Coupon) => {
-    if (!coupon.isActive) return { label: "Inactive", color: "bg-muted text-muted-foreground" }
-    if (coupon.validUntil && new Date(coupon.validUntil) < new Date())
-      return { label: "Expired", color: "bg-red-500/10 text-red-500" }
-    if (coupon.maxUses && coupon.usedCount >= coupon.maxUses)
-      return { label: "Exhausted", color: "bg-yellow-500/10 text-yellow-500" }
-    return { label: "Active", color: "bg-green-500/10 text-green-500" }
+    if (!coupon.isActive) return { label: "Off", dot: "bg-muted-foreground/50" }
+    if (coupon.validUntil && new Date(coupon.validUntil) < new Date()) return { label: "Expired", dot: "bg-destructive" }
+    if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) return { label: "Used up", dot: "bg-warning" }
+    return { label: "Active", dot: "bg-success" }
   }
 
+  const activeCount = coupons.filter((c) => getCouponStatus(c).label === "Active").length
+  const redemptions = coupons.reduce((n, c) => n + c.usedCount, 0)
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Coupons</h2>
-          <p className="text-muted-foreground">Create and manage discount codes</p>
-        </div>
-        <Button className="cursor-pointer" onClick={handleNewCoupon}>
-          <Plus className="mr-2 h-4 w-4" />
-          Create Coupon
+    <PageShell>
+      <PageHeader title="Coupons" description="Discount codes for checkout.">
+        <Button onClick={handleNewCoupon} className="h-10 gap-2 self-start">
+          <Plus className="h-4 w-4" aria-hidden="true" />
+          New coupon
         </Button>
+      </PageHeader>
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+        <StatTile icon={Ticket} label="Coupons" value={loading ? "–" : String(coupons.length)} />
+        <StatTile icon={CheckCircle2} label="Active" value={loading ? "–" : String(activeCount)} />
+        <StatTile icon={Receipt} label="Redemptions" value={loading ? "–" : redemptions.toLocaleString()} />
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>All Coupons</CardTitle>
-          <CardDescription>Manage discount codes for your products</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-md border">
-            <Table>
+      {loading ? (
+        <Skeleton className="h-64 rounded-xl" />
+      ) : coupons.length === 0 ? (
+        <EmptyState icon={Ticket} title="No coupons yet" description="Create one to offer a discount.">
+          <Button onClick={handleNewCoupon} className="h-10 gap-2">
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            New coupon
+          </Button>
+        </EmptyState>
+      ) : (
+        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-e1">
+          <div className="overflow-x-auto">
+            <Table className="min-w-[640px]">
               <TableHeader>
-                <TableRow>
+                <TableRow className="bg-muted/40 hover:bg-muted/40">
                   <TableHead>Code</TableHead>
                   <TableHead>Discount</TableHead>
-                  <TableHead>Usage</TableHead>
-                  <TableHead>Valid Until</TableHead>
+                  <TableHead>Used</TableHead>
+                  <TableHead>Expires</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="w-[80px]">Actions</TableHead>
+                  <TableHead className="w-[60px]">
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
-                      <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
-                    </TableCell>
-                  </TableRow>
-                ) : coupons.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                      No coupons found. Create your first coupon to get started.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  coupons.map((coupon) => {
-                    const status = getCouponStatus(coupon)
-                    return (
-                      <TableRow key={coupon.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <code className="rounded bg-muted px-2 py-1 font-mono text-sm">{coupon.code}</code>
-                            <Button className="cursor-pointer h-6 w-6"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleCopyCode(coupon.code)}
-                            >
-                              {copiedCode === coupon.code ? (
-                                <Check className="h-3 w-3 text-green-500" />
-                              ) : (
-                                <Copy className="h-3 w-3" />
-                              )}
-                            </Button>
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-semibold text-primary">{coupon.discountPercent}% off</TableCell>
-                        <TableCell>
-                          {coupon.usedCount}
-                          {coupon.maxUses ? ` / ${coupon.maxUses}` : " (unlimited)"}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {coupon.validUntil ? new Date(coupon.validUntil).toLocaleDateString() : "No expiry"}
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={status.color}>{status.label}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Button className="cursor-pointer"
+                {coupons.map((coupon) => {
+                  const status = getCouponStatus(coupon)
+                  return (
+                    <TableRow key={coupon.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-1.5">
+                          <code className="rounded-md bg-muted px-2 py-1 font-mono text-sm font-semibold text-foreground">{coupon.code}</code>
+                          <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => {
-                              setIsNewCoupon(false)
-                              setEditCoupon(coupon)
-                            }}
+                            className="h-8 w-8"
+                            onClick={() => handleCopyCode(coupon.code)}
+                            aria-label={copiedCode === coupon.code ? "Copied" : `Copy ${coupon.code}`}
                           >
-                            <Edit className="h-4 w-4" />
+                            {copiedCode === coupon.code ? (
+                              <Check className="h-3.5 w-3.5 text-success" aria-hidden="true" />
+                            ) : (
+                              <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+                            )}
                           </Button>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })
-                )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-semibold text-foreground" data-tabular>
+                        {coupon.discountPercent}% off
+                      </TableCell>
+                      <TableCell data-tabular>
+                        {coupon.usedCount}
+                        <span className="text-muted-foreground">{coupon.maxUses ? ` / ${coupon.maxUses}` : " / ∞"}</span>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground" data-tabular>
+                        {coupon.validUntil
+                          ? new Date(coupon.validUntil).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })
+                          : "Never"}
+                      </TableCell>
+                      <TableCell>
+                        <span className="inline-flex items-center gap-1.5 text-sm text-foreground">
+                          <span className={cn("h-1.5 w-1.5 rounded-full", status.dot)} aria-hidden="true" />
+                          {status.label}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setIsNewCoupon(false)
+                            setEditCoupon(coupon)
+                          }}
+                          aria-label={`Edit ${coupon.code}`}
+                        >
+                          <Edit className="h-4 w-4" aria-hidden="true" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      )}
 
       {/* Edit/Create Coupon Dialog */}
       <Dialog
@@ -237,25 +245,25 @@ export function CouponsContent() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{isNewCoupon ? "Create Coupon" : "Edit Coupon"}</DialogTitle>
+            <DialogTitle>{isNewCoupon ? "New coupon" : "Edit coupon"}</DialogTitle>
             <DialogDescription>
-              {isNewCoupon ? "Create a new discount code" : "Update coupon settings"}
+              {isNewCoupon ? "Customers enter this at checkout." : `Used ${editCoupon?.usedCount ?? 0} times.`}
             </DialogDescription>
           </DialogHeader>
           {editCoupon && (
             <div className="grid gap-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="code">Coupon Code</Label>
+                <Label htmlFor="code">Code</Label>
                 <div className="flex gap-2">
                   <Input
                     id="code"
                     value={editCoupon.code}
                     onChange={(e) => setEditCoupon({ ...editCoupon, code: e.target.value.toUpperCase() })}
                     className="font-mono"
-                    placeholder="e.g., CPLSAVE20"
+                    placeholder="CPLSAVE20"
                   />
                   {isNewCoupon && (
-                    <Button className="cursor-pointer"
+                    <Button
                       variant="outline"
                       onClick={() => setEditCoupon({ ...editCoupon, code: generateCouponCode() })}
                     >
@@ -280,7 +288,7 @@ export function CouponsContent() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="maxUses">Max Uses (empty = unlimited)</Label>
+                  <Label htmlFor="maxUses">Use limit</Label>
                   <Input
                     id="maxUses"
                     type="number"
@@ -298,7 +306,7 @@ export function CouponsContent() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="validUntil">Expiry Date (optional)</Label>
+                <Label htmlFor="validUntil">Expires</Label>
                 <Input
                   id="validUntil"
                   type="date"
@@ -315,7 +323,7 @@ export function CouponsContent() {
               <div className="flex items-center justify-between rounded-lg border p-3">
                 <div>
                   <Label>Active</Label>
-                  <p className="text-sm text-muted-foreground">Enable or disable this coupon</p>
+                  <p className="text-sm text-muted-foreground">Turn off to stop it working.</p>
                 </div>
                 <Switch
                   checked={editCoupon.isActive}
@@ -323,22 +331,10 @@ export function CouponsContent() {
                 />
               </div>
 
-              {!isNewCoupon && (
-                <div className="rounded-lg bg-muted p-3">
-                  <p className="text-sm">
-                    <span className="text-muted-foreground">Used: </span>
-                    <span className="font-medium">{editCoupon.usedCount} times</span>
-                  </p>
-                  <p className="text-sm">
-                    <span className="text-muted-foreground">Created: </span>
-                    <span className="font-medium">{new Date(editCoupon.createdAt).toLocaleDateString()}</span>
-                  </p>
-                </div>
-              )}
             </div>
           )}
           <DialogFooter>
-            <Button className="cursor-pointer"
+            <Button
               variant="outline"
               onClick={() => {
                 setEditCoupon(null)
@@ -347,13 +343,13 @@ export function CouponsContent() {
             >
               Cancel
             </Button>
-            <Button className="cursor-pointer" onClick={handleSaveCoupon} disabled={saving}>
+            <Button onClick={handleSaveCoupon} disabled={saving}>
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isNewCoupon ? "Create" : "Save"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageShell>
   )
 }

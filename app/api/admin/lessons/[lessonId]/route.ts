@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@lib/prisma"
 import { courseIsLive, isResponse, liveContentError, pick, requireStaff } from "@lib/staff"
+import { MOS_LIVE_REMOVE_ERROR, checkLinksForSubject, deleteMappingsFor, hasPrimaryMapping, linkedItemIds, parseMosInput, saveMappings } from "@lib/mos/mappings"
 
 const LESSON_FIELDS = ["title", "description", "contentType", "content", "estimatedMins"] as const
 
@@ -36,6 +37,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ le
   if (body.action === "apply-revision" || body.action === "discard-revision") {
     if (!staff.isAdmin) return NextResponse.json({ error: "Only an admin can review changes." }, { status: 403 })
     const revision = (existing.pendingRevision ?? {}) as Record<string, unknown>
+    // A reason on a discard is shown to the curator on their home screen.
+    const reason = typeof body.reason === "string" ? body.reason.trim().slice(0, 1000) : ""
+    const declined = body.action === "discard-revision" && reason
     const lesson = await prisma.lesson.update({
       where: { id: lessonId },
       data: {
@@ -43,18 +47,44 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ le
         pendingRevision: null,
         pendingRevisionById: null,
         pendingRevisionAt: null,
+        ...(declined
+          ? { rejectionReason: reason, rejectedAt: new Date(), rejectionForId: existing.pendingRevisionById }
+          : { rejectionReason: null, rejectedAt: null, rejectionForId: null }),
       },
     })
     return NextResponse.json({ lesson })
   }
 
   const changes = pick(body, LESSON_FIELDS) as Prisma.LessonUpdateInput
+  const live = await courseIsLive({ lessonId })
 
-  if (!staff.isAdmin && (await courseIsLive({ lessonId }))) {
+  // MOS links apply straight away, even when a curator's content edit waits for review.
+  const mos = parseMosInput(body.mos)
+  if (mos) {
+    const course = await prisma.module.findUnique({ where: { id: existing.moduleId }, select: { course: { select: { subjectId: true } } } })
+    const subjectId = course?.course.subjectId ?? ""
+    const mosError = await checkLinksForSubject(mos, subjectId, await linkedItemIds("lesson", lessonId))
+    if (mosError) return NextResponse.json({ error: mosError }, { status: 422 })
+    if (!mos.length && live && (await hasPrimaryMapping("lesson", lessonId))) {
+      return NextResponse.json({ error: MOS_LIVE_REMOVE_ERROR }, { status: 422 })
+    }
+    await saveMappings({ contentType: "lesson", contentId: lessonId, subjectId, links: mos, userId: staff.userId })
+  }
+
+  if (!staff.isAdmin && live) {
+    if (!Object.keys(changes).length) return NextResponse.json({ lesson: existing })
     const merged = { ...((existing.pendingRevision as Record<string, unknown>) ?? {}), ...changes } as unknown as Prisma.InputJsonObject
     const lesson = await prisma.lesson.update({
       where: { id: lessonId },
-      data: { pendingRevision: merged, pendingRevisionById: staff.userId, pendingRevisionAt: new Date() },
+      data: {
+        pendingRevision: merged,
+        pendingRevisionById: staff.userId,
+        pendingRevisionAt: new Date(),
+        // A fresh proposal answers any earlier feedback.
+        rejectionReason: null,
+        rejectedAt: null,
+        rejectionForId: null,
+      },
     })
     return NextResponse.json({ lesson, revisionPending: true })
   }
@@ -71,5 +101,6 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   if (!staff.isAdmin && (await courseIsLive({ lessonId }))) return liveContentError()
 
   await prisma.lesson.delete({ where: { id: lessonId } })
+  await deleteMappingsFor("lesson", [lessonId])
   return NextResponse.json({ success: true })
 }

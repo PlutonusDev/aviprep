@@ -35,7 +35,6 @@ export async function GET(request: NextRequest) {
         phone: true,
         arn: true,
         isAdmin: true,
-        isCurator: true,
         hasBundle: true,
         bundleExpiry: true,
         createdAt: true,

@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
+import { PageHeader, PageShell } from "@/components/hub/page-primitives"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -267,13 +268,8 @@ export default function BrandingContent() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-8 p-4 lg:p-8">
-      <header className="space-y-1.5">
-        <h1 className="text-display-3 font-bold text-foreground">Card artwork</h1>
-        <p className="text-muted-foreground">
-          Generate branded header images for subject and course cards, then save them to a course.
-        </p>
-      </header>
+    <PageShell>
+      <PageHeader title="Card artwork" description="Header images for subject and course cards." />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         {/* Preview */}
@@ -413,6 +409,6 @@ export default function BrandingContent() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </PageShell>
   )
 }

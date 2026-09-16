@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<title>Writing for AviPrep</title>
+<style>
+  @font-face { font-family: "Inter"; font-weight: 400; src: url("Inter-400.ttf") format("truetype"); }
+  @font-face { font-family: "Inter"; font-weight: 600; src: url("Inter-600.ttf") format("truetype"); }
+
+  :root {
+    --orange: #F78601;
+    --orange-ink: #B45F00;
+    --blue: #1B5F99;
+    --blue-soft: #EEF4FA;
+    --green: #15803D;
+    --green-soft: #F0FAF3;
+    --red: #B91C1C;
+    --red-soft: #FDF2F2;
+    --ink: #0F172A;
+    --text: #334155;
+    --muted: #64748B;
+    --line: #E2E8F0;
+    --panel: #F8FAFC;
+    --warm: #FFF7EC;
+  }
+
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    font-family: "Inter", Arial, sans-serif;
+    font-size: 9.6pt;
+    line-height: 1.55;
+    color: var(--text);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .page { position: relative; width: 210mm; height: 297mm; overflow: hidden; break-after: page; }
+  .page:last-child { break-after: auto; }
+  .letterhead { position: absolute; inset: 0 0 auto 0; width: 210mm; height: 40mm; }
+  .content { position: absolute; top: 50mm; left: 20mm; right: 20mm; bottom: 14mm; display: flex; flex-direction: column; }
+  .content.plain { top: 18mm; }
+
+  h1, h2, h3 { margin: 0; color: var(--ink); font-weight: 600; text-wrap: balance; }
+  p { margin: 0; text-wrap: pretty; }
+  strong { color: var(--ink); font-weight: 600; }
+  ul { margin: 0; padding: 0; list-style: none; }
+
+  h1 { font-size: 30pt; line-height: 1.05; letter-spacing: -0.015em; }
+  .intro { margin-top: 3.5mm; font-size: 12pt; line-height: 1.5; color: var(--muted); }
+
+  /* Section heading */
+  .section { display: flex; align-items: baseline; gap: 3mm; margin-top: 9mm; }
+  .section .n { font-size: 8.5pt; font-weight: 600; letter-spacing: 0.08em; color: var(--orange-ink); }
+  .section h2 { font-size: 17pt; letter-spacing: -0.01em; }
+  .section-lead { margin-top: 1.5mm; color: var(--muted); }
+  .plain .section:first-child { margin-top: 0; }
+
+  /* Rules list */
+  .rules { margin-top: 4mm; display: grid; grid-template-columns: 1fr 1fr; column-gap: 8mm; row-gap: 2.6mm; }
+  .rules li { position: relative; padding-left: 5mm; }
+  .rules li::before {
+    content: ""; position: absolute; left: 0; top: 1.9mm;
+    width: 1.8mm; height: 1.8mm; border-radius: 50%; background: var(--orange);
+  }
+  .rules h3 { font-size: 9.8pt; line-height: 1.35; }
+  .rules p { margin-top: 0.5mm; color: var(--text); }
+
+  /* Example cards */
+  .compare { margin-top: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; }
+  .card { border-radius: 3mm; padding: 4mm 4.5mm; }
+  .card.bad { background: var(--red-soft); }
+  .card.good { background: var(--green-soft); }
+  .card .tag { font-size: 7.5pt; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+  .card.bad .tag { color: var(--red); }
+  .card.good .tag { color: var(--green); }
+  .card .stem { margin-top: 1.8mm; font-weight: 600; color: var(--ink); }
+  .opts { margin-top: 2mm; display: grid; row-gap: 1.2mm; }
+  .opt { display: flex; gap: 2.2mm; align-items: baseline; }
+  .opt .dot { flex: none; width: 3.2mm; height: 3.2mm; border-radius: 50%; border: 0.3mm solid #CBD5E1; background: #fff; transform: translateY(0.5mm); }
+  .opt.right .dot { border-color: var(--green); background: var(--green); }
+  .card .why { margin-top: 2.5mm; padding-top: 2.2mm; border-top: 0.3mm solid rgba(15,23,42,0.08); font-size: 8.6pt; color: var(--muted); }
+
+  /* Contents */
+  .contents { margin-top: 9mm; }
+  .contents ol { margin: 2.5mm 0 0; padding: 0; list-style: none; border-top: 0.3mm solid var(--line); }
+  .contents li { display: grid; grid-template-columns: 10mm 1fr auto; align-items: baseline; padding: 2.6mm 0; border-bottom: 0.3mm solid var(--line); }
+  .contents .n { font-size: 8.5pt; font-weight: 600; letter-spacing: 0.08em; color: var(--orange-ink); }
+  .contents .t { font-size: 11pt; font-weight: 600; color: var(--ink); }
+  .contents .pg { font-size: 9pt; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .compare.spaced { margin-top: 7mm; }
+
+  /* Originality note */
+  .original { margin-top: 8mm; border-radius: 3.5mm; background: var(--warm); padding: 5mm 6mm; }
+  .kicker { font-size: 7.5pt; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--orange-ink); }
+  .original h2 { margin-top: 1mm; font-size: 13pt; }
+  .original > p { margin-top: 1.5mm; }
+  .never { margin-top: 3.5mm; display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm; }
+  .never li { border-radius: 2.5mm; background: #fff; padding: 3mm 3.5mm; }
+  .never h3 { font-size: 9.4pt; }
+  .never h3::before { content: "×"; margin-bottom: 1.8mm; width: 4.2mm; height: 4.2mm; border-radius: 50%; display: grid; place-items: center; font-size: 8.5pt; line-height: 1; color: #fff; background: var(--red); }
+  .never p { margin-top: 1mm; font-size: 8.8pt; }
+  .original .small { margin-top: 3.5mm; font-size: 8.8pt; color: var(--muted); }
+
+  /* MOS ID */
+  .mosid { margin-top: 5mm; display: grid; grid-template-columns: 1fr 1fr 1fr 1.5fr; gap: 1.2mm; }
+  .seg { display: flex; flex-direction: column; padding: 3mm 3.5mm; background: var(--panel); }
+  .seg:first-child { border-radius: 3mm 0 0 3mm; }
+  .seg.item { border-radius: 0 3mm 3mm 0; background: var(--warm); }
+  .seg .code { font-size: 15pt; font-weight: 600; line-height: 1.15; color: var(--ink); letter-spacing: -0.01em; }
+  .seg.item .code { color: var(--orange-ink); }
+  .seg .what { margin-top: 1mm; font-size: 7.5pt; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .seg .eg { margin-top: 0.3mm; font-size: 8.6pt; line-height: 1.4; color: var(--text); }
+  .caption { margin-top: 2mm; font-size: 8.8pt; color: var(--muted); }
+
+  /* Tagging steps */
+  .steps { margin: 5mm 0 0; padding: 0; list-style: none; counter-reset: step; display: grid; grid-template-columns: 1fr 1fr; column-gap: 8mm; row-gap: 3.2mm; }
+  .steps li { counter-increment: step; position: relative; padding-left: 7mm; }
+  .steps li::before {
+    content: counter(step); position: absolute; left: 0; top: 0.3mm;
+    width: 4.6mm; height: 4.6mm; border-radius: 50%;
+    display: grid; place-items: center;
+    font-size: 7pt; font-weight: 600; color: #fff; background: var(--orange);
+  }
+  .steps h3 { font-size: 9.8pt; line-height: 1.35; }
+  .steps p { margin-top: 0.5mm; }
+
+  /* Explanation anatomy */
+  .anatomy { margin-top: 5mm; display: grid; grid-template-columns: 1fr 58mm; gap: 7mm; align-items: start; }
+  .sample { border-radius: 3mm; background: var(--panel); padding: 4.5mm 5mm; }
+  .sample .label { font-size: 7.5pt; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .sample .q { margin-top: 1.5mm; font-weight: 600; color: var(--ink); }
+  .sample .body { margin-top: 3mm; display: grid; row-gap: 2mm; }
+  .sample .part { position: relative; padding-left: 7mm; }
+  .sample .part .k {
+    position: absolute; left: 0; top: 0.3mm;
+    width: 4.6mm; height: 4.6mm; border-radius: 50%;
+    display: grid; place-items: center;
+    font-size: 7pt; font-weight: 600; color: #fff; background: var(--orange);
+  }
+  .sample .ref { margin-top: 3mm; padding-top: 2.5mm; border-top: 0.3mm solid var(--line); font-size: 8.6pt; color: var(--muted); }
+  .sample .ref b { color: var(--ink); font-weight: 600; }
+
+  .keys { display: grid; row-gap: 3.5mm; }
+  .keys .item { display: grid; grid-template-columns: 7mm 1fr; }
+  .keys .k {
+    width: 4.6mm; height: 4.6mm; border-radius: 50%; margin-top: 0.3mm;
+    display: grid; place-items: center;
+    font-size: 7pt; font-weight: 600; color: #fff; background: var(--orange);
+  }
+  .keys h3 { font-size: 9.8pt; line-height: 1.35; }
+  .keys p { margin-top: 0.4mm; font-size: 9pt; }
+
+  .callout { margin-top: 5mm; display: flex; gap: 4mm; align-items: flex-start; border-radius: 3mm; background: var(--blue-soft); padding: 3.5mm 4.5mm; }
+  .callout .bar { flex: none; width: 1mm; align-self: stretch; border-radius: 1mm; background: var(--blue); }
+  .callout h3 { font-size: 9.8pt; }
+  .callout p { margin-top: 0.5mm; }
+
+  /* Image specs */
+  .specs { margin-top: 5mm; display: grid; grid-template-columns: repeat(4, 1fr); gap: 3.5mm; }
+  .spec { border-radius: 3mm; background: var(--panel); padding: 3.5mm 4mm; }
+  .spec .label { font-size: 7.5pt; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .spec .value { margin-top: 1mm; font-size: 14pt; font-weight: 600; line-height: 1.15; color: var(--ink); letter-spacing: -0.01em; }
+  .spec p { margin-top: 1mm; font-size: 8.6pt; color: var(--muted); }
+
+  /* Points */
+  .tiers { margin-top: 5mm; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4mm; }
+  .tier { border-radius: 3.5mm; padding: 5mm; background: var(--panel); display: flex; flex-direction: column; }
+  .tier.top { background: var(--warm); }
+  .tier .pts { display: flex; align-items: baseline; gap: 1.5mm; }
+  .tier .pts b { font-size: 34pt; line-height: 1; font-weight: 600; color: var(--ink); letter-spacing: -0.03em; }
+  .tier.top .pts b { color: var(--orange-ink); }
+  .tier .pts span { font-size: 9pt; font-weight: 600; color: var(--muted); }
+  .tier h3 { margin-top: 3mm; font-size: 11pt; }
+  .tier > p { margin-top: 1mm; font-size: 9pt; }
+  .tier ul { margin-top: 3mm; padding-top: 3mm; border-top: 0.3mm solid rgba(15,23,42,0.08); display: grid; row-gap: 1.2mm; font-size: 8.6pt; color: var(--muted); }
+  .tier li { position: relative; padding-left: 3mm; }
+  .tier li::before { content: ""; position: absolute; left: 0; top: 1.8mm; width: 1.2mm; height: 1.2mm; border-radius: 50%; background: var(--orange); }
+
+  .pool { margin-top: 6mm; display: grid; grid-template-columns: 1fr 78mm; gap: 8mm; align-items: center; }
+  .pool .steps-plain { display: grid; row-gap: 2.5mm; }
+  .pool .steps-plain p { padding-left: 5mm; position: relative; }
+  .pool .steps-plain p::before { content: ""; position: absolute; left: 0; top: 1.9mm; width: 1.8mm; height: 1.8mm; border-radius: 50%; background: var(--orange); }
+  .example { border-radius: 3.5mm; border: 0.3mm solid var(--line); padding: 4.5mm 5mm; font-variant-numeric: tabular-nums; }
+  .example .label { font-size: 7.5pt; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .example .row { display: flex; justify-content: space-between; margin-top: 1.6mm; }
+  .example .row b { color: var(--ink); font-weight: 600; }
+  .example .meter { margin-top: 3mm; height: 3mm; border-radius: 999px; background: var(--line); overflow: hidden; }
+  .example .meter div { height: 100%; width: 7.5%; background: var(--orange); border-radius: 999px; }
+  .example .total { margin-top: 3mm; padding-top: 2.5mm; border-top: 0.3mm solid var(--line); display: flex; justify-content: space-between; align-items: baseline; }
+  .example .total b { font-size: 16pt; color: var(--ink); font-weight: 600; }
+
+  /* Checklist */
+  .checklist { margin-top: 4.5mm; display: grid; grid-template-columns: 1fr 1fr; column-gap: 8mm; row-gap: 2.4mm; }
+  .checklist li { display: flex; gap: 2.8mm; align-items: flex-start; }
+  .checklist .box { flex: none; width: 3.8mm; height: 3.8mm; margin-top: 0.4mm; border: 0.3mm solid #CBD5E1; border-radius: 0.8mm; background: #fff; }
+
+  .close { margin-top: auto; display: flex; justify-content: space-between; align-items: flex-end; gap: 10mm; padding-top: 6mm; }
+  .close h2 { font-size: 12pt; }
+  .close p { margin-top: 1mm; }
+  .close a { color: var(--blue); font-weight: 600; text-decoration: none; }
+  .pagenum { font-size: 8pt; color: var(--muted); }
+  .foot { margin-top: auto; display: flex; justify-content: space-between; padding-top: 4mm; font-size: 8pt; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<!-- Page 1: Originality and questions -->
+<section class="page">
+  <img class="letterhead" src="aviprep-letterhead-header.png" alt="AviPrep">
+  <div class="content">
+    <h1>Writing for AviPrep</h1>
+    <p class="intro">This guide covers how we write questions, explanations and diagrams, how to tag your work to the Part 61 MOS, and how points are worked out. Stick to it and your work will get through review and onto the platform faster.</p>
+
+    <div class="original">
+      <div class="kicker">Section 2.3 of your agreement</div>
+      <h2>Everything you send must be your own work</h2>
+      <p>When you submit content, you’re promising that it’s original, that it doesn’t infringe anyone else’s intellectual property, and that it doesn’t break CASA exam confidentiality. In practice, that rules out three things:</p>
+      <ul class="never">
+        <li><h3>Copyrighted text</h3><p>Passages from textbooks, study guides, websites or other question banks, even if you reword them.</p></li>
+        <li><h3>Recalled CASA exam questions</h3><p>Anything you or anyone else remembers from a live exam, even with the numbers or wording changed.</p></li>
+        <li><h3>Other people’s diagrams</h3><p>Charts, figures and photos you didn’t make yourself. Redraw them from scratch instead.</p></li>
+      </ul>
+      <p class="small">Breaching this is grounds for ending the agreement straight away (section 7.2). If you’re not sure whether something counts, ask us before you use it.</p>
+    </div>
+
+    <div class="contents">
+      <div class="kicker">In this guide</div>
+      <ol>
+        <li><span class="n">01</span><span class="t">Questions</span><span class="pg">2</span></li>
+        <li><span class="n">02</span><span class="t">Tagging to the Part 61 MOS</span><span class="pg">3</span></li>
+        <li><span class="n">03</span><span class="t">Explanations</span><span class="pg">4</span></li>
+        <li><span class="n">04</span><span class="t">Charts and diagrams</span><span class="pg">4</span></li>
+        <li><span class="n">05</span><span class="t">How points work</span><span class="pg">5</span></li>
+        <li><span class="n">06</span><span class="t">Before you submit</span><span class="pg">5</span></li>
+      </ol>
+    </div>
+
+    <div class="foot"><span>Writing for AviPrep</span><span class="pagenum">1 of 5</span></div>
+  </div>
+</section>
+
+<!-- Page 2: Questions -->
+<section class="page">
+  <div class="content plain">
+    <div class="section"><span class="n">01</span><h2>Questions</h2></div>
+    <p class="section-lead">A good question tests one idea, reads like the real exam and can’t be answered just by spotting how it was written. Students should get it right because they understand the topic, and wrong because they don’t.</p>
+
+    <ul class="rules">
+      <li><h3>One idea per question</h3><p>If you need “and” to describe what it tests, split it into two.</p></li>
+      <li><h3>Four options, one answer</h3><p>CASA uses four. The editor allows two to six, but only one can be right.</p></li>
+      <li><h3>Make the wrong answers tempting</h3><p>Base them on real mistakes: wrong units, reversed rules, the step people skip.</p></li>
+      <li><h3>Don’t give it away</h3><p>Keep options a similar length and grammar, so the longest answer isn’t always the right one.</p></li>
+      <li><h3>Options get shuffled</h3><p>Never write “option A” or “both B and C”. “All of the above” locks the order, so use it rarely.</p></li>
+      <li><h3>Say it positively</h3><p>Avoid negatives. If you must, write NOT in capitals so nobody misses it.</p></li>
+      <li><h3>Keep the stem tight</h3><p>Under 400 characters. Give the numbers they need and nothing else.</p></li>
+      <li><h3>Write for the licence</h3><p>A CPL question should go deeper than a PPL one. Match the level of the subject.</p></li>
+      <li><h3>Set topic and difficulty</h3><p>Pick the topic that fits and be honest about difficulty: easy, medium or hard.</p></li>
+      <li><h3>Use Australian terms</h3><p>AMSL, AGL, hPa, kt, NM, ERSA, AIP. Write numbers and units the way pilots read them.</p></li>
+    </ul>
+
+    <div class="compare spaced">
+      <div class="card bad">
+        <div class="tag">Needs work</div>
+        <p class="stem">Which of the following is not something that doesn’t affect density altitude?</p>
+        <div class="opts">
+          <div class="opt"><span class="dot"></span><span>Temperature</span></div>
+          <div class="opt"><span class="dot"></span><span>Humidity</span></div>
+          <div class="opt right"><span class="dot"></span><span>Pressure, temperature and humidity all affect density altitude</span></div>
+          <div class="opt"><span class="dot"></span><span>Both A and B</span></div>
+        </div>
+        <p class="why">Double negative, a giveaway long answer, and a letter reference that breaks when the options shuffle.</p>
+      </div>
+      <div class="card good">
+        <div class="tag">Better</div>
+        <p class="stem">An aerodrome at 2,000 ft AMSL has a QNH of 1013 hPa and a temperature of 35°C. Compared with a standard day, the aircraft’s take-off distance will be</p>
+        <div class="opts">
+          <div class="opt right"><span class="dot"></span><span>longer, because density altitude is higher</span></div>
+          <div class="opt"><span class="dot"></span><span>shorter, because density altitude is lower</span></div>
+          <div class="opt"><span class="dot"></span><span>longer, because pressure altitude is higher</span></div>
+          <div class="opt"><span class="dot"></span><span>unchanged, because QNH is standard</span></div>
+        </div>
+        <p class="why">One idea, real numbers, and every wrong answer is a mistake students actually make.</p>
+      </div>
+    </div>
+
+    <div class="foot"><span>Writing for AviPrep</span><span class="pagenum">2 of 5</span></div>
+  </div>
+</section>
+
+<!-- Page 3: MOS tagging -->
+<section class="page">
+  <div class="content plain">
+    <div class="section"><span class="n">02</span><h2>Tagging to the Part 61 MOS</h2></div>
+    <p class="section-lead">Section 1.2 of your agreement says all content must be strictly mapped to the current CASA Part 61 Manual of Standards. We do that by linking every question to the Schedule 3 item it actually tests. It’s how we show students and flight schools that the question bank covers the syllabus, so the links need to be accurate, not just close.</p>
+
+    <div class="mosid">
+      <div class="seg"><span class="code">CNVC</span><span class="what">Unit</span><span class="eg">CPL navigation</span></div>
+      <div class="seg"><span class="code">2.5</span><span class="what">Subtopic</span><span class="eg">Pilot navigation</span></div>
+      <div class="seg"><span class="code">2.5.3</span><span class="what">Element</span><span class="eg">Given a track and data…</span></div>
+      <div class="seg item"><span class="code">(d)</span><span class="what">Item</span><span class="eg">Revise estimates or ETA using latest ground speed</span></div>
+    </div>
+    <p class="caption">You’ll see items written as <strong>CNVC 2.5.3(d)</strong>. You always link to the item, the most specific level.</p>
+
+    <ol class="steps">
+      <li><h3>Write the question first</h3><p>The editor suggests MOS items from your wording, so finish the stem, options and explanation before you tag.</p></li>
+      <li><h3>Read the suggestions</h3><p>You’ll see up to three items with a match percentage. A high match means similar wording, not a correct link, so read the item before you click Link.</p></li>
+      <li><h3>Choose one primary item</h3><p>This is the item the question tests most directly. The first item you link becomes primary, and the star moves it. A question can’t be published without one.</p></li>
+      <li><h3>Add secondary items sparingly</h3><p>Only link another item if the question genuinely assesses it too. Most questions need none, and loose links make our coverage look better than it is.</p></li>
+      <li><h3>Search when suggestions miss</h3><p>Search by reference, like “2.5.3”, or by words, like “ground speed”. Only items from the subject’s own units can be linked.</p></li>
+      <li><h3>Match the verb</h3><p>If the item says <em>calculate</em>, the question should make students calculate. A recall question belongs on an <em>explain</em> or <em>describe</em> item.</p></li>
+    </ol>
+
+    <div class="callout">
+      <span class="bar"></span>
+      <div>
+        <h3>When the MOS changes</h3>
+        <p>CASA updates the MOS from time to time. We load each update without breaking your links, but if an item you linked has been reworded, it will show “Reworded in the latest MOS”. Read the new wording, then click Still fits or link the right item instead. Content that falls out of date can be archived, and archived content stops earning points (section 3.6).</p>
+      </div>
+    </div>
+
+    <div class="foot"><span>Writing for AviPrep</span><span class="pagenum">3 of 5</span></div>
+  </div>
+</section>
+
+<!-- Page 4: Explanations and images -->
+<section class="page">
+  <div class="content plain">
+    <div class="section"><span class="n">03</span><h2>Explanations</h2></div>
+    <p class="section-lead">Students read the explanation straight after answering, often after getting the question wrong. Use it to teach them why, rather than just telling them they missed it.</p>
+
+    <div class="anatomy">
+      <div class="sample">
+        <div class="label">Example</div>
+        <p class="q">A 20 kt headwind, TAS 120 kt. How long to fly 50 NM?</p>
+        <div class="body">
+          <p class="part"><span class="k">1</span>30 minutes. A headwind slows you over the ground, so your groundspeed is 100 kt.</p>
+          <p class="part"><span class="k">2</span>GS = 120 − 20 = 100 kt. Time = 50 NM ÷ 100 kt = 0.5 hr = 30 min.</p>
+          <p class="part"><span class="k">3</span>If you got 21 minutes, you added the wind instead of subtracting it.</p>
+        </div>
+        <p class="ref"><b>Reference</b> &nbsp;Part 61 MOS, CNVC 2.5.3(d) (goes in the reference field)</p>
+      </div>
+
+      <div class="keys">
+        <div class="item"><span class="k">1</span><div><h3>Answer first</h3><p>Open with the right answer and the reason it’s right.</p></div></div>
+        <div class="item"><span class="k">2</span><div><h3>Show the working</h3><p>For calculations, write every step with units.</p></div></div>
+        <div class="item"><span class="k">3</span><div><h3>Name the trap</h3><p>Explain the most tempting wrong answer.</p></div></div>
+        <div class="item"><span class="k">4</span><div><h3>Cite the source</h3><p>Put it in the reference field, not the explanation.</p></div></div>
+      </div>
+    </div>
+
+    <div class="callout">
+      <span class="bar"></span>
+      <div>
+        <h3>Plain text only</h3>
+        <p>Explanations show as a single paragraph. Line breaks, bullets and markdown won’t appear, so write in short, full sentences. Two to five is usually right. Symbols like °, −, ÷ and × are fine.</p>
+      </div>
+    </div>
+
+    <div class="section"><span class="n">04</span><h2>Charts and diagrams</h2></div>
+    <p class="section-lead">Most students study on their phones. If a label can’t be read on a small screen, it can’t be read at all, so design every image for the smallest screen first.</p>
+
+    <div class="specs">
+      <div class="spec"><div class="label">Format</div><div class="value">PNG</div><p>For diagrams and charts. JPG or WebP for photos.</p></div>
+      <div class="spec"><div class="label">Width</div><div class="value">1600 px</div><p>At least. Export at 2× if your tool allows.</p></div>
+      <div class="spec"><div class="label">File size</div><div class="value">Under 1 MB</div><p>Uploads cap at 10 MB, but smaller loads faster.</p></div>
+      <div class="spec"><div class="label">Text</div><div class="value">16 px+</div><p>At 1600 px wide, so labels survive on a phone.</p></div>
+    </div>
+
+    <ul class="rules">
+      <li><h3>Draw it yourself</h3><p>Redraw anything from a textbook, AIP or ERSA. Don’t scan or screenshot copyrighted material.</p></li>
+      <li><h3>Crop to what matters</h3><p>Show only the part of the chart the question needs, with a little context around it.</p></li>
+      <li><h3>White background</h3><p>No transparency, borders or drop shadows.</p></li>
+      <li><h3>Don’t lean on colour alone</h3><p>Label lines and areas as well, so they still work in greyscale or for colour-blind students.</p></li>
+      <li><h3>No watermarks or logos</h3><p>Including your own.</p></li>
+      <li><h3>Name files clearly</h3><p>Like <strong>cnvc-wind-triangle-01.png</strong>, and send a one-line description with each.</p></li>
+    </ul>
+
+    <div class="foot"><span>Writing for AviPrep</span><span class="pagenum">4 of 5</span></div>
+  </div>
+</section>
+
+<!-- Page 5: Points -->
+<section class="page">
+  <div class="content plain">
+    <div class="section"><span class="n">05</span><h2>How points work</h2></div>
+    <p class="section-lead">Every piece of published content earns points. Your share of a subject’s royalty pool depends on how many active points you hold in that subject compared with everyone else.</p>
+
+    <div class="tiers">
+      <div class="tier">
+        <div class="pts"><b>1</b><span>point</span></div>
+        <h3>Standard question</h3>
+        <p>A multiple-choice question with a clear explanation.</p>
+        <ul>
+          <li>Recall or single-step reasoning</li>
+          <li>Rules, definitions, procedures</li>
+          <li>Most of the question bank</li>
+        </ul>
+      </div>
+      <div class="tier">
+        <div class="pts"><b>3</b><span>points</span></div>
+        <h3>Complex question</h3>
+        <p>Takes real work to write and to answer.</p>
+        <ul>
+          <li>Chart or diagram work</li>
+          <li>Multi-step calculations</li>
+          <li>Includes an original image</li>
+        </ul>
+      </div>
+      <div class="tier top">
+        <div class="pts"><b>10</b><span>points</span></div>
+        <h3>Lesson</h3>
+        <p>A full piece of teaching on a topic.</p>
+        <ul>
+          <li>Theory lesson or written chapter</li>
+          <li>Video lesson</li>
+          <li>Covers its MOS items end to end</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="pool">
+      <div class="steps-plain">
+        <p><strong>Points count once your work is published.</strong> Drafts and content waiting for review don’t earn yet.</p>
+        <p><strong>We set the points when we publish.</strong> If you think something deserves a higher tier, tell us when you submit it.</p>
+        <p><strong>Content only earns while it’s live.</strong> If it’s archived or goes out of date, its points drop out of the pool.</p>
+        <p><strong>Each month,</strong> 25% of a subject’s net revenue is shared between contributors by their active points in that subject.</p>
+      </div>
+      <div class="example">
+        <div class="label">Example month</div>
+        <div class="row"><span>Subject pool</span><b>$2,000</b></div>
+        <div class="row"><span>Your active points</span><b>60</b></div>
+        <div class="row"><span>All active points</span><b>800</b></div>
+        <div class="meter"><div></div></div>
+        <div class="total"><span>Your royalty</span><b>$150</b></div>
+      </div>
+    </div>
+
+    <div class="section"><span class="n">06</span><h2>Before you submit</h2></div>
+    <ul class="checklist">
+      <li><span class="box"></span><span>It’s my own work, with no copied text or recalled exam questions</span></li>
+      <li><span class="box"></span><span>There’s exactly one correct answer</span></li>
+      <li><span class="box"></span><span>The wrong answers are believable</span></li>
+      <li><span class="box"></span><span>Nothing refers to an option’s letter or position</span></li>
+      <li><span class="box"></span><span>The explanation leads with the answer and why</span></li>
+      <li><span class="box"></span><span>Calculations show every step, with units</span></li>
+      <li><span class="box"></span><span>The reference field has a source</span></li>
+      <li><span class="box"></span><span>The primary MOS item is the one it really tests</span></li>
+      <li><span class="box"></span><span>Images are original and readable on a phone</span></li>
+      <li><span class="box"></span><span>I’ve checked it against the current rules</span></li>
+    </ul>
+
+    <div class="close">
+      <div>
+        <h2>Not sure about something?</h2>
+        <p>Ask before you write it: <a href="mailto:hello@aviprep.com.au">hello@aviprep.com.au</a></p>
+      </div>
+      <span class="pagenum">5 of 5</span>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

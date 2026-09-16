@@ -14,8 +14,13 @@ export async function POST(request: Request) {
 
     // The phone is never in the token (except sign-up), so look it up again.
     let phone: string | null = null
-    if (challenge.purpose === "signup" || challenge.purpose === "waitlist") {
+    if (challenge.purpose === "signup" || challenge.purpose === "waitlist" || challenge.purpose === "curator-join") {
       phone = challenge.phone ?? null
+    } else if (challenge.purpose === "curator-login") {
+      const curator = challenge.userId
+        ? await prisma.curator.findUnique({ where: { id: challenge.userId }, select: { phone: true, isActive: true } })
+        : null
+      phone = curator?.isActive ? toE164AustralianMobile(curator.phone) : null
     } else {
       const where = challenge.userId ? { id: challenge.userId } : challenge.email ? { email: challenge.email } : null
       const user = where ? await prisma.user.findUnique({ where, select: { phone: true } }) : null

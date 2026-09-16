@@ -2,7 +2,6 @@
 
 import Link from "next/link"
 import React, { useState, useEffect, useCallback } from "react"
-import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -45,6 +44,9 @@ import {
 import { toast } from "sonner"
 import { use } from "react"
 import { useUser } from "@lib/user-context"
+import { Skeleton } from "@/components/ui/skeleton"
+import { EmptyState, PageHeader, PageShell } from "@/components/hub/page-primitives"
+import { cn } from "@lib/utils"
 
 interface Lesson {
   id: string
@@ -87,12 +89,14 @@ export default function CourseEditorPage({ params }: { params: Promise<{ courseI
   const [loading, setLoading] = useState(true)
   const [openModules, setOpenModules] = useState<string[]>([])
   const [reordering, setReordering] = useState(false)
-  
+  /** Lessons without a primary Part 61 MOS item - they block publishing. */
+  const [mosUnmapped, setMosUnmapped] = useState<string[]>([])
+
   // Module dialog
   const [moduleDialogOpen, setModuleDialogOpen] = useState(false)
   const [editingModule, setEditingModule] = useState<Module | null>(null)
   const [moduleForm, setModuleForm] = useState({ title: "", description: "" })
-  
+
   // Lesson dialog
   const [lessonDialogOpen, setLessonDialogOpen] = useState(false)
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null)
@@ -115,6 +119,7 @@ export default function CourseEditorPage({ params }: { params: Promise<{ courseI
       const res = await fetch(`/api/admin/courses/${courseId}`)
       const data = await res.json()
       setCourse(data.course)
+      setMosUnmapped(data.mosUnmappedLessonIds ?? [])
     } catch (error) {
       console.error("Failed to fetch course:", error)
     } finally {
@@ -124,11 +129,11 @@ export default function CourseEditorPage({ params }: { params: Promise<{ courseI
 
   async function handleModuleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    
+
     const url = editingModule
       ? `/api/admin/modules/${editingModule.id}`
       : "/api/admin/modules"
-    
+
     const res = await fetch(url, {
       method: editingModule ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
@@ -159,11 +164,11 @@ export default function CourseEditorPage({ params }: { params: Promise<{ courseI
 
   async function handleLessonSubmit(e: React.FormEvent) {
     e.preventDefault()
-    
+
     const url = editingLesson
       ? `/api/admin/lessons/${editingLesson.id}`
       : "/api/admin/lessons"
-    
+
     // Default content based on type
     let content = lessonForm.content
     if (!editingLesson) {
@@ -185,7 +190,7 @@ export default function CourseEditorPage({ params }: { params: Promise<{ courseI
           break
       }
     }
-    
+
     const res = await fetch(url, {
       method: editingLesson ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
@@ -315,15 +320,18 @@ export default function CourseEditorPage({ params }: { params: Promise<{ courseI
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="h-8 bg-muted rounded w-1/3 animate-pulse" />
-        <Card className="animate-pulse">
-          <CardContent className="p-6">
-            <div className="h-4 bg-muted rounded w-1/2 mb-4" />
-            <div className="h-4 bg-muted rounded w-3/4" />
-          </CardContent>
-        </Card>
-      </div>
+      <PageShell>
+        <Skeleton className="h-9 w-40" />
+        <div className="space-y-3">
+          <Skeleton className="h-8 w-80 max-w-full" />
+          <Skeleton className="h-4 w-96 max-w-full" />
+        </div>
+        <div className="space-y-3">
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} className="h-16 rounded-xl" />
+          ))}
+        </div>
+      </PageShell>
     )
   }
 
@@ -331,271 +339,279 @@ export default function CourseEditorPage({ params }: { params: Promise<{ courseI
 
   if (!course) {
     return (
-      <div className="text-center py-12">
-        <p className="text-muted-foreground">Course not found</p>
-        <Link href="/admin/courses">
-          <Button variant="link">Back to Courses</Button>
-        </Link>
-      </div>
+      <PageShell>
+        <EmptyState icon={Layers} title="Course not found" description="It may have been deleted.">
+          <Button asChild variant="outline" className="h-10">
+            <Link href="/admin/courses">Back to courses</Link>
+          </Button>
+        </EmptyState>
+      </PageShell>
     )
   }
 
+  const lessonCount = course.modules.reduce((n, m) => n + m.lessons.length, 0)
+  const minutes = course.modules.reduce((n, m) => n + m.lessons.reduce((a, l) => a + (l.estimatedMins || 0), 0), 0)
+  const allOpen = course.modules.length > 0 && openModules.length === course.modules.length
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
+    <PageShell>
+      <Button asChild variant="ghost" className="-ml-2 h-9 w-fit gap-1.5 text-muted-foreground">
         <Link href="/admin/courses">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          Courses
         </Link>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold">{course.title}</h1>
-          <p className="text-muted-foreground">{course.description}</p>
-        </div>
-        <Badge variant={course.isPublished ? "default" : "secondary"}>
-          {course.isPublished ? "Published" : "Draft"}
-        </Badge>
-      </div>
+      </Button>
+
+      <PageHeader
+        title={course.title}
+        description={
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="inline-flex items-center gap-1.5 text-foreground">
+              <span aria-hidden="true" className={cn("h-1.5 w-1.5 rounded-full", course.isPublished ? "bg-success" : "bg-muted-foreground/50")} />
+              {course.isPublished ? "Live" : "Draft"}
+            </span>
+            <span data-tabular>
+              {course.modules.length} module{course.modules.length === 1 ? "" : "s"} · {lessonCount} lesson{lessonCount === 1 ? "" : "s"}
+              {minutes > 0 && ` · ${minutes} min`}
+            </span>
+            {mosUnmapped.length > 0 && (
+              <span className="font-medium text-warning" data-tabular>
+                {mosUnmapped.length} without a MOS link
+              </span>
+            )}
+          </span>
+        }
+      >
+        <Button
+          onClick={() => {
+            setEditingModule(null)
+            setModuleForm({ title: "", description: "" })
+            setModuleDialogOpen(true)
+          }}
+          className="h-10 gap-2 self-start"
+        >
+          <Plus className="h-4 w-4" aria-hidden="true" />
+          Add module
+        </Button>
+      </PageHeader>
+
+      {course.description && <p className="-mt-4 max-w-3xl text-sm text-muted-foreground">{course.description}</p>}
 
       {isCuratorOnLive && (
         <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm text-foreground">
-          This course is live. You can open any lesson and propose edits, which an admin reviews before students see
-          them. Adding, removing or reordering modules and lessons needs an admin.
+          This course is live. Lesson edits go to an admin for review. Adding, removing or reordering needs an admin.
         </div>
       )}
 
-      {/* Modules */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Modules & Lessons</h2>
-        <Button onClick={() => {
-          setEditingModule(null)
-          setModuleForm({ title: "", description: "" })
-          setModuleDialogOpen(true)
-        }}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Module
-        </Button>
-      </div>
-
       {course.modules.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Layers className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="font-semibold mb-1">No modules yet</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Start by creating your first module
-            </p>
-            <Button onClick={() => setModuleDialogOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Module
-            </Button>
-          </CardContent>
-        </Card>
+        <EmptyState icon={Layers} title="No modules yet" description="Modules group lessons into sections.">
+          <Button onClick={() => setModuleDialogOpen(true)} className="h-10 gap-2">
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            Add module
+          </Button>
+        </EmptyState>
       ) : (
-        <div className="space-y-3">
+        <section className="space-y-3" aria-label="Modules and lessons">
+          <div className="flex justify-end">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 text-muted-foreground"
+              onClick={() => setOpenModules(allOpen ? [] : course.modules.map((m) => m.id))}
+            >
+              {allOpen ? "Collapse all" : "Expand all"}
+            </Button>
+          </div>
+
           {course.modules
             .sort((a, b) => a.order - b.order)
             .map((module, moduleIndex) => {
               const isOpen = openModules.includes(module.id)
               const maxModuleOrder = course.modules.length - 1
-              
+              const unmappedHere = module.lessons.filter((l) => mosUnmapped.includes(l.id)).length
+
               return (
                 <Collapsible
                   key={module.id}
                   open={isOpen}
                   onOpenChange={(open) => {
-                    setOpenModules(
-                      open
-                        ? [...openModules, module.id]
-                        : openModules.filter((id) => id !== module.id)
-                    )
+                    setOpenModules(open ? [...openModules, module.id] : openModules.filter((id) => id !== module.id))
                   }}
                 >
-                  <Card>
-                    <CollapsibleTrigger asChild>
-                      <div className="flex items-center gap-3 p-4 cursor-pointer hover:bg-muted/50 transition-colors">
-                        {/* Reorder buttons */}
-                        <div className="flex flex-col gap-0.5">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-5 w-5"
-                            disabled={moduleIndex === 0 || reordering}
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleMoveModuleUp(module.id, module.order)
-                            }}
-                          >
-                            <ChevronUp className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-5 w-5"
-                            disabled={moduleIndex >= maxModuleOrder || reordering}
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleMoveModuleDown(module.id, module.order, maxModuleOrder)
-                            }}
-                          >
-                            <ChevronDown className="h-3 w-3" />
-                          </Button>
-                        </div>
-
-                        <div className="flex-1 flex items-center gap-3">
-                          <span className="font-medium">
-                            Module {moduleIndex + 1}: {module.title}
-                          </span>
-                          <Badge variant="outline">
-                            {module.lessons.length} lesson{module.lessons.length !== 1 ? "s" : ""}
-                          </Badge>
-                        </div>
-                        
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setEditingModule(module)
-                              setModuleForm({
-                                title: module.title,
-                                description: module.description || "",
-                              })
-                              setModuleDialogOpen(true)
-                            }}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleDeleteModule(module.id)
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                          {isOpen ? (
-                            <ChevronUp className="h-5 w-5 text-muted-foreground" />
-                          ) : (
-                            <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                          )}
-                        </div>
+                  <div className="overflow-hidden rounded-xl border border-border bg-card shadow-e1">
+                    <div className="flex items-center gap-2 p-2 pr-3 sm:gap-3">
+                      <div className="flex flex-col">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          disabled={moduleIndex === 0 || reordering}
+                          onClick={() => handleMoveModuleUp(module.id, module.order)}
+                          aria-label={`Move ${module.title} up`}
+                        >
+                          <ChevronUp className="h-4 w-4" aria-hidden="true" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          disabled={moduleIndex >= maxModuleOrder || reordering}
+                          onClick={() => handleMoveModuleDown(module.id, module.order, maxModuleOrder)}
+                          aria-label={`Move ${module.title} down`}
+                        >
+                          <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                        </Button>
                       </div>
-                    </CollapsibleTrigger>
-                    
-                    <CollapsibleContent>
-                      <div className="px-4 pb-4 border-t">
-                        {module.description && (
-                          <p className="text-sm text-muted-foreground py-3">
-                            {module.description}
-                          </p>
-                        )}
 
-                        {/* Lessons */}
-                        <div className="space-y-2 mt-2">
+                      <CollapsibleTrigger asChild>
+                        <button
+                          type="button"
+                          className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-sm font-semibold text-foreground" data-tabular>
+                            {moduleIndex + 1}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate font-medium text-foreground">{module.title}</span>
+                            <span className="block text-xs text-muted-foreground" data-tabular>
+                              {module.lessons.length} lesson{module.lessons.length !== 1 ? "s" : ""}
+                              {unmappedHere > 0 && <span className="text-warning"> · {unmappedHere} without a MOS link</span>}
+                            </span>
+                          </span>
+                          <ChevronDown
+                            className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", isOpen && "rotate-180")}
+                            aria-hidden="true"
+                          />
+                        </button>
+                      </CollapsibleTrigger>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9"
+                        onClick={() => {
+                          setEditingModule(module)
+                          setModuleForm({ title: module.title, description: module.description || "" })
+                          setModuleDialogOpen(true)
+                        }}
+                        aria-label={`Edit ${module.title}`}
+                      >
+                        <Pencil className="h-4 w-4" aria-hidden="true" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 text-muted-foreground hover:text-destructive"
+                        onClick={() => handleDeleteModule(module.id)}
+                        aria-label={`Delete ${module.title}`}
+                      >
+                        <Trash2 className="h-4 w-4" aria-hidden="true" />
+                      </Button>
+                    </div>
+
+                    <CollapsibleContent>
+                      <div className="border-t border-border bg-muted/20 p-3 sm:p-4">
+                        {module.description && <p className="mb-3 text-sm text-muted-foreground">{module.description}</p>}
+
+                        <ol className="space-y-2">
                           {module.lessons
                             .sort((a, b) => a.order - b.order)
                             .map((lesson, lessonIndex) => {
                               const Icon = contentTypeIcons[lesson.contentType] || FileText
                               const maxLessonOrder = module.lessons.length - 1
-                              
+                              const unmapped = mosUnmapped.includes(lesson.id)
+
                               return (
-                                <div
-                                  key={lesson.id}
-                                  className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg group"
-                                >
-                                  {/* Reorder buttons */}
-                                  <div className="flex flex-col gap-0.5">
+                                <li key={lesson.id} className="flex items-center gap-2 rounded-lg border border-border bg-card p-2 sm:gap-3">
+                                  <div className="flex flex-col">
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      className="h-5 w-5"
+                                      className="h-6 w-6"
                                       disabled={lessonIndex === 0 || reordering}
                                       onClick={() => handleMoveLessonUp(module.id, lesson.id, lesson.order)}
+                                      aria-label={`Move ${lesson.title} up`}
                                     >
-                                      <ArrowUp className="h-3 w-3" />
+                                      <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" />
                                     </Button>
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      className="h-5 w-5"
+                                      className="h-6 w-6"
                                       disabled={lessonIndex >= maxLessonOrder || reordering}
                                       onClick={() => handleMoveLessonDown(module.id, lesson.id, lesson.order, maxLessonOrder)}
+                                      aria-label={`Move ${lesson.title} down`}
                                     >
-                                      <ArrowDown className="h-3 w-3" />
+                                      <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" />
                                     </Button>
                                   </div>
-                                  
-                                  <Icon className="h-4 w-4 text-muted-foreground" />
-                                  <div className="flex-1 min-w-0">
-                                    <span className="font-medium">
-                                      {moduleIndex + 1}.{lessonIndex + 1} {lesson.title}
+
+                                  <Link
+                                    href={`/admin/courses/${courseId}/lesson/${lesson.id}`}
+                                    className="flex min-w-0 flex-1 items-center gap-3 rounded-md px-1 py-1.5 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                  >
+                                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted">
+                                      <Icon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                                     </span>
-                                    <span className="ml-2 text-xs text-muted-foreground">
-                                      ({lesson.estimatedMins} min)
+                                    <span className="min-w-0 flex-1">
+                                      <span className="block truncate text-sm font-medium text-foreground">
+                                        <span className="mr-1.5 text-muted-foreground" data-tabular>
+                                          {moduleIndex + 1}.{lessonIndex + 1}
+                                        </span>
+                                        {lesson.title}
+                                      </span>
+                                      <span className="block text-xs capitalize text-muted-foreground">
+                                        {lesson.contentType} · {lesson.estimatedMins} min
+                                      </span>
                                     </span>
-                                  </div>
-                                  <Badge variant="outline" className="capitalize shrink-0">
-                                    {lesson.contentType}
-                                  </Badge>
-                                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <Link href={`/admin/courses/${courseId}/lesson/${lesson.id}`}>
-                                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                                        <Pencil className="h-4 w-4" />
-                                      </Button>
-                                    </Link>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 text-destructive"
-                                      onClick={() => handleDeleteLesson(lesson.id)}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                </div>
+                                    {unmapped && (
+                                      <Badge variant="outline" className="hidden shrink-0 border-warning/40 bg-warning/10 text-[11px] text-foreground sm:inline-flex">
+                                        No MOS link
+                                      </Badge>
+                                    )}
+                                  </Link>
+
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-9 w-9 text-muted-foreground hover:text-destructive"
+                                    onClick={() => handleDeleteLesson(lesson.id)}
+                                    aria-label={`Delete ${lesson.title}`}
+                                  >
+                                    <Trash2 className="h-4 w-4" aria-hidden="true" />
+                                  </Button>
+                                </li>
                               )
                             })}
-                          
-                          <Button
-                            variant="outline"
-                            className="w-full border-dashed bg-transparent"
-                            onClick={() => {
-                              setEditingLesson(null)
-                              setLessonModuleId(module.id)
-                              setLessonForm({
-                                title: "",
-                                description: "",
-                                contentType: "text",
-                                estimatedMins: 5,
-                                content: {},
-                              })
-                              setLessonDialogOpen(true)
-                            }}
-                          >
-                            <Plus className="mr-2 h-4 w-4" />
-                            Add Lesson
-                          </Button>
-                        </div>
+                        </ol>
+
+                        <Button
+                          variant="outline"
+                          className="mt-2 h-10 w-full gap-2 border-dashed"
+                          onClick={() => {
+                            setEditingLesson(null)
+                            setLessonModuleId(module.id)
+                            setLessonForm({ title: "", description: "", contentType: "text", estimatedMins: 5, content: {} })
+                            setLessonDialogOpen(true)
+                          }}
+                        >
+                          <Plus className="h-4 w-4" aria-hidden="true" />
+                          Add lesson
+                        </Button>
                       </div>
                     </CollapsibleContent>
-                  </Card>
+                  </div>
                 </Collapsible>
               )
             })}
-        </div>
+        </section>
       )}
 
       {/* Module Dialog */}
       <Dialog open={moduleDialogOpen} onOpenChange={setModuleDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingModule ? "Edit Module" : "Add Module"}</DialogTitle>
+            <DialogTitle>{editingModule ? "Edit module" : "Add module"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleModuleSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -603,16 +619,16 @@ export default function CourseEditorPage({ params }: { params: Promise<{ courseI
               <Input
                 value={moduleForm.title}
                 onChange={(e) => setModuleForm({ ...moduleForm, title: e.target.value })}
-                placeholder="Module title"
+                placeholder="e.g. Lift and drag"
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label>Description (optional)</Label>
+              <Label>Description</Label>
               <Textarea
                 value={moduleForm.description}
                 onChange={(e) => setModuleForm({ ...moduleForm, description: e.target.value })}
-                placeholder="Brief description"
+                placeholder="Optional"
                 rows={2}
               />
             </div>
@@ -620,7 +636,7 @@ export default function CourseEditorPage({ params }: { params: Promise<{ courseI
               <Button type="button" variant="outline" onClick={() => setModuleDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit">{editingModule ? "Save" : "Add Module"}</Button>
+              <Button type="submit">{editingModule ? "Save" : "Add"}</Button>
             </div>
           </form>
         </DialogContent>
@@ -630,7 +646,7 @@ export default function CourseEditorPage({ params }: { params: Promise<{ courseI
       <Dialog open={lessonDialogOpen} onOpenChange={setLessonDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingLesson ? "Edit Lesson" : "Add Lesson"}</DialogTitle>
+            <DialogTitle>{editingLesson ? "Edit lesson" : "Add lesson"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleLessonSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -638,12 +654,12 @@ export default function CourseEditorPage({ params }: { params: Promise<{ courseI
               <Input
                 value={lessonForm.title}
                 onChange={(e) => setLessonForm({ ...lessonForm, title: e.target.value })}
-                placeholder="Lesson title"
+                placeholder="e.g. Angle of attack"
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label>Content Type</Label>
+              <Label>Type</Label>
               <Select
                 value={lessonForm.contentType}
                 onValueChange={(v) => setLessonForm({ ...lessonForm, contentType: v })}
@@ -661,7 +677,7 @@ export default function CourseEditorPage({ params }: { params: Promise<{ courseI
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Estimated Time (minutes)</Label>
+              <Label>Minutes</Label>
               <Input
                 type="number"
                 min={1}
@@ -673,11 +689,11 @@ export default function CourseEditorPage({ params }: { params: Promise<{ courseI
               <Button type="button" variant="outline" onClick={() => setLessonDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit">{editingLesson ? "Save" : "Add Lesson"}</Button>
+              <Button type="submit">{editingLesson ? "Save" : "Add"}</Button>
             </div>
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageShell>
   )
 }

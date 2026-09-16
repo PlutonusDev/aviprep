@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { Suspense } from "react"
+import { PageSkeleton } from "@/components/hub/page-primitives"
 import { CouponsContent } from "./coupons-content"
 
 export const metadata: Metadata = {
@@ -8,17 +9,8 @@ export const metadata: Metadata = {
 
 export default function CouponsPage() {
   return (
-    <Suspense fallback={<CouponsLoading />}>
+    <Suspense fallback={<PageSkeleton tiles={0} />}>
       <CouponsContent />
     </Suspense>
-  )
-}
-
-function CouponsLoading() {
-  return (
-    <div className="space-y-6">
-      <div className="h-8 w-48 animate-pulse rounded bg-muted" />
-      <div className="h-96 animate-pulse rounded-lg bg-muted" />
-    </div>
   )
 }

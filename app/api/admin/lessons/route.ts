@@ -31,6 +31,8 @@ export async function POST(request: Request) {
       content: content || { html: "" },
       estimatedMins: estimatedMins || 5,
       order: (lastLesson?.order ?? -1) + 1,
+      // Lessons earn royalty points for whoever wrote them.
+      authorId: staff.userId,
     },
   })
 

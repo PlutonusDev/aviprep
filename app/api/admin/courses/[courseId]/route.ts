@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@lib/prisma"
 import { isResponse, pick, requireStaff } from "@lib/staff"
+import { lessonsMissingPrimary } from "@lib/mos/coverage"
+import { withPrimaryMapping } from "@lib/mos/mappings"
 
 /** Descriptive fields anyone on the content team may edit. */
 const DETAIL_FIELDS = ["title", "description", "estimatedHours", "difficulty"] as const
@@ -22,7 +24,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ cou
   })
 
   if (!course) return NextResponse.json({ error: "Course not found" }, { status: 404 })
-  return NextResponse.json({ course, role: staff.role })
+  const lessonIds = course.modules.flatMap((m) => m.lessons.map((l) => l.id))
+  const mapped = await withPrimaryMapping("lesson", lessonIds)
+  return NextResponse.json({ course, role: staff.role, mosUnmappedLessonIds: lessonIds.filter((id) => !mapped.has(id)) })
 }
 
 /**
@@ -83,6 +87,20 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ co
   // Admin. Publishing also closes out any review request.
   const data: Record<string, unknown> = { ...pick(body, DETAIL_FIELDS), ...pick(body, ADMIN_FIELDS) }
   if (body.isPublished === true) data.reviewStatus = null
+  if (body.isPublished === true && !existing.isPublished) {
+    const missing = await lessonsMissingPrimary(courseId)
+    if (missing.length) {
+      const names = missing.slice(0, 3).map((l) => `"${l.title}"`).join(", ")
+      const more = missing.length > 3 ? ` and ${missing.length - 3} more` : ""
+      return NextResponse.json(
+        {
+          error: `Link every lesson to a MOS item first. Still to do: ${names}${more}.`,
+          mosUnmappedLessonIds: missing.map((l) => l.id),
+        },
+        { status: 422 },
+      )
+    }
+  }
   const course = await prisma.course.update({ where: { id: courseId }, data })
   return NextResponse.json({ course })
 }

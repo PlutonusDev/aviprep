@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { AlertCircle, Check, Eye, Loader2, Plus, Trash2, Lightbulb, Radio } from "lucide-react"
+import { AlertCircle, Check, CornerUpLeft, Eye, Loader2, MessageSquareWarning, Plus, Trash2, Lightbulb, Radio } from "lucide-react"
 import { cn } from "@lib/utils"
 import {
   DIFFICULTIES,
@@ -26,6 +26,9 @@ import {
   type FieldErrors,
   type QuestionDraft,
 } from "@lib/question-validation"
+import { MosTagger } from "@/components/admin/mos-tagger"
+import { questionMatchText } from "@lib/mos/content-text"
+import type { MosLink } from "@lib/mos/subjects"
 
 export interface EditableQuestion extends QuestionDraft {
   id?: string
@@ -33,6 +36,13 @@ export interface EditableQuestion extends QuestionDraft {
   /** A curator's proposed edit to a live question, awaiting an admin. */
   pendingRevision?: Partial<QuestionDraft> | null
   pendingRevisionAt?: string | null
+  /** Royalty points: 1 standard, 3 complex. Set by an admin when publishing. */
+  points?: number | null
+  /** Admin feedback from sending it back or declining an edit. */
+  rejectionReason?: string | null
+  rejectedAt?: string | null
+  /** Part 61 MOS links. Undefined until an existing question's links have loaded. */
+  mos?: MosLink[]
 }
 
 function FieldError({ message }: { message?: string }) {
@@ -42,6 +52,89 @@ function FieldError({ message }: { message?: string }) {
       <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
       {message}
     </p>
+  )
+}
+
+/** Feedback for a curator, typed before sending a question back or declining an edit. */
+function FeedbackBox({
+  label,
+  hint,
+  value,
+  onChange,
+  required = false,
+  busy,
+  confirmLabel,
+  onCancel,
+  onConfirm,
+}: {
+  label: string
+  hint: string
+  value: string
+  onChange: (value: string) => void
+  required?: boolean
+  busy: boolean
+  confirmLabel: string
+  onCancel: () => void
+  onConfirm: () => void
+}) {
+  const tooShort = required && value.trim().length < 10
+  return (
+    <div className="space-y-2 border-t border-border pt-3">
+      <Label htmlFor="review-feedback">{label}</Label>
+      <Textarea
+        id="review-feedback"
+        rows={3}
+        autoFocus
+        maxLength={1000}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="e.g. Option C also works at 35°C. Tighten the stem so only one answer fits."
+        aria-describedby="review-feedback-hint"
+        className="resize-none bg-background"
+      />
+      <p id="review-feedback-hint" className="text-xs text-muted-foreground">
+        {hint}
+      </p>
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button type="button" variant="ghost" size="sm" className="h-9" onClick={onCancel} disabled={busy}>
+          Cancel
+        </Button>
+        <Button type="button" size="sm" className="h-9" onClick={onConfirm} disabled={busy || tooShort}>
+          {busy && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
+          {confirmLabel}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+/** Royalty points for the question (Contractor Agreement 3.4), chosen as it's published. */
+function PointsPicker({ value, onChange }: { value?: number | null; onChange: (points: 1 | 3) => void }) {
+  const current = value === 3 ? 3 : 1
+  const options = [
+    { points: 1 as const, label: "Standard", hint: "1 point" },
+    { points: 3 as const, label: "Complex", hint: "3 points: charts, multi-step calculations or images" },
+  ]
+  return (
+    <div role="radiogroup" aria-label="Royalty points" className="flex h-11 items-center rounded-lg border border-border bg-muted/40 p-1">
+      {options.map((o) => (
+        <button
+          key={o.points}
+          type="button"
+          role="radio"
+          aria-checked={current === o.points}
+          title={o.hint}
+          onClick={() => onChange(o.points)}
+          className={cn(
+            "flex h-full items-center gap-1.5 rounded-md px-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            current === o.points ? "bg-background font-medium text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          {o.label}
+          <span className="rounded bg-muted px-1.5 text-xs tabular-nums text-muted-foreground">{o.points}</span>
+        </button>
+      ))}
+    </div>
   )
 }
 
@@ -62,6 +155,8 @@ export default function QuestionEditor({
   isLive = false,
   pendingRevision,
   onReviewRevision,
+  onSendBack,
+  inReview = false,
   reviewing = false,
 }: {
   value: EditableQuestion
@@ -77,10 +172,18 @@ export default function QuestionEditor({
   isLive?: boolean
   /** Admin view: a curator's proposed changes to this live question. */
   pendingRevision?: Partial<QuestionDraft> | null
-  onReviewRevision?: (action: "apply-revision" | "discard-revision") => void
+  onReviewRevision?: (action: "apply-revision" | "discard-revision", reason?: string) => void
+  /** Admin: return an in-review question to its author with feedback. */
+  onSendBack?: (reason: string) => void
+  /** The saved question is waiting for review. */
+  inReview?: boolean
   reviewing?: boolean
 }) {
   const [touched, setTouched] = useState(false)
+  /** Which feedback box is open: sending back a question, or declining an edit. */
+  const [feedbackFor, setFeedbackFor] = useState<"send-back" | "discard" | null>(null)
+  const [reason, setReason] = useState("")
+  const [mosError, setMosError] = useState<string | undefined>()
 
   const errors = useMemo(() => validateQuestion(value), [value])
   const warnings = useMemo(() => questionWarnings(value), [value])
@@ -110,9 +213,15 @@ export default function QuestionEditor({
     set({ options, correctIndex })
   }
 
+  const hasPrimaryMos = !!value.mos?.some((l) => l.primary)
+
   const attemptSave = (status: string, addAnother: boolean) => {
     setTouched(true)
-    if (!ready) return
+    // Publishing needs a primary MOS item. Already-live questions are flagged on
+    // the coverage dashboard rather than blocked from edits.
+    const needsMos = status === "published" && !isLive && value.mos !== undefined && !hasPrimaryMos
+    setMosError(needsMos ? "Add a primary MOS item before publishing." : undefined)
+    if (!ready || needsMos) return
     onSave(status, addAnother)
   }
 
@@ -127,6 +236,49 @@ export default function QuestionEditor({
             This question is live. Your edits are sent to an admin for review, and students keep seeing the current
             version until they&apos;re approved.
           </p>
+        </div>
+      )}
+
+      {!canPublish && value.rejectionReason && (
+        <div className="flex items-start gap-3 rounded-lg border border-warning/40 bg-warning/10 p-4 text-sm">
+          <MessageSquareWarning className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
+          <div className="min-w-0 space-y-1">
+            <p className="font-medium text-foreground">{isLive ? "Your last edit wasn't accepted" : "Changes requested"}</p>
+            <p className="whitespace-pre-line text-foreground/90">{value.rejectionReason}</p>
+            <p className="text-muted-foreground">
+              {isLive ? "Make the changes and submit them again." : "Update it, then submit it for review again."}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {canPublish && inReview && !isLive && onSendBack && (
+        <div className="space-y-3 rounded-lg border border-border bg-muted/40 p-4 text-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="font-medium text-foreground">Waiting for your review</p>
+              <p className="text-muted-foreground">Publish it below, or send it back to its author with feedback.</p>
+            </div>
+            {feedbackFor !== "send-back" && (
+              <Button type="button" variant="outline" size="sm" className="h-9 gap-1.5" onClick={() => setFeedbackFor("send-back")}>
+                <CornerUpLeft className="h-3.5 w-3.5" aria-hidden="true" />
+                Send back
+              </Button>
+            )}
+          </div>
+          {feedbackFor === "send-back" && (
+            <FeedbackBox
+              label="What needs to change?"
+              hint="They'll see this on their home screen and in the editor."
+              value={reason}
+              onChange={setReason}
+              required
+              busy={reviewing}
+              confirmLabel="Send back"
+              onCancel={() => setFeedbackFor(null)}
+              onConfirm={() => onSendBack(reason.trim())}
+            />
+          )}
         </div>
       )}
 
@@ -156,12 +308,24 @@ export default function QuestionEditor({
               variant="ghost"
               size="sm"
               className="h-9 text-muted-foreground"
-              disabled={reviewing}
-              onClick={() => onReviewRevision("discard-revision")}
+              disabled={reviewing || feedbackFor === "discard"}
+              onClick={() => setFeedbackFor("discard")}
             >
               Discard
             </Button>
           </div>
+          {feedbackFor === "discard" && (
+            <FeedbackBox
+              label="Why aren't these changes going ahead?"
+              hint="Optional, but it helps them get the next one right."
+              value={reason}
+              onChange={setReason}
+              busy={reviewing}
+              confirmLabel="Discard changes"
+              onCancel={() => setFeedbackFor(null)}
+              onConfirm={() => onReviewRevision("discard-revision", reason.trim() || undefined)}
+            />
+          )}
         </div>
       )}
 
@@ -326,6 +490,22 @@ export default function QuestionEditor({
         </p>
       </div>
 
+      {value.subjectId && (
+        <MosTagger
+          subjectId={value.subjectId}
+          matchText={questionMatchText(value)}
+          value={value.mos}
+          onChange={(mos) => {
+            if (mos.some((l) => l.primary)) setMosError(undefined)
+            onChange({ ...value, mos })
+          }}
+          contentType="question"
+          contentId={value.id}
+          error={mosError ?? (serverErrors as Record<string, string> | undefined)?.mos}
+          isAdmin={canPublish}
+        />
+      )}
+
       {warnings.length > 0 && (
         <div className="rounded-lg border border-warning/30 bg-warning/10 p-3">
           <p className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-foreground">
@@ -361,9 +541,12 @@ export default function QuestionEditor({
               Submit for review
             </Button>
             {canPublish && (
-              <Button onClick={() => attemptSave("published", false)} disabled={saving} className="h-11">
-                Publish
-              </Button>
+              <div className="flex items-center gap-2">
+                <PointsPicker value={value.points} onChange={(points) => set({ points })} />
+                <Button onClick={() => attemptSave("published", false)} disabled={saving} className="h-11">
+                  Publish
+                </Button>
+              </div>
             )}
             <Button onClick={() => attemptSave("draft", true)} disabled={saving} variant="ghost" className="h-11">
               Save &amp; write another

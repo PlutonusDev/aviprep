@@ -1,17 +1,23 @@
 import "server-only"
 
 import { NextResponse } from "next/server"
-import { cookies } from "next/headers"
+import { cookies, headers } from "next/headers"
 import { verifyToken } from "@lib/auth"
+import { getCurator } from "@lib/curators/session"
 import { prisma } from "@lib/prisma"
+import { isCuratorHost } from "@lib/tenant"
 
 /**
  * Staff roles for the admin panel.
  *
- * - admin:   everything.
- * - curator: writes courses, lessons and questions. Can submit work for review
- *            but never publish, and never reaches members, schools, billing,
+ * - admin:   everything, on the main site with a member session.
+ * - curator: a separate Curator account, signed in on curators.aviprep.com.au.
+ *            Writes courses, lessons and questions and submits them for review,
+ *            but never publishes and never reaches members, schools, billing,
  *            email or any other business data.
+ *
+ * Which one applies is decided by the host: the curators subdomain accepts only
+ * curator sessions, and the main site accepts only admins.
  *
  * Every admin API checks through here, so the rule is enforced on the server
  * regardless of what the UI shows.
@@ -26,6 +32,12 @@ export interface Staff {
 }
 
 export async function getStaff(): Promise<Staff | null> {
+  const headerList = await headers()
+  if (isCuratorHost(headerList.get("host") ?? "")) {
+    const curator = await getCurator()
+    return curator ? { userId: curator.id, role: "curator", isAdmin: false } : null
+  }
+
   const cookieStore = await cookies()
   const token = cookieStore.get("session")?.value
   if (!token) return null
@@ -34,12 +46,9 @@ export async function getStaff(): Promise<Staff | null> {
 
   const user = await prisma.user.findUnique({
     where: { id: payload.userId },
-    select: { id: true, isAdmin: true, isCurator: true },
+    select: { id: true, isAdmin: true },
   })
-  if (!user) return null
-  if (user.isAdmin) return { userId: user.id, role: "admin", isAdmin: true }
-  if (user.isCurator) return { userId: user.id, role: "curator", isAdmin: false }
-  return null
+  return user?.isAdmin ? { userId: user.id, role: "admin", isAdmin: true } : null
 }
 
 /**

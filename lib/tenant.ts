@@ -77,3 +77,30 @@ export function getSubdomain(host: string): string | null {
 export function isTenantHost(host: string): boolean {
   return getSubdomain(host) !== null
 }
+
+/* --- Curators ---------------------------------------------------------------- */
+
+/**
+ * curators.aviprep.com.au is the content studio: curator accounts only, with
+ * their own session. It is never a school, so it skips the tenant lookup.
+ */
+export const CURATOR_SUBDOMAIN = "curators"
+
+export function isCuratorHost(host: string): boolean {
+  return getSubdomain(host) === CURATOR_SUBDOMAIN
+}
+
+/**
+ * The curator site's origin for a given main-site origin.
+ *
+ * https://aviprep.com.au      -> https://curators.aviprep.com.au
+ * http://localhost:8001       -> http://curators.localhost:8001
+ * https://curators.aviprep... -> unchanged
+ */
+export function curatorOriginFor(origin: string): string {
+  const url = new URL(origin)
+  const sub = getSubdomain(url.host)
+  if (sub === CURATOR_SUBDOMAIN) return url.origin
+  const base = sub ? url.hostname.slice(sub.length + 1) : url.hostname.replace(/^www\./, "")
+  return `${url.protocol}//${CURATOR_SUBDOMAIN}.${base}${url.port ? `:${url.port}` : ""}`
+}

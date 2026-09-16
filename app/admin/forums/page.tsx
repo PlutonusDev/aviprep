@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { Suspense } from "react"
+import { PageSkeleton } from "@/components/hub/page-primitives"
 import ForumsAdminContent from "./forums-admin-content"
 
 export const metadata: Metadata = {
@@ -8,11 +9,7 @@ export const metadata: Metadata = {
 }
 
 function LoadingForums() {
-  return (
-    <div className="flex items-center justify-center py-12">
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-    </div>
-  )
+  return <PageSkeleton tiles={0} />
 }
 
 export default function ForumsAdminPage() {

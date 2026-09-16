@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -18,7 +17,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Plus, MoreHorizontal, Pencil, Trash2, FolderPlus, MessageSquare, GripVertical } from "lucide-react"
+import { Plus, MoreHorizontal, Pencil, Trash2, FolderPlus, MessageSquare } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
+import { EmptyState, PageHeader, PageShell } from "@/components/hub/page-primitives"
 
 interface Forum {
   id: string
@@ -193,29 +194,37 @@ export default function ForumsAdminContent() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
+      <PageShell>
+        <div className="space-y-3">
+          <Skeleton className="h-8 w-40" />
+          <Skeleton className="h-4 w-72" />
+        </div>
+        {[0, 1].map((i) => (
+          <Skeleton key={i} className="h-48 rounded-xl" />
+        ))}
+      </PageShell>
     )
   }
 
+  const forumCount = categories.reduce((n, c) => n + c.forums.length, 0)
+  const threadCount = categories.reduce((n, c) => n + c.forums.reduce((a, f) => a + f._count.threads, 0), 0)
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Forum Management</h1>
-          <p className="text-muted-foreground">Create and manage forum categories and forums</p>
-        </div>
+    <PageShell>
+      <PageHeader
+        title="Forums"
+        description={`${categories.length} categor${categories.length === 1 ? "y" : "ies"} · ${forumCount} forum${forumCount === 1 ? "" : "s"} · ${threadCount.toLocaleString()} thread${threadCount === 1 ? "" : "s"}`}
+      >
         <Dialog open={showNewCategory} onOpenChange={setShowNewCategory}>
           <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              New Category
+            <Button className="h-10 gap-2 self-start">
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              New category
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Create Category</DialogTitle>
+              <DialogTitle>New category</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
@@ -224,16 +233,16 @@ export default function ForumsAdminContent() {
                   id="cat-name"
                   value={categoryName}
                   onChange={(e) => setCategoryName(e.target.value)}
-                  placeholder="e.g., General Discussion"
+                  placeholder="e.g. General"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="cat-desc">Description (optional)</Label>
+                <Label htmlFor="cat-desc">Description</Label>
                 <Textarea
                   id="cat-desc"
                   value={categoryDesc}
                   onChange={(e) => setCategoryDesc(e.target.value)}
-                  placeholder="Brief description..."
+                  placeholder="Optional"
                   rows={3}
                 />
               </div>
@@ -243,116 +252,106 @@ export default function ForumsAdminContent() {
                 Cancel
               </Button>
               <Button onClick={handleCreateCategory} disabled={saving}>
-                {saving ? "Creating..." : "Create"}
+                {saving ? "Creating" : "Create"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
+      </PageHeader>
 
       {categories.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <MessageSquare className="mb-4 h-12 w-12 text-muted-foreground" />
-            <h3 className="text-lg font-medium">No Categories Yet</h3>
-            <p className="mb-4 text-sm text-muted-foreground">Create your first category to get started</p>
-            <Button onClick={() => setShowNewCategory(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Create Category
-            </Button>
-          </CardContent>
-        </Card>
+        <EmptyState icon={MessageSquare} title="No categories yet" description="Categories group related forums.">
+          <Button onClick={() => setShowNewCategory(true)} className="h-10 gap-2">
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            New category
+          </Button>
+        </EmptyState>
       ) : (
         <div className="space-y-4">
           {categories.map((category) => (
-            <Card key={category.id}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <div className="flex items-center gap-2">
-                  <GripVertical className="h-5 w-5 cursor-grab text-muted-foreground" />
-                  <CardTitle className="text-lg">{category.name}</CardTitle>
+            <section key={category.id} className="overflow-hidden rounded-xl border border-border bg-card shadow-e1" aria-label={category.name}>
+              <header className="flex items-start justify-between gap-3 border-b border-border px-4 py-3">
+                <div className="min-w-0">
+                  <h2 className="font-semibold text-foreground">{category.name}</h2>
+                  {category.description && <p className="mt-0.5 text-sm text-muted-foreground">{category.description}</p>}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex shrink-0 items-center gap-1">
                   <Button
                     variant="outline"
                     size="sm"
+                    className="h-8 gap-1.5"
                     onClick={() => {
                       setForumName("")
                       setForumDesc("")
                       setShowNewForum(category.id)
                     }}
                   >
-                    <FolderPlus className="mr-2 h-4 w-4" />
-                    Add Forum
+                    <FolderPlus className="h-3.5 w-3.5" aria-hidden="true" />
+                    Add forum
                   </Button>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreHorizontal className="h-4 w-4" />
+                      <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Actions for ${category.name}`}>
+                        <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => openEditCategory(category)}>
-                        <Pencil className="mr-2 h-4 w-4" />
+                        <Pencil className="mr-2 h-4 w-4" aria-hidden="true" />
                         Edit
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => setDeleteTarget({ type: "category", id: category.id, name: category.name })}
                         className="text-destructive"
                       >
-                        <Trash2 className="mr-2 h-4 w-4" />
+                        <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
                         Delete
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
-              </CardHeader>
-              {category.description && <p className="px-6 text-sm text-muted-foreground">{category.description}</p>}
-              <CardContent className="pt-4">
-                {category.forums.length === 0 ? (
-                  <p className="text-center text-sm text-muted-foreground py-4">No forums in this category</p>
-                ) : (
-                  <div className="space-y-2">
-                    {category.forums.map((forum) => (
-                      <div
-                        key={forum.id}
-                        className="flex items-center justify-between rounded-lg border border-border bg-card/50 p-3"
-                      >
-                        <div className="flex items-center gap-3">
-                          <GripVertical className="h-4 w-4 cursor-grab text-muted-foreground" />
-                          <div>
-                            <h4 className="font-medium">{forum.name}</h4>
-                            {forum.description && <p className="text-sm text-muted-foreground">{forum.description}</p>}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <span className="text-sm text-muted-foreground">{forum._count.threads} threads</span>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => openEditForum(forum, category.id)}>
-                                <Pencil className="mr-2 h-4 w-4" />
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => setDeleteTarget({ type: "forum", id: forum.id, name: forum.name })}
-                                className="text-destructive"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
+              </header>
+              {category.forums.length === 0 ? (
+                <p className="px-4 py-6 text-center text-sm text-muted-foreground">No forums yet.</p>
+              ) : (
+                <ul className="divide-y divide-border">
+                  {category.forums.map((forum) => (
+                    <li key={forum.id} className="flex items-center gap-3 px-4 py-3">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                        <MessageSquare className="h-4 w-4 text-primary" aria-hidden="true" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium text-foreground">{forum.name}</p>
+                        {forum.description && <p className="truncate text-sm text-muted-foreground">{forum.description}</p>}
                       </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                      <span className="shrink-0 text-sm text-muted-foreground" data-tabular>
+                        {forum._count.threads} thread{forum._count.threads === 1 ? "" : "s"}
+                      </span>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label={`Actions for ${forum.name}`}>
+                            <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openEditForum(forum, category.id)}>
+                            <Pencil className="mr-2 h-4 w-4" aria-hidden="true" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => setDeleteTarget({ type: "forum", id: forum.id, name: forum.name })}
+                            className="text-destructive"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
           ))}
         </div>
       )}
@@ -361,7 +360,7 @@ export default function ForumsAdminContent() {
       <Dialog open={!!showEditCategory} onOpenChange={() => setShowEditCategory(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Category</DialogTitle>
+            <DialogTitle>Edit category</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -369,7 +368,7 @@ export default function ForumsAdminContent() {
               <Input id="edit-cat-name" value={categoryName} onChange={(e) => setCategoryName(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-cat-desc">Description (optional)</Label>
+              <Label htmlFor="edit-cat-desc">Description</Label>
               <Textarea
                 id="edit-cat-desc"
                 value={categoryDesc}
@@ -383,7 +382,7 @@ export default function ForumsAdminContent() {
               Cancel
             </Button>
             <Button onClick={handleUpdateCategory} disabled={saving}>
-              {saving ? "Saving..." : "Save"}
+              {saving ? "Saving" : "Save"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -393,7 +392,7 @@ export default function ForumsAdminContent() {
       <Dialog open={!!showNewForum} onOpenChange={() => setShowNewForum(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create Forum</DialogTitle>
+            <DialogTitle>New forum</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -402,16 +401,16 @@ export default function ForumsAdminContent() {
                 id="forum-name"
                 value={forumName}
                 onChange={(e) => setForumName(e.target.value)}
-                placeholder="e.g., Navigation Help"
+                placeholder="e.g. Navigation"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="forum-desc">Description (optional)</Label>
+              <Label htmlFor="forum-desc">Description</Label>
               <Textarea
                 id="forum-desc"
                 value={forumDesc}
                 onChange={(e) => setForumDesc(e.target.value)}
-                placeholder="Brief description..."
+                placeholder="Optional"
                 rows={3}
               />
             </div>
@@ -421,7 +420,7 @@ export default function ForumsAdminContent() {
               Cancel
             </Button>
             <Button onClick={handleCreateForum} disabled={saving}>
-              {saving ? "Creating..." : "Create"}
+              {saving ? "Creating" : "Create"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -431,7 +430,7 @@ export default function ForumsAdminContent() {
       <Dialog open={!!showEditForum} onOpenChange={() => setShowEditForum(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Forum</DialogTitle>
+            <DialogTitle>Edit forum</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -439,7 +438,7 @@ export default function ForumsAdminContent() {
               <Input id="edit-forum-name" value={forumName} onChange={(e) => setForumName(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-forum-desc">Description (optional)</Label>
+              <Label htmlFor="edit-forum-desc">Description</Label>
               <Textarea
                 id="edit-forum-desc"
                 value={forumDesc}
@@ -453,7 +452,7 @@ export default function ForumsAdminContent() {
               Cancel
             </Button>
             <Button onClick={handleUpdateForum} disabled={saving}>
-              {saving ? "Saving..." : "Save"}
+              {saving ? "Saving" : "Save"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -463,13 +462,9 @@ export default function ForumsAdminContent() {
       <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete {deleteTarget?.type === "category" ? "Category" : "Forum"}?</AlertDialogTitle>
+            <AlertDialogTitle>Delete {deleteTarget?.name}?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{deleteTarget?.name}"?{" "}
-              {deleteTarget?.type === "category"
-                ? "This will also delete all forums and threads within it."
-                : "This will also delete all threads within it."}
-              This action cannot be undone.
+              {deleteTarget?.type === "category" ? "Its forums and threads go too." : "Its threads go too."} This can&apos;t be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -480,6 +475,6 @@ export default function ForumsAdminContent() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </PageShell>
   )
 }

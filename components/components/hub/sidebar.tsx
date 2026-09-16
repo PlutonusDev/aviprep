@@ -12,7 +12,6 @@ import {
   SECONDARY_NAV,
   SCHOOL_NAV,
   ADMIN_NAV,
-  CURATOR_NAV,
   isNavItemActive,
   filterNavItems,
   type NavItem,
@@ -127,9 +126,6 @@ export default function Sidebar() {
 
           {user?.isAdmin && (
             <NavLink item={ADMIN_NAV} active={isNavItemActive(currentPath, ADMIN_NAV.href)} />
-          )}
-          {!user?.isAdmin && user?.isCurator && (
-            <NavLink item={CURATOR_NAV} active={isNavItemActive(currentPath, CURATOR_NAV.href)} />
           )}
         </nav>
 
