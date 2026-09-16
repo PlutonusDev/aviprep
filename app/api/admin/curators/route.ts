@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@lib/prisma"
 import { isResponse, requireStaff } from "@lib/staff"
 import { australianMobile, isEmail } from "@lib/curators/details"
-import { inviteStatus, newInviteToken, sendInviteEmail } from "@lib/curators/invites"
+import { inviteStatus, newInviteToken, notAccepted, notRevoked, sendInviteEmail } from "@lib/curators/invites"
 import { requestOrigin } from "@lib/email-verification"
 
 const tidy = (value: unknown, max = 60) => (typeof value === "string" ? value.trim().replace(/\s+/g, " ").slice(0, max) : "")
@@ -22,7 +22,7 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
       select: { id: true, email: true, firstName: true, lastName: true, phone: true, credentials: true, isActive: true, lastLoginAt: true, createdAt: true },
     }),
-    prisma.curatorInvite.findMany({ where: { acceptedAt: null }, orderBy: { sentAt: "desc" } }),
+    prisma.curatorInvite.findMany({ where: notAccepted, orderBy: { sentAt: "desc" } }),
   ])
 
   const ids = curators.map((c) => c.id)
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
     }
 
     const open = await prisma.curatorInvite.findFirst({
-      where: { email, acceptedAt: null, revokedAt: null, expiresAt: { gt: new Date() } },
+      where: { email, expiresAt: { gt: new Date() }, AND: [notAccepted, notRevoked] },
       select: { id: true },
     })
     if (open) {
@@ -89,6 +89,9 @@ export async function POST(request: Request) {
         tokenHash,
         expiresAt,
         invitedById: staff.userId,
+        // Written explicitly so null filters match (see notAccepted).
+        acceptedAt: null,
+        revokedAt: null,
       },
     })
 

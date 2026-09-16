@@ -35,7 +35,9 @@ export async function getQuestionCountsBySubject(): Promise<Record<string, Subje
     const entry = counts[row.subjectId] ?? { total: 0, draft: 0, review: 0, published: 0, changes: 0 }
     entry.total += 1
     if (row.pendingRevisionAt) entry.changes += 1
-    entry[effectiveStatus(row.status)] += 1
+    const status = effectiveStatus(row.status)
+    // Rejected questions count towards the total only.
+    if (status !== "rejected") entry[status] += 1
     counts[row.subjectId] = entry
   }
 

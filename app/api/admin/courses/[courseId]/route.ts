@@ -4,6 +4,9 @@ import { prisma } from "@lib/prisma"
 import { isResponse, pick, requireStaff } from "@lib/staff"
 import { lessonsMissingPrimary } from "@lib/mos/coverage"
 import { withPrimaryMapping } from "@lib/mos/mappings"
+import { decide, logEvent } from "@lib/review/review"
+
+const clearRejection = { rejectionReason: null, rejectedAt: null, rejectionForId: null, changesRequestedAt: null }
 
 /** Descriptive fields anyone on the content team may edit. */
 const DETAIL_FIELDS = ["title", "description", "estimatedHours", "difficulty"] as const
@@ -47,23 +50,25 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ co
 
   if (body.action === "submit") {
     if (existing.isPublished) return NextResponse.json({ error: "This course is already live." }, { status: 400 })
-    const course = await prisma.course.update({ where: { id: courseId }, data: { reviewStatus: "review" } })
+    const course = await prisma.course.update({
+      where: { id: courseId },
+      data: { reviewStatus: "review", submittedById: staff.userId, submittedAt: new Date(), ...clearRejection },
+    })
+    await logEvent({ contentType: "course", contentId: courseId, kind: "new", action: "submitted", staff, message: body.note })
     return NextResponse.json({ course })
   }
 
   if (body.action === "apply-revision" || body.action === "discard-revision") {
-    if (!staff.isAdmin) return NextResponse.json({ error: "Only an admin can review changes." }, { status: 403 })
-    const revision = (existing.pendingRevision ?? {}) as Record<string, unknown>
-    const course = await prisma.course.update({
-      where: { id: courseId },
-      data: {
-        ...(body.action === "apply-revision" ? pick(revision, DETAIL_FIELDS) : {}),
-        pendingRevision: null,
-        pendingRevisionById: null,
-        pendingRevisionAt: null,
-      },
+    if (!existing.pendingRevision) return NextResponse.json({ error: "No proposed changes." }, { status: 400 })
+    const result = await decide({
+      type: "course",
+      id: courseId,
+      action: body.action === "apply-revision" ? "approve" : "reject",
+      message: body.reason,
+      staff,
     })
-    return NextResponse.json({ course })
+    if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status })
+    return NextResponse.json({ course: await prisma.course.findUnique({ where: { id: courseId } }) })
   }
 
   if (!staff.isAdmin) {
@@ -76,8 +81,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ co
       const merged = { ...((existing.pendingRevision as Record<string, unknown>) ?? {}), ...details } as unknown as Prisma.InputJsonObject
       const course = await prisma.course.update({
         where: { id: courseId },
-        data: { pendingRevision: merged, pendingRevisionById: staff.userId, pendingRevisionAt: new Date() },
+        data: { pendingRevision: merged, pendingRevisionById: staff.userId, pendingRevisionAt: new Date(), ...clearRejection },
       })
+      await logEvent({ contentType: "course", contentId: courseId, kind: "edit", action: "submitted", staff })
       return NextResponse.json({ course, revisionPending: true })
     }
     const course = await prisma.course.update({ where: { id: courseId }, data: details })
@@ -86,7 +92,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ co
 
   // Admin. Publishing also closes out any review request.
   const data: Record<string, unknown> = { ...pick(body, DETAIL_FIELDS), ...pick(body, ADMIN_FIELDS) }
-  if (body.isPublished === true) data.reviewStatus = null
+  if (body.isPublished === true) Object.assign(data, { reviewStatus: null, ...clearRejection })
   if (body.isPublished === true && !existing.isPublished) {
     const missing = await lessonsMissingPrimary(courseId)
     if (missing.length) {
@@ -102,6 +108,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ co
     }
   }
   const course = await prisma.course.update({ where: { id: courseId }, data })
+  if (body.isPublished === true && !existing.isPublished && existing.reviewStatus === "review") {
+    await logEvent({ contentType: "course", contentId: courseId, kind: "new", action: "approved", staff })
+  }
   return NextResponse.json({ course })
 }
 

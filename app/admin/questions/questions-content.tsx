@@ -60,6 +60,7 @@ const STATUS_STYLES: Record<QuestionStatus, string> = {
   draft: "bg-muted text-muted-foreground",
   review: "bg-warning/15 text-warning",
   published: "bg-success/15 text-success",
+  rejected: "bg-destructive/10 text-destructive",
 }
 
 const BLANK: EditableQuestion = {

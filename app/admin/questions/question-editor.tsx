@@ -27,6 +27,7 @@ import {
   type QuestionDraft,
 } from "@lib/question-validation"
 import { MosTagger } from "@/components/admin/mos-tagger"
+import { ReviewActivity } from "@/components/review/review-activity"
 import { questionMatchText } from "@lib/mos/content-text"
 import type { MosLink } from "@lib/mos/subjects"
 
@@ -519,6 +520,8 @@ export default function QuestionEditor({
           </ul>
         </div>
       )}
+
+      {value.id && <ReviewActivity type="question" id={value.id} />}
 
       <div className="flex flex-wrap items-center gap-3 border-t border-border pt-5">
         {curatorOnLive ? (

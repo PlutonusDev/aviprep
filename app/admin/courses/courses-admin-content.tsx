@@ -323,7 +323,15 @@ export default function CoursesAdminContent() {
         <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {courses.map((course) => {
             const subject = subjects.find((x) => x.id === course.subjectId)
-            const status = course.isPublished ? "Live" : course.reviewStatus === "review" ? "In review" : "Draft"
+            const status = course.isPublished
+              ? "Live"
+              : course.reviewStatus === "review"
+                ? "In review"
+                : course.reviewStatus === "changes"
+                  ? "Changes requested"
+                  : course.reviewStatus === "rejected"
+                    ? "Rejected"
+                    : "Draft"
             return (
               <li key={course.id} className="min-w-0">
                 <article className="group flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card shadow-e1 transition-[border-color,box-shadow] hover:border-primary/40 hover:shadow-e2">
@@ -337,7 +345,13 @@ export default function CoursesAdminContent() {
                               aria-hidden="true"
                               className={cn(
                                 "h-1.5 w-1.5 rounded-full",
-                                course.isPublished ? "bg-success" : course.reviewStatus === "review" ? "bg-warning" : "bg-muted-foreground/50",
+                                course.isPublished
+                                  ? "bg-success"
+                                  : course.reviewStatus === "review" || course.reviewStatus === "changes"
+                                    ? "bg-warning"
+                                    : course.reviewStatus === "rejected"
+                                      ? "bg-destructive"
+                                      : "bg-muted-foreground/50",
                               )}
                             />
                             {status}
@@ -378,17 +392,20 @@ export default function CoursesAdminContent() {
                               <DropdownMenuItem onClick={() => handleTogglePublish(course.id, course.isPublished)}>
                                 {course.isPublished ? "Unpublish" : "Publish"}
                               </DropdownMenuItem>
-                              {course.hasPendingRevision && (
-                                <>
-                                  <DropdownMenuItem onClick={() => courseAction(course.id, "apply-revision")}>Apply proposed edits</DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => courseAction(course.id, "discard-revision")}>Discard proposed edits</DropdownMenuItem>
-                                </>
+                              {(course.hasPendingRevision || (!course.isPublished && course.reviewStatus === "review")) && (
+                                <DropdownMenuItem asChild>
+                                  <Link href={`/admin/review?item=course:${course.id}`}>
+                                    {course.hasPendingRevision ? "Review proposed edits" : "Review course"}
+                                  </Link>
+                                </DropdownMenuItem>
                               )}
                             </>
                           ) : (
                             !course.isPublished &&
                             course.reviewStatus !== "review" && (
-                              <DropdownMenuItem onClick={() => courseAction(course.id, "submit")}>Submit for review</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => courseAction(course.id, "submit")}>
+                                {course.reviewStatus === "changes" || course.reviewStatus === "rejected" ? "Resubmit for review" : "Submit for review"}
+                              </DropdownMenuItem>
                             )
                           )}
                           {(isAdmin || !course.isPublished) && (

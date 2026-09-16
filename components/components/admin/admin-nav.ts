@@ -1,6 +1,7 @@
 import type React from "react"
 import {
   Building2,
+  ClipboardCheck,
   GraduationCap,
   HelpCircle,
   ImageIcon,
@@ -41,6 +42,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
   {
     label: "Content",
     items: [
+      { name: "Review", href: "/admin/review", icon: ClipboardCheck },
       { name: "Courses", href: "/admin/courses", icon: GraduationCap, curator: true },
       { name: "Questions", href: "/admin/questions", icon: HelpCircle, curator: true },
       { name: "AI generator", href: "/admin/questions/generate", icon: Sparkles },

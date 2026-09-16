@@ -3,6 +3,7 @@ import { prisma } from "@lib/prisma"
 import { isResponse, requireStaff } from "@lib/staff"
 import { validateQuestion, isValid } from "@lib/question-validation"
 import { MOS_PUBLISH_ERROR, checkLinksForSubject, parseMosInput, saveMappings, withPrimaryMapping } from "@lib/mos/mappings"
+import { logEvent } from "@lib/review/review"
 
 export async function GET(request: NextRequest) {
   const staff = await requireStaff({ curators: true })
@@ -105,6 +106,9 @@ export async function POST(request: NextRequest) {
 
     if (mos) {
       await saveMappings({ contentType: "question", contentId: question.id, subjectId: question.subjectId, links: mos, userId: staff.userId })
+    }
+    if (status === "review") {
+      await logEvent({ contentType: "question", contentId: question.id, kind: "new", action: "submitted", staff, message: body.authorNote })
     }
 
     return NextResponse.json(question)

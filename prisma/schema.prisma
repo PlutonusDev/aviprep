@@ -281,7 +281,7 @@ model Question {
 
   // Authoring workflow. All optional so existing rows need no backfill -
   // a missing status is treated as "published" (see lib/question-validation.ts).
-  status       String?   // "draft" | "review" | "published"
+  status       String?   // "draft" | "review" | "published" | "rejected"
   authorId     String?   @db.ObjectId
   reviewedById String?   @db.ObjectId
   authorNote   String?
@@ -292,6 +292,9 @@ model Question {
   rejectionReason String?
   rejectedAt      DateTime?
   rejectionForId  String?  @db.ObjectId
+  /// Set when an admin asks for changes to a proposed edit. The proposal stays
+  /// with the curator (out of the review queue) until they send it again.
+  changesRequestedAt DateTime?
 
   // Review workflow (lib/staff.ts). Edits a curator makes to live content are
   // held here as proposed changes until an admin applies or discards them.
@@ -485,8 +488,19 @@ model Course {
   
   // Status
   isPublished     Boolean  @default(false)
-  // "review" once a curator submits an unpublished course; cleared on publish.
+  // Unpublished course review: "review" once submitted, "changes" when an admin
+  // asks for changes, "rejected" when declined. Cleared on publish.
   reviewStatus    String?
+  /// Who created it, for attribution and review.
+  authorId        String?   @db.ObjectId
+  /// Who last submitted it for review, and when.
+  submittedById   String?   @db.ObjectId
+  submittedAt     DateTime?
+  /// Latest admin feedback; see Question.rejectionReason.
+  rejectionReason String?
+  rejectedAt      DateTime?
+  rejectionForId  String?   @db.ObjectId
+  changesRequestedAt DateTime?
 
   // Review workflow (lib/staff.ts). Edits a curator makes to live content are
   // held here as proposed changes until an admin applies or discards them.
@@ -549,6 +563,8 @@ model Lesson {
   rejectionReason String?
   rejectedAt      DateTime?
   rejectionForId  String?   @db.ObjectId
+  /// See Question.changesRequestedAt.
+  changesRequestedAt DateTime?
 
   // Review workflow (lib/staff.ts). Edits a curator makes to live content are
   // held here as proposed changes until an admin applies or discards them.
@@ -842,4 +858,25 @@ model CuratorInvite {
   createdAt   DateTime  @default(now())
 
   @@index([email])
+}
+
+/// The review timeline for a course, lesson or question: submissions, comments
+/// and decisions, in order. Shown on the admin review page and to the curator.
+model ReviewEvent {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  /// "question" | "lesson" | "course"
+  contentType String
+  contentId   String   @db.ObjectId
+  /// "new" (unpublished content) or "edit" (a proposed change to live content).
+  kind        String
+  /// "submitted" | "comment" | "approved" | "changes-requested" | "rejected"
+  action      String
+  /// A User id (admin) or Curator id (curator).
+  actorId     String   @db.ObjectId
+  actorRole   String
+  message     String?
+  createdAt   DateTime @default(now())
+
+  @@index([contentType, contentId, createdAt])
+  @@index([actorId])
 }

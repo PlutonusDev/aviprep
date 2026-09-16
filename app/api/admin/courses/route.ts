@@ -48,6 +48,7 @@ export async function POST(request: Request) {
       difficulty: difficulty || "beginner",
       // New courses always start unpublished, whoever creates them.
       isPublished: false,
+      authorId: staff.userId,
     },
   })
 

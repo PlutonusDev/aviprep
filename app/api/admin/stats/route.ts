@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { verifyToken } from "@lib/auth"
 import { prisma } from "@lib/prisma"
+import { notAccepted, notRevoked } from "@lib/curators/invites"
+import { reviewQueue } from "@lib/review/review"
 
 export async function GET() {
   try {
@@ -36,13 +38,10 @@ export async function GET() {
       purchases,
       activeSubscriptions,
       waitlistCount,
-      questionsInReview,
-      questionChanges,
-      coursesInReview,
-      courseChanges,
-      lessonChanges,
+      reviewItems,
       mosReviews,
       rtoContacts,
+      curatorInvites,
     ] = await Promise.all([
       prisma.user.count(),
       prisma.user.count({ where: { createdAt: { gte: weekAgo } } }),
@@ -57,13 +56,11 @@ export async function GET() {
         },
       }),
       prisma.waitlist.count(),
-      prisma.question.count({ where: { status: "review" } }),
-      prisma.question.count({ where: { pendingRevisionAt: { not: null } } }),
-      prisma.course.count({ where: { reviewStatus: "review", isPublished: false } }),
-      prisma.course.count({ where: { pendingRevisionAt: { not: null } } }),
-      prisma.lesson.count({ where: { pendingRevisionAt: { not: null } } }),
+      // Same list the review page shows, so the numbers always agree.
+      reviewQueue(),
       prisma.mosMapping.count({ where: { needsReview: true } }),
       prisma.rtoContact.count(),
+      prisma.curatorInvite.count({ where: { expiresAt: { gt: new Date() }, AND: [notAccepted, notRevoked] } }),
     ])
 
     return NextResponse.json({
@@ -74,7 +71,13 @@ export async function GET() {
       activeSubscriptions,
       waitlistCount,
       rtoContacts,
-      queue: { questionsInReview, questionChanges, coursesInReview, courseChanges, lessonChanges, mosReviews },
+      queue: {
+        review: reviewItems.length,
+        newContent: reviewItems.filter((i) => i.kind === "new").length,
+        edits: reviewItems.filter((i) => i.kind === "edit").length,
+        mosReviews,
+        curatorInvites,
+      },
     })
   } catch (error) {
     console.error("Admin stats error:", error)

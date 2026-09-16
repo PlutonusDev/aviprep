@@ -12,6 +12,7 @@ import {
   parseMosInput,
   saveMappings,
 } from "@lib/mos/mappings"
+import { decide, logEvent } from "@lib/review/review"
 
 const CONTENT_FIELDS = ["subjectId", "topic", "difficulty", "questionText", "options", "correctIndex", "explanation", "reference"] as const
 
@@ -29,12 +30,7 @@ function contentFrom(source: Record<string, unknown>) {
   }
 }
 
-const clearRevision = { pendingRevision: null, pendingRevisionById: null, pendingRevisionAt: null }
-const clearRejection = { rejectionReason: null, rejectedAt: null, rejectionForId: null }
-
-/** Admin feedback shown to the curator on their home screen. */
-const readReason = (value: unknown) => (typeof value === "string" ? value.trim().slice(0, 1000) : "")
-const REASON_MIN = 10
+const clearRejection = { rejectionReason: null, rejectedAt: null, rejectionForId: null, changesRequestedAt: null }
 
 /** Royalty points: 3 marks a complex question, anything else is standard. */
 const readPoints = (value: unknown) => (value === 3 ? 3 : value === 1 ? 1 : undefined)
@@ -44,10 +40,11 @@ const readPoints = (value: unknown) => (value === 3 ? 3 : value === 1 ? 1 : unde
  *   - draft / in-review question: edit directly; status can be draft or review
  *   - live question: the edit is stored as a proposed revision; students keep
  *     seeing the published version until an admin applies it
- * Admins: edit and publish directly (with { points: 1 | 3 }), or
- *   { action: "apply-revision" }
- *   { action: "discard-revision", reason? }  proposed edit declined, reason shown to the curator
- *   { action: "send-back", reason }          in-review question returned to draft with feedback
+ * Admins: edit and publish directly (with { points: 1 | 3 }), or the editor's
+ * shortcuts into the review workflow (lib/review/review.ts):
+ *   { action: "apply-revision" }             approve a proposed edit
+ *   { action: "discard-revision", reason? }  reject it
+ *   { action: "send-back", reason }          ask for changes to a question in review
  */
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const staff = await requireStaff({ curators: true })
@@ -59,39 +56,17 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (!existing) return NextResponse.json({ error: "Question not found" }, { status: 404 })
 
   try {
-    if (body.action === "send-back") {
-      if (!staff.isAdmin) return NextResponse.json({ error: "Only an admin can review questions." }, { status: 403 })
-      if (effectiveStatus(existing.status) === "published") {
-        return NextResponse.json({ error: "This question is live. Discard its proposed changes instead." }, { status: 400 })
+    const shortcut = { "send-back": "request-changes", "apply-revision": "approve", "discard-revision": "reject" } as const
+    if (body.action in shortcut) {
+      if (body.action === "send-back" && existing.status !== "review") {
+        return NextResponse.json({ error: "Only a question in review can be sent back." }, { status: 400 })
       }
-      const reason = readReason(body.reason)
-      if (reason.length < REASON_MIN) {
-        return NextResponse.json({ error: "Tell them what to change, in a sentence or two.", fieldErrors: { reason: "Add a reason." } }, { status: 422 })
+      if (body.action !== "send-back" && !existing.pendingRevision) {
+        return NextResponse.json({ error: "No proposed changes." }, { status: 400 })
       }
-      const question = await prisma.question.update({
-        where: { id },
-        data: { status: "draft", rejectionReason: reason, rejectedAt: new Date(), rejectionForId: existing.authorId, reviewedById: staff.userId },
-      })
-      return NextResponse.json(question)
-    }
-
-    if (body.action === "apply-revision" || body.action === "discard-revision") {
-      if (!staff.isAdmin) return NextResponse.json({ error: "Only an admin can review changes." }, { status: 403 })
-      if (!existing.pendingRevision) return NextResponse.json({ error: "No proposed changes." }, { status: 400 })
-      const reason = readReason(body.reason)
-      const question = await prisma.question.update({
-        where: { id },
-        data:
-          body.action === "apply-revision"
-            ? { ...contentFrom(existing.pendingRevision as Record<string, unknown>), reviewedById: staff.userId, ...clearRevision, ...clearRejection }
-            : {
-                ...clearRevision,
-                ...(reason
-                  ? { rejectionReason: reason, rejectedAt: new Date(), rejectionForId: existing.pendingRevisionById }
-                  : clearRejection),
-              },
-      })
-      return NextResponse.json(question)
+      const result = await decide({ type: "question", id, action: shortcut[body.action as keyof typeof shortcut], message: body.reason, staff })
+      if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status })
+      return NextResponse.json(await prisma.question.findUnique({ where: { id } }))
     }
 
     const errors = validateQuestion(body)
@@ -130,6 +105,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
             ...clearRejection,
           },
         })
+        await logEvent({ contentType: "question", contentId: id, kind: "edit", action: "submitted", staff, message: body.authorNote })
         await saveMos()
         return NextResponse.json({ ...question, revisionPending: true })
       }
@@ -139,6 +115,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         where: { id },
         data: { ...contentFrom(body), status, authorNote: body.authorNote ?? undefined, ...(status === "review" ? clearRejection : {}) },
       })
+      if (status === "review" && existing.status !== "review") {
+        await logEvent({ contentType: "question", contentId: id, kind: "new", action: "submitted", staff, message: body.authorNote })
+      }
       await saveMos()
       return NextResponse.json(question)
     }
@@ -154,6 +133,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         ...(body.status === "published" ? clearRejection : {}),
       },
     })
+    // Publishing from the editor settles a pending review the same way the review page does.
+    if (body.status === "published" && existing.status === "review") {
+      await logEvent({ contentType: "question", contentId: id, kind: "new", action: "approved", staff })
+    }
     await saveMos()
     return NextResponse.json(question)
   } catch (error) {

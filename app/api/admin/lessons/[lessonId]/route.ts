@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@lib/prisma"
 import { courseIsLive, isResponse, liveContentError, pick, requireStaff } from "@lib/staff"
+import { decide, logEvent } from "@lib/review/review"
 import { MOS_LIVE_REMOVE_ERROR, checkLinksForSubject, deleteMappingsFor, hasPrimaryMapping, linkedItemIds, parseMosInput, saveMappings } from "@lib/mos/mappings"
 
 const LESSON_FIELDS = ["title", "description", "contentType", "content", "estimatedMins"] as const
@@ -35,24 +36,16 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ le
   if (!existing) return NextResponse.json({ error: "Lesson not found" }, { status: 404 })
 
   if (body.action === "apply-revision" || body.action === "discard-revision") {
-    if (!staff.isAdmin) return NextResponse.json({ error: "Only an admin can review changes." }, { status: 403 })
-    const revision = (existing.pendingRevision ?? {}) as Record<string, unknown>
-    // A reason on a discard is shown to the curator on their home screen.
-    const reason = typeof body.reason === "string" ? body.reason.trim().slice(0, 1000) : ""
-    const declined = body.action === "discard-revision" && reason
-    const lesson = await prisma.lesson.update({
-      where: { id: lessonId },
-      data: {
-        ...(body.action === "apply-revision" ? (pick(revision, LESSON_FIELDS) as Prisma.LessonUpdateInput) : {}),
-        pendingRevision: null,
-        pendingRevisionById: null,
-        pendingRevisionAt: null,
-        ...(declined
-          ? { rejectionReason: reason, rejectedAt: new Date(), rejectionForId: existing.pendingRevisionById }
-          : { rejectionReason: null, rejectedAt: null, rejectionForId: null }),
-      },
+    // The review workflow owns decisions (lib/review/review.ts).
+    const result = await decide({
+      type: "lesson",
+      id: lessonId,
+      action: body.action === "apply-revision" ? "approve" : "reject",
+      message: body.reason,
+      staff,
     })
-    return NextResponse.json({ lesson })
+    if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status })
+    return NextResponse.json({ lesson: await prisma.lesson.findUnique({ where: { id: lessonId } }) })
   }
 
   const changes = pick(body, LESSON_FIELDS) as Prisma.LessonUpdateInput
@@ -84,8 +77,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ le
         rejectionReason: null,
         rejectedAt: null,
         rejectionForId: null,
+        changesRequestedAt: null,
       },
     })
+    await logEvent({ contentType: "lesson", contentId: lessonId, kind: "edit", action: "submitted", staff })
     return NextResponse.json({ lesson, revisionPending: true })
   }
 

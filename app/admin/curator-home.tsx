@@ -23,6 +23,16 @@ import { LoadError, PageHeader, PageShell, SectionHeading, StatTile } from "@/co
 import { credentialLabel } from "@lib/curators/details"
 import { cn } from "@lib/utils"
 
+type ContentKind = "question" | "lesson" | "course"
+
+const KIND_LABEL: Record<ContentKind, string> = { question: "Question", lesson: "Lesson", course: "Course" }
+
+const OUTCOME: Record<HomeData["feedback"][number]["outcome"], { label: string; cls: string; cta: string }> = {
+  "changes-requested": { label: "Changes requested", cls: "text-warning", cta: "Make changes" },
+  rejected: { label: "Rejected", cls: "text-destructive", cta: "View" },
+  "edit-rejected": { label: "Edit not accepted", cls: "text-destructive", cta: "View" },
+}
+
 interface SubjectEstimate {
   subjectId: string
   name: string
@@ -36,17 +46,17 @@ interface HomeData {
   curator: { firstName: string; credentials: string[] }
   royalties: { estimateCents: number; myPoints: number; windowDays: number; subjects: SubjectEstimate[] }
   payoutDate: string
-  questions: { live: number; review: number; draft: number; needsChanges: number }
+  questions: { live: number; review: number; draft: number }
   lessons: { live: number; total: number }
   pending: number
-  inReview: { kind: "question" | "lesson"; id: string; title: string; at: string | null; change: "new" | "edit"; href: string }[]
+  inReview: { kind: ContentKind; id: string; title: string; at: string | null; change: "new" | "edit"; href: string }[]
   feedback: {
-    kind: "question" | "lesson"
+    kind: ContentKind
     id: string
     title: string
     reason: string
     at: string | null
-    outcome: "sent-back" | "edit-declined"
+    outcome: "changes-requested" | "rejected" | "edit-rejected"
     href: string
   }[]
 }
@@ -63,12 +73,12 @@ function greeting() {
   return hour < 12 ? "Morning" : hour < 18 ? "Afternoon" : "Evening"
 }
 
-function KindBadge({ kind }: { kind: "question" | "lesson" }) {
-  const Icon = kind === "question" ? HelpCircle : FileText
+function KindBadge({ kind }: { kind: ContentKind }) {
+  const Icon = kind === "question" ? HelpCircle : kind === "lesson" ? FileText : GraduationCap
   return (
     <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
       <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-      {kind === "question" ? "Question" : "Lesson"}
+      {KIND_LABEL[kind]}
     </span>
   )
 }
@@ -150,7 +160,7 @@ function PayoutCard({ data }: { data: HomeData }) {
 function Feedback({ items }: { items: HomeData["feedback"] }) {
   return (
     <section>
-      <SectionHeading title="Needs changes" count={items.length ? String(items.length) : undefined} />
+      <SectionHeading title="Review feedback" count={items.length ? String(items.length) : undefined} />
       {items.length === 0 ? (
         <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-5">
           <CircleCheck className="h-5 w-5 shrink-0 text-success" aria-hidden="true" />
@@ -162,18 +172,21 @@ function Feedback({ items }: { items: HomeData["feedback"] }) {
             <li key={`${item.kind}-${item.id}`} className="rounded-xl border border-border bg-card p-4 shadow-e1">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <KindBadge kind={item.kind} />
-                <span className="text-xs font-medium text-warning">{item.outcome === "sent-back" ? "Sent back" : "Edit not accepted"}</span>
+                <span className={cn("text-xs font-medium", OUTCOME[item.outcome].cls)}>{OUTCOME[item.outcome].label}</span>
                 <span className="ml-auto text-xs text-muted-foreground">{ago(item.at)}</span>
               </div>
               <p className="mt-2 line-clamp-2 text-sm font-medium text-foreground">{item.title}</p>
-              <div className="mt-3 flex gap-2.5 rounded-lg bg-warning/10 p-3">
-                <MessageSquareWarning className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
+              <div className={cn("mt-3 flex gap-2.5 rounded-lg p-3", item.outcome === "changes-requested" ? "bg-warning/10" : "bg-destructive/5")}>
+                <MessageSquareWarning
+                  className={cn("mt-0.5 h-4 w-4 shrink-0", item.outcome === "changes-requested" ? "text-warning" : "text-destructive")}
+                  aria-hidden="true"
+                />
                 <p className="whitespace-pre-line text-sm text-foreground">{item.reason}</p>
               </div>
               <div className="mt-3 flex justify-end">
                 <Button asChild size="sm" variant="outline" className="h-9 gap-1.5">
                   <Link href={item.href}>
-                    {item.outcome === "sent-back" ? "Fix it" : "Open"}
+                    {OUTCOME[item.outcome].cta}
                     <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
                   </Link>
                 </Button>
@@ -258,7 +271,7 @@ export function CuratorHome() {
   }
 
   const background = data.curator.credentials.filter((c) => c !== "none").map((c) => credentialLabel(c))
-  const needsChanges = data.feedback.length
+  const needsChanges = data.feedback.filter((f) => f.outcome === "changes-requested").length
 
   return (
     <PageShell>
@@ -303,7 +316,7 @@ export function CuratorHome() {
         />
         <StatTile icon={Clock} label="In review" value={data.pending.toLocaleString()} />
         <div className={cn(needsChanges > 0 && "rounded-lg ring-1 ring-warning/50")}>
-          <StatTile icon={MessageSquareWarning} label="Needs changes" value={needsChanges.toLocaleString()} />
+          <StatTile icon={MessageSquareWarning} label="Changes requested" value={needsChanges.toLocaleString()} />
         </div>
       </div>
 

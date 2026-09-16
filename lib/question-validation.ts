@@ -4,17 +4,18 @@
  * would reject - and stops a bad question reaching the question bank at all.
  */
 
-export type QuestionStatus = "draft" | "review" | "published"
+export type QuestionStatus = "draft" | "review" | "published" | "rejected"
 
 export const QUESTION_STATUSES: { id: QuestionStatus; label: string; description: string }[] = [
   { id: "draft", label: "Draft", description: "Being written. Never shown to students." },
   { id: "review", label: "In review", description: "Ready for a second pair of eyes." },
   { id: "published", label: "Published", description: "Live in practice exams." },
+  { id: "rejected", label: "Rejected", description: "Declined in review. Never shown to students." },
 ]
 
 /** Legacy rows predate the status field; they were already live. */
 export function effectiveStatus(status?: string | null): QuestionStatus {
-  if (status === "draft" || status === "review" || status === "published") return status
+  if (status === "draft" || status === "review" || status === "published" || status === "rejected") return status
   return "published"
 }
 

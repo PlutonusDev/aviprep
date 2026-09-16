@@ -7,6 +7,7 @@ import {
   ArrowRight,
   Building2,
   CheckCircle2,
+  ClipboardCheck,
   DollarSign,
   FileEdit,
   GraduationCap,
@@ -14,6 +15,7 @@ import {
   ListChecks,
   Mail,
   Package,
+  PenLine,
   ShieldCheck,
   Sparkles,
   Ticket,
@@ -32,16 +34,16 @@ interface Stats {
   waitlistCount: number
   rtoContacts: number
   queue: {
-    questionsInReview: number
-    questionChanges: number
-    coursesInReview: number
-    courseChanges: number
-    lessonChanges: number
+    review: number
+    newContent: number
+    edits: number
     mosReviews: number
+    curatorInvites: number
   }
 }
 
 const SHORTCUTS = [
+  { name: "Review content", href: "/admin/review", icon: ClipboardCheck },
   { name: "Write questions", href: "/admin/questions", icon: HelpCircle },
   { name: "Edit courses", href: "/admin/courses", icon: GraduationCap },
   { name: "AI generator", href: "/admin/questions/generate", icon: Sparkles },
@@ -71,11 +73,10 @@ export function AdminOverview() {
   const q = stats?.queue
   const queue = q
     ? [
-        { label: "Questions in review", count: q.questionsInReview, href: "/admin/questions", icon: HelpCircle },
-        { label: "Proposed question edits", count: q.questionChanges, href: "/admin/questions", icon: FileEdit },
-        { label: "Courses in review", count: q.coursesInReview, href: "/admin/courses", icon: GraduationCap },
-        { label: "Proposed course and lesson edits", count: q.courseChanges + q.lessonChanges, href: "/admin/courses", icon: FileEdit },
+        { label: "New content to review", count: q.newContent, href: "/admin/review", icon: ClipboardCheck },
+        { label: "Proposed edits to live content", count: q.edits, href: "/admin/review?kind=edit", icon: FileEdit },
         { label: "MOS links to review", count: q.mosReviews, href: "/admin/mos", icon: ShieldCheck },
+        { label: "Curator invites waiting", count: q.curatorInvites, href: "/admin/curators", icon: PenLine },
       ].filter((i) => i.count > 0)
     : []
 

@@ -46,6 +46,7 @@ import { use } from "react"
 import { useUser } from "@lib/user-context"
 import { Skeleton } from "@/components/ui/skeleton"
 import { EmptyState, PageHeader, PageShell } from "@/components/hub/page-primitives"
+import { ReviewActivity } from "@/components/review/review-activity"
 import { cn } from "@lib/utils"
 
 interface Lesson {
@@ -402,6 +403,8 @@ export default function CourseEditorPage({ params }: { params: Promise<{ courseI
           This course is live. Lesson edits go to an admin for review. Adding, removing or reordering needs an admin.
         </div>
       )}
+
+      <ReviewActivity type="course" id={course.id} />
 
       {course.modules.length === 0 ? (
         <EmptyState icon={Layers} title="No modules yet" description="Modules group lessons into sections.">

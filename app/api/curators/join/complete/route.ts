@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@lib/prisma"
 import { hashPassword } from "@lib/auth"
 import { australianMobile, checkDetails, checkPassword, readCredentials, readDetails } from "@lib/curators/details"
-import { INVITE_UNAVAILABLE, findInvite } from "@lib/curators/invites"
+import { INVITE_UNAVAILABLE, findInvite, notAccepted, notRevoked } from "@lib/curators/invites"
 import { startCuratorSession } from "@lib/curators/session"
 import { checkOtp, readChallenge } from "@lib/otp"
 import { isCuratorHost } from "@lib/tenant"
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
     await prisma.curatorInvite.update({ where: { id: invite.id }, data: { acceptedAt: now, curatorId: curator.id } })
     // Any other open invites to the same address are now moot.
     await prisma.curatorInvite.updateMany({
-      where: { email: invite.email, id: { not: invite.id }, acceptedAt: null, revokedAt: null },
+      where: { email: invite.email, id: { not: invite.id }, AND: [notAccepted, notRevoked] },
       data: { revokedAt: now },
     })
 

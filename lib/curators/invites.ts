@@ -16,6 +16,13 @@ export const GUIDELINES_NAME = "AviPrep-Content-Guidelines.pdf"
 
 export type InviteStatus = "pending" | "expired" | "accepted" | "revoked"
 
+/*
+ * On MongoDB, `field: null` doesn't match a field that was never written, so
+ * "not accepted" and "not revoked" have to allow for both.
+ */
+export const notAccepted = { OR: [{ acceptedAt: null }, { acceptedAt: { isSet: false } }] }
+export const notRevoked = { OR: [{ revokedAt: null }, { revokedAt: { isSet: false } }] }
+
 export const INVITE_UNAVAILABLE = {
   expired: "This invite has expired. Ask the AviPrep team to send a new one.",
   accepted: "This invite has already been used. Sign in instead.",

@@ -36,6 +36,7 @@ import { SUBJECTS } from "@lib/subjects"
 import { Skeleton } from "@/components/ui/skeleton"
 import { EmptyState, PageHeader, PageShell } from "@/components/hub/page-primitives"
 import { MosTagger } from "@/components/admin/mos-tagger"
+import { ReviewActivity } from "@/components/review/review-activity"
 import { lessonMatchText } from "@lib/mos/content-text"
 import type { MosLink } from "@lib/mos/subjects"
 
@@ -277,6 +278,8 @@ export default function LessonEditorPage({
         contentId={lesson.id}
         isAdmin={role === "admin"}
       />
+
+      <ReviewActivity type="lesson" id={lesson.id} />
 
       <section aria-labelledby="lesson-type-title">
         <h2 id="lesson-type-title" className="mb-3 text-base font-semibold text-foreground">

@@ -34,7 +34,8 @@ export async function GET(request: NextRequest) {
     const entry =
       byTopic.get(topic) ?? { topic, total: 0, draft: 0, review: 0, published: 0 }
     entry.total += 1
-    entry[effectiveStatus(row.status)] += 1
+    const status = effectiveStatus(row.status)
+    if (status !== "rejected") entry[status] += 1
     byTopic.set(topic, entry)
   }
 
