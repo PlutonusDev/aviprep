@@ -856,6 +856,13 @@ model Curator {
   // fields below are a cache of what Stripe reports (lib/finance/connect.ts),
   // with the account number cut down to its last four digits.
   stripeCustomerId       String?
+  /// Stripe Identity (KYC). Required before payouts.
+  /// "requires_input" | "processing" | "verified" | "canceled"
+  identitySessionId      String?
+  identityStatus         String?
+  identityVerifiedAt     DateTime?
+  /// Why the last attempt didn't pass, in Stripe's words.
+  identityError          String?
   stripeAccountId        String?
   stripeDetailsSubmitted Boolean?
   stripePayoutsEnabled   Boolean?
@@ -972,14 +979,16 @@ model RoyaltyStatement {
   @@index([period])
 }
 
-/// One run of a scheduled job. The unique key doubles as a lock, so a job runs
-/// once however many server instances are checking (lib/jobs.ts).
+/// One run of a scheduled job. The lock is the _id, derived from the key, so a
+/// job runs once however many server instances are checking (lib/jobs.ts).
 model JobRun {
   id         String    @id @default(auto()) @map("_id") @db.ObjectId
   /// e.g. "statements:2026-09"
-  key        String    @unique
+  key        String
   startedAt  DateTime  @default(now())
   finishedAt DateTime?
   error      String?
   result     Json?
+
+  @@index([key])
 }

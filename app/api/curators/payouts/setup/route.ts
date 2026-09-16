@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { getCurator } from "@lib/curators/session"
-import { payoutSetupLink } from "@lib/finance/connect"
+import { IdentityRequiredError, payoutSetupLink, stripeErrorMessage } from "@lib/finance/connect"
 import { requestOrigin } from "@lib/email-verification"
 import { isCuratorHost } from "@lib/tenant"
 
@@ -11,8 +11,9 @@ async function link(request: Request) {
   try {
     return await payoutSetupLink(curator.id, requestOrigin(request))
   } catch (error) {
+    if (error instanceof IdentityRequiredError) return { error: error.message, status: 403 }
     console.error("Payout setup link failed:", curator.id, error)
-    return { error: "Stripe isn’t available right now. Try again shortly.", status: 502 }
+    return { error: stripeErrorMessage(error), status: 502 }
   }
 }
 

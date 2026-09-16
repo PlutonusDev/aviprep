@@ -4,6 +4,7 @@ import { prisma } from "@lib/prisma"
 import { getProductById, SUBJECTS, CPL_BUNDLE } from "@lib/products"
 import { notifyPurchase } from "@lib/notifications"
 import type Stripe from "stripe"
+import { syncVerification } from "@lib/finance/identity"
 
 // Disable body parsing, we need raw body for webhook verification
 export const runtime = "nodejs"
@@ -41,6 +42,13 @@ export async function POST(request: NextRequest) {
       await handleSuccessfulPayment(session)
       break
     }
+    // Curator identity checks (lib/finance/identity.ts).
+    case "identity.verification_session.verified":
+    case "identity.verification_session.requires_input":
+    case "identity.verification_session.processing":
+    case "identity.verification_session.canceled":
+      await syncVerification(event.data.object as Stripe.Identity.VerificationSession)
+      break
     case "customer.subscription.deleted": {
       const subscription = event.data.object as Stripe.Subscription
       await handleSubscriptionCancelled(subscription)

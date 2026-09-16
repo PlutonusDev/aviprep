@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@lib/prisma"
 import { getCurator } from "@lib/curators/session"
 import { payoutAccountStatus, syncAccount } from "@lib/finance/connect"
+import { identityStatus, syncVerification } from "@lib/finance/identity"
 import { financialYearPeriods, periodAt, periodLabel } from "@lib/finance/money"
 import type { StatementSnapshot } from "@lib/finance/payouts"
 
@@ -14,6 +15,10 @@ export async function GET(request: Request) {
 
   // Coming back from Stripe, or stale: check their account before showing it.
   const returning = new URL(request.url).searchParams.get("sync") === "1"
+  if (curator.identitySessionId && curator.identityStatus !== "verified" && (returning || curator.identityStatus === "processing")) {
+    await syncVerification(curator.identitySessionId).catch((error) => console.error("Identity sync failed:", error))
+    curator = (await prisma.curator.findUnique({ where: { id: curator.id } })) ?? curator
+  }
   if (curator.stripeAccountId && (returning || !curator.stripeSyncedAt || Date.now() - curator.stripeSyncedAt.getTime() > 10 * 60_000)) {
     await syncAccount(curator.stripeAccountId).catch((error) => console.error("Earnings sync failed:", error))
     curator = (await prisma.curator.findUnique({ where: { id: curator.id } })) ?? curator
@@ -28,6 +33,7 @@ export async function GET(request: Request) {
   const thisYear = statements.filter((s) => fy.periods.includes(s.period))
 
   return NextResponse.json({
+    identity: { status: identityStatus(curator), error: curator.identityError },
     payouts: {
       status: payoutAccountStatus(curator),
       requirementsDue: curator.stripeRequirementsDue ?? 0,

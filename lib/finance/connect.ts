@@ -18,6 +18,13 @@ import { stripe } from "@lib/stripe"
 
 export type PayoutAccountStatus = "none" | "incomplete" | "pending" | "ready"
 
+/** Payouts wait for Stripe Identity (lib/finance/identity.ts). */
+export class IdentityRequiredError extends Error {
+  constructor() {
+    super("Verify your identity first.")
+  }
+}
+
 export function payoutAccountStatus(c: {
   stripeAccountId: string | null
   stripeDetailsSubmitted: boolean | null
@@ -38,19 +45,38 @@ export const PAYOUT_STATUS_LABELS: Record<PayoutAccountStatus, string> = {
 
 const configured = () => !!process.env.STRIPE_SECRET_KEY
 
+/**
+ * Stripe only redirects to https in live mode. Behind a proxy the request can
+ * look like http, so force https for anything that isn't local.
+ */
+export function stripeReturnOrigin(origin: string) {
+  const url = new URL(origin)
+  if (!/^(localhost|127\.0\.0\.1)$/.test(url.hostname) && !url.hostname.endsWith(".localhost")) url.protocol = "https:"
+  return url.origin
+}
+
+/** What to tell a curator when Stripe says no. The full error is logged for us. */
+export function stripeErrorMessage(error: unknown) {
+  const e = error as { type?: string; code?: string; message?: string; raw?: { message?: string } }
+  const message = e?.raw?.message ?? e?.message ?? ""
+  if (/signed up for connect|connect.*not enabled|platform-profile|responsibilities of managing losses/i.test(message)) {
+    return "Payouts aren’t switched on yet. We’ve been notified and will sort it out."
+  }
+  if (/identity/i.test(message) && /not (been )?activated|enable/i.test(message)) return "ID checks aren’t switched on yet. We’ve been notified."
+  if (e?.type === "StripeConnectionError" || e?.type === "StripeAPIError") return "Stripe isn’t responding right now. Try again in a minute."
+  return "Stripe couldn’t start that. Try again, or email hello@aviprep.com.au if it keeps happening."
+}
+
 /** Creates their Stripe customer if they don't have one. Never throws: joining mustn't fail because Stripe did. */
 export async function ensureCustomer(curator: { id: string; email: string; firstName: string; lastName: string; phone: string; stripeCustomerId?: string | null }) {
   if (curator.stripeCustomerId || !configured()) return curator.stripeCustomerId ?? null
   try {
-    const customer = await stripe.customers.create(
-      {
-        email: curator.email,
-        name: `${curator.firstName} ${curator.lastName}`.trim(),
-        phone: curator.phone,
-        metadata: { curatorId: curator.id, kind: "curator" },
-      },
-      { idempotencyKey: `curator-customer-${curator.id}` },
-    )
+    const customer = await stripe.customers.create({
+      email: curator.email,
+      name: `${curator.firstName} ${curator.lastName}`.trim(),
+      phone: curator.phone,
+      metadata: { curatorId: curator.id, kind: "curator" },
+    })
     await prisma.curator.update({ where: { id: curator.id }, data: { stripeCustomerId: customer.id } })
     return customer.id
   } catch (error) {
@@ -69,8 +95,10 @@ async function ensureAccount(curatorId: string) {
   if (curator.stripeAccountId) return curator.stripeAccountId
 
   await ensureCustomer(curator)
-  const account = await stripe.accounts.create(
-    {
+  // No idempotency key: Stripe replays a failed response for 24 hours, which
+  // would keep the button broken after the cause is fixed. The id is saved
+  // straight away, so a second account can't come from a normal retry.
+  const account = await stripe.accounts.create({
       type: "express",
       country: "AU",
       email: curator.email,
@@ -79,9 +107,7 @@ async function ensureAccount(curatorId: string) {
       business_profile: { product_description: "Writes exam questions and lessons for AviPrep and receives content royalties." },
       individual: { first_name: curator.firstName, last_name: curator.lastName, email: curator.email },
       metadata: { curatorId: curator.id },
-    },
-    { idempotencyKey: `curator-account-${curator.id}` },
-  )
+  })
   await prisma.curator.update({ where: { id: curator.id }, data: { stripeAccountId: account.id, stripeSyncedAt: new Date() } })
   return account.id
 }
@@ -121,7 +147,10 @@ export async function syncStale(curators: { stripeAccountId: string | null; stri
  * A link to Stripe's hosted onboarding, or to their Stripe Express dashboard
  * once they've finished it (that's where they change bank details).
  */
-export async function payoutSetupLink(curatorId: string, origin: string) {
+export async function payoutSetupLink(curatorId: string, requestOrigin: string) {
+  const origin = stripeReturnOrigin(requestOrigin)
+  const verified = await prisma.curator.findUnique({ where: { id: curatorId }, select: { identityStatus: true } })
+  if (verified?.identityStatus !== "verified") throw new IdentityRequiredError()
   const accountId = await ensureAccount(curatorId)
   const account = await stripe.accounts.retrieve(accountId)
   await syncAccount(account)
@@ -169,7 +198,11 @@ export async function payStatement(statementId: string): Promise<TransferResult>
   if (statement.status !== "sent") return { ok: false, error: "Send the statement before paying it." }
   if (statement.payableCents <= 0) return { ok: false, error: "There’s nothing to pay." }
 
-  const curator = await prisma.curator.findUnique({ where: { id: statement.curatorId }, select: { stripeAccountId: true, firstName: true } })
+  const curator = await prisma.curator.findUnique({
+    where: { id: statement.curatorId },
+    select: { stripeAccountId: true, firstName: true, identityStatus: true },
+  })
+  if (curator?.identityStatus !== "verified") return { ok: false, error: `${curator?.firstName ?? "They"} haven’t verified their identity yet.` }
   if (!curator?.stripeAccountId) return { ok: false, error: `${curator?.firstName ?? "They"} haven’t set up payouts yet.` }
 
   const fail = async (error: string) => {

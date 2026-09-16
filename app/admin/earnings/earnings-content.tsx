@@ -11,6 +11,8 @@ import {
   Clock,
   Download,
   FileText,
+  Fingerprint,
+  RotateCw,
   Landmark,
   Loader2,
   Lock,
@@ -26,8 +28,10 @@ import { useUser } from "@lib/user-context"
 import { cn } from "@lib/utils"
 
 type PayoutStatus = "none" | "incomplete" | "pending" | "ready"
+type IdentityStatus = "none" | "requires_input" | "processing" | "verified" | "canceled"
 
 interface Earnings {
+  identity: { status: IdentityStatus; error: string | null }
   payouts: { status: PayoutStatus; requirementsDue: number; bankName: string | null; last4: string | null }
   tax: { status: TaxStatus | null; gstRegistered: boolean; hasAbn: boolean }
   financialYear: { label: string; royaltyCents: number; gstCents: number; withholdingCents: number; paidCents: number }
@@ -54,7 +58,62 @@ const TAX_TEXT: Record<TaxStatus, string> = {
   "no-abn": "We don’t have your ABN, so 47% of payments over $75 is withheld and paid to the ATO for you.",
 }
 
-function PayoutAccount({ data, onOpen, opening }: { data: Earnings["payouts"]; onOpen: () => void; opening: boolean }) {
+function StepNumber({ n, done, active }: { n: number; done: boolean; active: boolean }) {
+  return (
+    <span
+      className={cn(
+        "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-colors",
+        done ? "bg-success text-white" : active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
+      )}
+    >
+      {done ? <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> : n}
+    </span>
+  )
+}
+
+/** Step 1: Stripe Identity. Payouts stay locked until it's verified. */
+function IdentityStep({ data, onVerify, onRefresh, busy }: { data: Earnings["identity"]; onVerify: () => void; onRefresh: () => void; busy: boolean }) {
+  const s = data.status
+  const copy: Record<IdentityStatus, { title: string; text: string; cta?: string }> = {
+    none: { title: "Verify your identity", text: "Takes about two minutes. Have your driver licence or passport ready.", cta: "Verify with Stripe" },
+    requires_input: data.error
+      ? { title: "Let’s try that again", text: data.error, cta: "Try again" }
+      : { title: "Finish verifying", text: "Pick up where you left off.", cta: "Continue" },
+    canceled: { title: "Verify your identity", text: "Your last attempt was cancelled.", cta: "Start again" },
+    processing: { title: "Checking your ID", text: "Usually a few minutes. We’ll unlock payouts as soon as it’s done." },
+    verified: { title: "Identity verified", text: "You’re all set." },
+  }
+  const c = copy[s]
+  const done = s === "verified"
+
+  return (
+    <div className={cn("flex gap-4 p-5 sm:p-6", done && "bg-success/5")}>
+      <StepNumber n={1} done={done} active={!done} />
+      <div className="min-w-0 flex-1">
+        <p className="flex items-center gap-2 font-medium text-foreground">
+          {c.title}
+          {s === "processing" && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" aria-hidden="true" />}
+        </p>
+        <p className={cn("mt-0.5 text-sm", s === "requires_input" && data.error ? "text-destructive" : "text-muted-foreground")}>{c.text}</p>
+        {c.cta && (
+          <Button className="mt-4 h-10 gap-2" onClick={onVerify} disabled={busy}>
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Fingerprint className="h-4 w-4" aria-hidden="true" />}
+            {c.cta}
+          </Button>
+        )}
+        {s === "processing" && (
+          <Button variant="ghost" size="sm" className="mt-3 h-9 gap-1.5 px-2 text-muted-foreground" onClick={onRefresh}>
+            <RotateCw className="h-3.5 w-3.5" aria-hidden="true" />
+            Check again
+          </Button>
+        )}
+      </div>
+      <Fingerprint className={cn("hidden h-10 w-10 shrink-0 sm:block", done ? "text-success/40" : "text-primary/25")} aria-hidden="true" />
+    </div>
+  )
+}
+
+function PayoutAccount({ data, onOpen, opening, locked = false }: { data: Earnings["payouts"]; onOpen: () => void; opening: boolean; locked?: boolean }) {
   const content: Record<PayoutStatus, { title: string; text: string; cta: string; tone: string; icon: React.ComponentType<{ className?: string }> }> = {
     none: {
       title: "Set up payouts",
@@ -92,20 +151,27 @@ function PayoutAccount({ data, onOpen, opening }: { data: Earnings["payouts"]; o
   const Icon = c.icon
 
   return (
-    <section aria-labelledby="payout-account" className="overflow-hidden rounded-xl border border-border bg-card shadow-e1">
-      <div className="grid gap-0 md:grid-cols-[minmax(0,1fr)_18rem]">
-        <div className="p-5 sm:p-6">
-          <span className={cn("flex h-10 w-10 items-center justify-center rounded-lg", c.tone)}>
-            <Icon className="h-5 w-5 text-foreground" aria-hidden="true" />
-          </span>
-          <h2 id="payout-account" className="mt-4 font-heading text-lg font-bold text-foreground">
-            {c.title}
-          </h2>
-          <p className="mt-1 max-w-prose text-sm text-muted-foreground">{c.text}</p>
-          <Button className="mt-5 h-10 gap-2" variant={data.status === "ready" || data.status === "pending" ? "outline" : "default"} onClick={onOpen} disabled={opening}>
-            {opening ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <ArrowUpRight className="h-4 w-4" aria-hidden="true" />}
-            {c.cta}
-          </Button>
+    <div className="grid gap-0 md:grid-cols-[minmax(0,1fr)_18rem]">
+        <div className={cn("flex gap-4 p-5 sm:p-6", locked && "opacity-60")}>
+          <StepNumber n={2} done={data.status === "ready"} active={!locked && data.status !== "ready"} />
+          <div className="min-w-0 flex-1">
+            <h2 id="payout-account" className="flex items-center gap-2 font-medium text-foreground">
+              {!locked && <Icon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />}
+              {locked ? "Set up payouts" : c.title}
+            </h2>
+            <p className="mt-0.5 max-w-prose text-sm text-muted-foreground">{locked ? "Unlocks once your identity is verified." : c.text}</p>
+            {locked ? (
+              <p className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-muted px-2.5 py-1.5 text-xs font-medium text-muted-foreground">
+                <Lock className="h-3.5 w-3.5" aria-hidden="true" />
+                Locked
+              </p>
+            ) : (
+              <Button className="mt-4 h-10 gap-2" variant={data.status === "ready" || data.status === "pending" ? "outline" : "default"} onClick={onOpen} disabled={opening}>
+                {opening ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <ArrowUpRight className="h-4 w-4" aria-hidden="true" />}
+                {c.cta}
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* The account, as far as we know it: a name and four digits. */}
@@ -121,12 +187,7 @@ function PayoutAccount({ data, onOpen, opening }: { data: Earnings["payouts"]; o
             </p>
           </div>
         </div>
-      </div>
-      <p className="flex items-center gap-1.5 border-t border-border px-5 py-2.5 text-xs text-muted-foreground sm:px-6">
-        <Lock className="h-3 w-3" aria-hidden="true" />
-        Your full bank details are held by Stripe, not AviPrep.
-      </p>
-    </section>
+    </div>
   )
 }
 
@@ -139,6 +200,8 @@ export function EarningsContent() {
   const [failed, setFailed] = useState(false)
   const [opening, setOpening] = useState(false)
   const stripeReturn = searchParams.get("stripe")
+  const identityReturn = searchParams.get("identity")
+  const [verifying, setVerifying] = useState(false)
 
   const load = useCallback(async (sync = false) => {
     try {
@@ -151,11 +214,33 @@ export function EarningsContent() {
   }, [])
 
   useEffect(() => {
-    load(!!stripeReturn)
+    load(!!stripeReturn || !!identityReturn)
     if (stripeReturn === "returned") toast.success("Thanks. We’ve checked your Stripe account.")
     if (stripeReturn === "error") toast.error("Couldn’t reach Stripe. Try again shortly.")
-    if (stripeReturn) router.replace(pathname, { scroll: false })
-  }, [load, stripeReturn, router, pathname])
+    if (stripeReturn || identityReturn) router.replace(pathname, { scroll: false })
+  }, [load, stripeReturn, identityReturn, router, pathname])
+
+  // While Stripe checks their ID, look again every few seconds.
+  const checking = data?.identity.status === "processing"
+  useEffect(() => {
+    if (!checking) return
+    const t = window.setInterval(() => load(true), 8000)
+    return () => window.clearInterval(t)
+  }, [checking, load])
+
+  async function verifyIdentity() {
+    setVerifying(true)
+    try {
+      const res = await fetch("/api/curators/identity", { method: "POST" })
+      const json = await res.json().catch(() => ({}))
+      if (json.url) return window.location.assign(json.url)
+      if (json.done) await load(true)
+      else toast.error(json.error || "Couldn’t open Stripe.")
+    } catch {
+      toast.error("Couldn’t open Stripe.")
+    }
+    setVerifying(false)
+  }
 
   async function openStripe() {
     setOpening(true)
@@ -206,7 +291,16 @@ export function EarningsContent() {
     <PageShell>
       <PageHeader title="Earnings" description="Your statements, invoices and where your royalties are paid." />
 
-      <PayoutAccount data={data.payouts} onOpen={openStripe} opening={opening} />
+      <section aria-label="Getting paid" className="overflow-hidden rounded-xl border border-border bg-card shadow-e1">
+        <IdentityStep data={data.identity} onVerify={verifyIdentity} onRefresh={() => load(true)} busy={verifying} />
+        <div className="border-t border-border">
+          <PayoutAccount data={data.payouts} onOpen={openStripe} opening={opening} locked={data.identity.status !== "verified"} />
+        </div>
+        <p className="flex items-center gap-1.5 border-t border-border px-5 py-2.5 text-xs text-muted-foreground sm:px-6">
+          <Lock className="h-3 w-3" aria-hidden="true" />
+          Your ID and bank details are handled by Stripe, not stored by AviPrep.
+        </p>
+      </section>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
         <StatTile icon={ReceiptText} label={`Royalties, ${fy.label}`} value={aud(fy.royaltyCents)} detail={fy.gstCents ? `Plus ${aud(fy.gstCents)} GST` : undefined} />

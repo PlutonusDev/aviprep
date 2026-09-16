@@ -39,6 +39,7 @@ export const PAYMENT_SELECT = {
   hobbyFormAt: true,
   rctiAgreementAt: true,
   paymentNotes: true,
+  identityStatus: true,
   stripeAccountId: true,
   stripeDetailsSubmitted: true,
   stripePayoutsEnabled: true,
@@ -63,6 +64,7 @@ type PaymentCurator = {
   hobbyFormAt: Date | null
   rctiAgreementAt: Date | null
   paymentNotes: string | null
+  identityStatus: string | null
   stripeAccountId: string | null
   stripeDetailsSubmitted: boolean | null
   stripePayoutsEnabled: boolean | null
@@ -103,6 +105,7 @@ export interface StatementSnapshot {
 /** Things to sort out before paying someone, most important first. */
 export function paymentIssues(c: PaymentCurator): string[] {
   const issues: string[] = []
+  if (c.identityStatus !== "verified") issues.push(c.identityStatus === "processing" ? "Identity being checked" : "Identity not verified")
   if (!c.taxStatus) issues.push("Tax status not set")
   if (c.taxStatus === "abn" && !isValidAbn(c.abn)) issues.push("ABN missing or invalid")
   if (c.taxStatus === "abn" && !c.rctiAgreementAt) issues.push("No signed RCTI agreement")

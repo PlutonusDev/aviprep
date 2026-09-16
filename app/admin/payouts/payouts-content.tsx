@@ -78,6 +78,7 @@ interface Row {
     gstRegistered: boolean
     rctiAgreementAt: string | null
     payouts: "none" | "incomplete" | "pending" | "ready"
+    identityVerified: boolean
     /** Masked, from Stripe. */
     bank: string | null
   }
@@ -261,9 +262,10 @@ export function PayoutsContent() {
   const ungenerated = rows.filter((r) => !r.statement && r.live.royaltyCents > 0)
   const withIssues = owed.filter((r) => r.issues.length)
   // Sent, something to pay, and a Stripe account that can take it.
-  const payable = rows.filter((r) => r.statement?.status === "sent" && r.statement.payableCents > 0 && r.curator.payouts === "ready")
+  const canBePaid = (r: Row) => r.curator.identityVerified && r.curator.payouts === "ready"
+  const payable = rows.filter((r) => r.statement?.status === "sent" && r.statement.payableCents > 0 && canBePaid(r))
   const payableCents = payable.reduce((n, r) => n + r.statement!.payableCents, 0)
-  const awaitingSetup = rows.filter((r) => r.statement?.status === "sent" && r.statement.payableCents > 0 && r.curator.payouts !== "ready")
+  const awaitingSetup = rows.filter((r) => r.statement?.status === "sent" && r.statement.payableCents > 0 && !canBePaid(r))
   const shortBalance = data?.balanceCents != null && payableCents > data.balanceCents
 
   const toggle = (id: string) =>
@@ -565,11 +567,11 @@ export function PayoutsContent() {
                                   )}
                                   {s?.status === "sent" && s.payableCents > 0 && (
                                     <DropdownMenuItem
-                                      disabled={row.curator.payouts !== "ready"}
+                                      disabled={!canBePaid(row)}
                                       onSelect={() => statementAction(row, "pay", {}, `Paid ${aud(s.payableCents)} through Stripe`)}
                                     >
                                       <Wallet className="mr-2 h-4 w-4" aria-hidden="true" />
-                                      {row.curator.payouts === "ready" ? `Pay ${aud(s.payableCents)} via Stripe` : "Waiting on Stripe setup"}
+                                      {canBePaid(row) ? `Pay ${aud(s.payableCents)} via Stripe` : row.curator.identityVerified ? "Waiting on Stripe setup" : "Waiting on identity check"}
                                     </DropdownMenuItem>
                                   )}
                                   {s && (s.status === "sent" || s.status === "draft") && (
