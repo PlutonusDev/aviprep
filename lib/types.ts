@@ -34,6 +34,8 @@ export interface QuestionData {
    * in the question bank, so saved choices can be matched back to the bank.
    */
   optionOrder?: number[]
+  /** Curators credited on the question (lib/attribution.ts). Empty when anonymous. */
+  contributors?: { id: string; name: string; avatar: string | null }[]
 }
 
 export interface ExamHistoryItem {

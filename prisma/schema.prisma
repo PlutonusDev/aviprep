@@ -829,6 +829,10 @@ model Curator {
   phoneVerifiedAt DateTime
   /// Aviation credentials picked at sign-up (lib/curators/details.ts CREDENTIALS).
   credentials     String[]  @default([])
+  /// Shown beside their work to students. Served from our own uploads.
+  profilePicture  String?
+  /// True hides their name and picture from students. Null (the default) shows them.
+  anonymous       Boolean?
   /// Deactivated curators can't sign in, and live sessions stop working.
   isActive        Boolean   @default(true)
   lastLoginAt     DateTime?
@@ -875,8 +879,28 @@ model ReviewEvent {
   actorId     String   @db.ObjectId
   actorRole   String
   message     String?
+  /// On an approved edit: points credited to its proposer, or 0 for a minor edit.
+  points      Int?
   createdAt   DateTime @default(now())
 
   @@index([contentType, contentId, createdAt])
   @@index([actorId])
+}
+
+/// Extra royalty points and attribution for a curator whose edit to someone
+/// else's work was approved as more than a minor fix. The author's own points
+/// aren't stored here: they come from the content (Question.points, 10 per lesson).
+/// Counts only while the content is live (lib/curators/royalties.ts).
+model ContentCredit {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  /// "question" | "lesson" | "course"
+  contentType String
+  contentId   String   @db.ObjectId
+  curatorId   String   @db.ObjectId
+  points      Int
+  awardedById String   @db.ObjectId
+  createdAt   DateTime @default(now())
+
+  @@index([contentType, contentId])
+  @@index([curatorId])
 }

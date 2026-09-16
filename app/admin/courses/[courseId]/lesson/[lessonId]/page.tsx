@@ -71,9 +71,6 @@ export default function LessonEditorPage({
   const [saving, setSaving] = useState(false)
   const [role, setRole] = useState<"admin" | "curator">("admin")
   const [isLive, setIsLive] = useState(false)
-  const [reviewing, setReviewing] = useState(false)
-  const [discarding, setDiscarding] = useState(false)
-  const [discardReason, setDiscardReason] = useState("")
   const [content, setContent] = useState<any>({})
   const [contentType, setContentType] = useState("text")
   /** Part 61 MOS links; undefined until loaded. */
@@ -131,27 +128,6 @@ export default function LessonEditorPage({
       toast.error("Failed to save lesson")
     } finally {
       setSaving(false)
-    }
-  }
-
-  async function reviewRevision(action: "apply-revision" | "discard-revision", reason?: string) {
-    setReviewing(true)
-    try {
-      const res = await fetch(`/api/admin/lessons/${lessonId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, reason }),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error || "Failed")
-      toast.success(action === "apply-revision" ? "Changes applied" : "Proposed changes discarded")
-      setDiscarding(false)
-      setDiscardReason("")
-      await fetchLesson()
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Couldn't update the lesson")
-    } finally {
-      setReviewing(false)
     }
   }
 
@@ -231,41 +207,13 @@ export default function LessonEditorPage({
               <Eye className="mr-2 h-4 w-4" />
               Preview edits
             </Button>
-            <Button size="sm" disabled={reviewing} onClick={() => reviewRevision("apply-revision")}>
-              <CheckCircle2 className="mr-2 h-4 w-4" />
-              Apply edits
-            </Button>
-            <Button variant="ghost" size="sm" disabled={reviewing || discarding} onClick={() => setDiscarding(true)}>
-              Discard
+            <Button asChild size="sm">
+              <Link href={`/admin/review?item=lesson:${lesson.id}`}>
+                <CheckCircle2 className="mr-2 h-4 w-4" />
+                Review edits
+              </Link>
             </Button>
           </div>
-          {discarding && (
-            <div className="space-y-2 border-t border-warning/30 pt-3">
-              <Label htmlFor="discard-reason">Why aren&apos;t these edits going ahead?</Label>
-              <Textarea
-                id="discard-reason"
-                rows={3}
-                autoFocus
-                maxLength={1000}
-                value={discardReason}
-                onChange={(e) => setDiscardReason(e.target.value)}
-                aria-describedby="discard-reason-hint"
-                className="resize-none bg-background"
-              />
-              <p id="discard-reason-hint" className="text-xs text-muted-foreground">
-                Optional. The curator sees this on their home screen.
-              </p>
-              <div className="flex justify-end gap-2">
-                <Button variant="ghost" size="sm" onClick={() => setDiscarding(false)} disabled={reviewing}>
-                  Cancel
-                </Button>
-                <Button size="sm" disabled={reviewing} onClick={() => reviewRevision("discard-revision", discardReason.trim() || undefined)}>
-                  {reviewing && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
-                  Discard edits
-                </Button>
-              </div>
-            </div>
-          )}
         </div>
       )}
 

@@ -20,7 +20,7 @@ async function curatorMe() {
       lastName: curator.lastName,
       phone: curator.phone,
       arn: "",
-      profilePicture: null,
+      profilePicture: curator.profilePicture ?? null,
       isFlightSchoolAdmin: false,
       isAdmin: false,
       isCurator: true,

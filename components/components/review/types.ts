@@ -37,6 +37,8 @@ export interface TimelineEvent {
   kind: ReviewKind
   action: EventAction
   message: string | null
+  /** Approved edits: points credited, or 0 for a minor edit. */
+  points: number | null
   createdAt: string
   actor: Person | null
 }
@@ -110,5 +112,9 @@ export interface ReviewDetail {
     missingMos: number
   }
   changes: FieldChange[]
+  /** Set on edits. required: a curator edited someone else's work, so the reviewer decides on credit. */
+  creditChoice: { required: boolean; options: number[] } | null
+  /** Credits already awarded for earlier edits. */
+  credits: { id: string; points: number; createdAt: string; person: Person | null }[]
   events: TimelineEvent[]
 }

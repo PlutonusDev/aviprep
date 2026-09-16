@@ -16,6 +16,7 @@ import {
 } from "lucide-react"
 import { LessonContent } from "@/components/learn/lesson-content"
 import { LessonSidebar } from "@/components/learn/lesson-sidebar"
+import { ContributorStack, type Contributor } from "@/components/attribution/contributors"
 import { cn } from "@lib/utils"
 
 interface Lesson {
@@ -26,6 +27,7 @@ interface Lesson {
   content: any
   estimatedMins: number
   order: number
+  contributors?: Contributor[]
 }
 
 interface Module {
@@ -270,6 +272,11 @@ export default function LessonPage({
               onComplete={handleComplete}
               isCompleted={isCompleted}
             />
+            {!!lesson.contributors?.length && (
+              <div className="mt-12 flex justify-end border-t border-border pt-5">
+                <ContributorStack contributors={lesson.contributors} />
+              </div>
+            )}
           </div>
         </div>
 

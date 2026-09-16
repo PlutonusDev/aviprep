@@ -3,6 +3,7 @@ import { cookies } from "next/headers"
 import { prisma } from "@lib/prisma"
 import { verifyToken } from "@lib/auth"
 import { getStaff } from "@lib/staff"
+import { lessonContributors } from "@lib/attribution"
 
 export async function GET(
   request: Request,
@@ -110,6 +111,7 @@ export async function GET(
         content: lesson.content,
         estimatedMins: lesson.estimatedMins,
         order: lesson.order,
+        contributors: await lessonContributors({ id: lesson.id, authorId: lesson.authorId }),
       },
       course: {
         id: course.id,

@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   Sparkles,
   Ticket,
+  UserCircle,
   Users,
 } from "lucide-react"
 
@@ -23,6 +24,8 @@ export interface AdminNavItem {
   icon: React.ComponentType<{ className?: string }>
   /** Curators can open this section. Everything else is admin-only. */
   curator?: boolean
+  /** Only curators see it (their own account). */
+  curatorOnly?: boolean
 }
 
 export interface AdminNavGroup {
@@ -45,7 +48,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
       { name: "Review", href: "/admin/review", icon: ClipboardCheck },
       { name: "Courses", href: "/admin/courses", icon: GraduationCap, curator: true },
       { name: "Questions", href: "/admin/questions", icon: HelpCircle, curator: true },
-      { name: "AI generator", href: "/admin/questions/generate", icon: Sparkles },
+      //{ name: "AI generator", href: "/admin/questions/generate", icon: Sparkles },
       { name: "MOS coverage", href: "/admin/mos", icon: ShieldCheck, curator: true },
     ],
   },
@@ -73,13 +76,17 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
       { name: "Settings", href: "/admin/settings", icon: Settings },
     ],
   },
+  {
+    label: "You",
+    items: [{ name: "Account", href: "/admin/account", icon: UserCircle, curator: true, curatorOnly: true }],
+  },
 ]
 
 /** Flat list, for anything that doesn't care about grouping. */
 export const ADMIN_NAVIGATION: AdminNavItem[] = ADMIN_NAV_GROUPS.flatMap((g) => g.items)
 
 /** Admin-panel paths a curator may open. The APIs enforce the same rule. */
-export const CURATOR_PATHS = ["/admin/courses", "/admin/questions", "/admin/mos"]
+export const CURATOR_PATHS = ["/admin/courses", "/admin/questions", "/admin/mos", "/admin/account"]
 
 /** Admin-only pages inside otherwise curator-accessible sections. */
 const CURATOR_EXCLUDED = ["/admin/questions/generate"]
@@ -93,7 +100,7 @@ export function curatorCanOpen(pathname: string) {
 
 /** Groups visible to this role, with empty groups dropped. */
 export function navGroupsForRole(isAdmin: boolean): AdminNavGroup[] {
-  if (isAdmin) return ADMIN_NAV_GROUPS
+  if (isAdmin) return ADMIN_NAV_GROUPS.map((g) => ({ ...g, items: g.items.filter((i) => !i.curatorOnly) })).filter((g) => g.items.length)
   return ADMIN_NAV_GROUPS.map((g) => ({
     ...g,
     items: g.items.filter((i) => i.curator).map((i) => (i.href === "/admin" ? { ...i, name: "Home" } : i)),

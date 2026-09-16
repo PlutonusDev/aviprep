@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { usePathname } from "next/navigation"
-import { BookOpenText, LayoutDashboard, LogOut, Menu, Settings } from "lucide-react"
+import { BookOpenText, LayoutDashboard, LogOut, Menu, Settings, UserCircle } from "lucide-react"
 import Link from "@/components/meta/link"
 import { ThemeToggle } from "@/components/meta/theme-toggle"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -112,12 +112,20 @@ export function AdminHeader() {
                   </DropdownMenuItem>
                 </>
               ) : (
-                <DropdownMenuItem asChild>
-                  <a href={GUIDELINES_HREF} target="_blank" rel="noopener">
-                    <BookOpenText className="mr-2 h-4 w-4" aria-hidden="true" />
-                    Content guidelines
-                  </a>
-                </DropdownMenuItem>
+                <>
+                  <DropdownMenuItem asChild>
+                    <Link href="/admin/account">
+                      <UserCircle className="mr-2 h-4 w-4" aria-hidden="true" />
+                      Account
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <a href={GUIDELINES_HREF} target="_blank" rel="noopener">
+                      <BookOpenText className="mr-2 h-4 w-4" aria-hidden="true" />
+                      Content guidelines
+                    </a>
+                  </DropdownMenuItem>
+                </>
               )}
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={logout}>

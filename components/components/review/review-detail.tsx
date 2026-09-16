@@ -188,13 +188,17 @@ function DecisionBar({ detail, onDecided }: { detail: ReviewDetail; onDecided: (
   const [note, setNote] = useState("")
   const [points, setPoints] = useState<1 | 3>(detail.question?.current.points === 3 ? 3 : 1)
   const [busy, setBusy] = useState<ReviewAction | null>(null)
+  /** null until the reviewer picks: 0 is a minor edit, otherwise points to credit. */
+  const [award, setAward] = useState<number | null>(null)
   const recipient = (detail.kind === "edit" ? detail.proposer : detail.author)?.name.split(" ")[0]
+  const creditRequired = !!detail.creditChoice?.required
   const noteOk = note.trim().length >= NOTE_MIN
   const isNewQuestion = detail.type === "question" && detail.kind === "new"
   const rejectNeedsNote = detail.kind === "new"
 
   useEffect(() => {
     setNote("")
+    setAward(null)
     setPoints(detail.question?.current.points === 3 ? 3 : 1)
   }, [detail.type, detail.id, detail.question?.current.points])
 
@@ -204,7 +208,7 @@ function DecisionBar({ detail, onDecided }: { detail: ReviewDetail; onDecided: (
       const res = await fetch(`/api/admin/review/${detail.type}/${detail.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, message: note, points: isNewQuestion ? points : undefined }),
+        body: JSON.stringify({ action, message: note, points: isNewQuestion ? points : undefined, award: creditRequired ? award : undefined }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) return toast.error(data.error || "That didn't go through.")
@@ -219,6 +223,42 @@ function DecisionBar({ detail, onDecided }: { detail: ReviewDetail; onDecided: (
 
   return (
     <div className="space-y-3 border-t border-border bg-card/95 px-4 py-4 backdrop-blur supports-[backdrop-filter]:bg-card/80 sm:px-6">
+      {creditRequired && (
+        <fieldset className="space-y-2">
+          <legend className="text-sm font-medium text-foreground">
+            Credit {recipient ?? "the editor"} for this edit?
+          </legend>
+          <p className="-mt-1 text-xs text-muted-foreground">
+            They’re improving {detail.author ? `${detail.author.name.split(" ")[0]}’s` : "someone else’s"} work. Credit adds their name and royalty
+            points while it’s live. A minor edit adds neither.
+          </p>
+          <div role="radiogroup" aria-label="Credit for this edit" className="flex flex-wrap gap-2">
+            {[0, ...(detail.creditChoice?.options ?? [])].map((p) => {
+              const selected = award === p
+              return (
+                <button
+                  key={p}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  onClick={() => setAward(p)}
+                  className={cn(
+                    "flex min-h-10 flex-col items-start justify-center rounded-lg border px-3 py-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    selected ? "border-primary bg-primary/10" : "border-border bg-background hover:border-foreground/30",
+                  )}
+                >
+                  <span className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                    {selected && <Check className="h-3.5 w-3.5 text-primary" aria-hidden="true" />}
+                    {p === 0 ? "Minor edit" : `Credit · ${p} ${p === 1 ? "point" : "points"}`}
+                  </span>
+                  <span className="text-[11px] text-muted-foreground">{p === 0 ? "No name, no points" : "Name shown to students"}</span>
+                </button>
+              )
+            })}
+          </div>
+        </fieldset>
+      )}
+
       <label htmlFor="review-note" className="sr-only">
         Note to {recipient ?? "the author"}
       </label>
@@ -267,7 +307,12 @@ function DecisionBar({ detail, onDecided }: { detail: ReviewDetail; onDecided: (
             {busy === "request-changes" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <CornerUpLeft className="h-4 w-4" aria-hidden="true" />}
             Request changes
           </Button>
-          <Button className="h-10 gap-1.5" disabled={!!busy} onClick={() => act("approve")}>
+          <Button
+            className="h-10 gap-1.5"
+            disabled={!!busy || (creditRequired && award === null)}
+            title={creditRequired && award === null ? "Choose credit or minor edit first" : undefined}
+            onClick={() => act("approve")}
+          >
             {busy === "approve" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <CheckCircle2 className="h-4 w-4" aria-hidden="true" />}
             {approveLabel}
           </Button>
@@ -513,6 +558,21 @@ export function ReviewDetailPane({
           {(detail.question || detail.lesson) && (
             <Section title="Part 61 MOS links">
               <MosList links={detail.question?.mos ?? detail.lesson?.mos ?? []} required={needsMos} />
+            </Section>
+          )}
+
+          {detail.credits.length > 0 && (
+            <Section title="Credited edits">
+              <ul className="divide-y divide-border rounded-xl border border-border">
+                {detail.credits.map((c) => (
+                  <li key={c.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
+                    <PersonChip person={c.person} />
+                    <span className="text-xs text-muted-foreground" data-tabular>
+                      {c.points} {c.points === 1 ? "point" : "points"} · {formatDistanceToNowStrict(new Date(c.createdAt), { addSuffix: true })}
+                    </span>
+                  </li>
+                ))}
+              </ul>
             </Section>
           )}
 

@@ -27,6 +27,7 @@ import {
   ChevronRight,
 } from "lucide-react"
 import { useUser } from "@lib/user-context"
+import { ContributorStack, type Contributor } from "@/components/attribution/contributors"
 
 interface Lesson {
   id: string
@@ -52,6 +53,7 @@ interface Course {
   description: string
   estimatedHours: number
   difficulty: string
+  contributors?: Contributor[]
   modules: Module[]
   totalLessons: number
   progress: number
@@ -157,7 +159,15 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
           <h1 className="text-display-3 font-bold text-foreground">{course.title}</h1>
           <p className="text-muted-foreground">{course.description}</p>
         </div>
+        {!!course.contributors?.length && (
+          <ContributorStack contributors={course.contributors} label="Created by" className="hidden shrink-0 self-end sm:flex" />
+        )}
       </div>
+      {!!course.contributors?.length && (
+        <div className="-mt-4 flex justify-end sm:hidden">
+          <ContributorStack contributors={course.contributors} label="Created by" />
+        </div>
+      )}
 
       {/* Course Overview */}
       <div className="grid gap-6 lg:grid-cols-3">

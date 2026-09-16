@@ -30,7 +30,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ typ
   return NextResponse.json({ detail })
 }
 
-/** { action: "approve" | "request-changes" | "reject" | "comment", message?, points? } */
+/** { action: "approve" | "request-changes" | "reject" | "comment", message?, points?, award? } */
 export async function POST(request: Request, { params }: { params: Promise<{ type: string; id: string }> }) {
   const staff = await requireStaff({ curators: true })
   if (isResponse(staff)) return staff
@@ -48,6 +48,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ typ
       action: body.action,
       message: typeof body.message === "string" ? body.message : null,
       points: typeof body.points === "number" ? body.points : undefined,
+      award: typeof body.award === "number" ? body.award : null,
       staff,
     })
     if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status })

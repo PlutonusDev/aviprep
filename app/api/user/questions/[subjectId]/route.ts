@@ -5,6 +5,7 @@ import { prisma } from "@lib/prisma"
 import { getSubjectById } from "@lib/subjects"
 import { getSchoolGrantedSubjectIds } from "@lib/school-access"
 import { lastResults, selectExamQuestions, type PastResult } from "@lib/question-selection"
+import { questionContributors } from "@lib/attribution"
 
 // Every exam is a fresh draw, so never serve it from a cache.
 export const dynamic = "force-dynamic"
@@ -66,6 +67,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ subj
         options: true,
         correctIndex: true,
         explanation: true,
+        authorId: true,
       },
     })
 
@@ -80,7 +82,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ subj
       attempts.map((a) => (Array.isArray(a.questionResults) ? (a.questionResults as unknown as PastResult[]) : [])),
     )
 
-    const { questions, unseen, lastWrong, allSeen } = selectExamQuestions({ bank: allQuestions, history })
+    const { questions: drawn, unseen, lastWrong, allSeen } = selectExamQuestions({ bank: allQuestions, history })
+
+    // Who wrote each question, minus anyone who'd rather stay anonymous. Author ids never leave the server.
+    const credits = await questionContributors(drawn.map((q) => ({ id: q.id, authorId: q.authorId })))
+    const questions = drawn.map(({ authorId: _authorId, ...q }) => ({ ...q, contributors: credits.get(q.id) ?? [] }))
 
     return NextResponse.json({
       subject,

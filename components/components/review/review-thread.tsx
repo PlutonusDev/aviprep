@@ -76,6 +76,16 @@ function Event({ event, last }: { event: TimelineEvent; last: boolean }) {
         <p className="text-sm text-muted-foreground">
           <span className="font-medium text-foreground">{event.actor?.name ?? "Someone"}</span> {meta.verb}
           {event.kind === "edit" && event.action === "submitted" ? " as an edit" : ""}
+          {event.action === "approved" && event.points === 0 ? " as a minor edit" : ""}
+          {event.action === "approved" && event.points ? (
+            <>
+              {" "}
+              and credited{" "}
+              <span className="font-medium text-foreground">
+                {event.points} {event.points === 1 ? "point" : "points"}
+              </span>
+            </>
+          ) : null}
           <span aria-hidden="true"> · </span>
           <time dateTime={event.createdAt} title={format(at, "d MMM yyyy, h:mm a")}>
             {formatDistanceToNowStrict(at, { addSuffix: true })}

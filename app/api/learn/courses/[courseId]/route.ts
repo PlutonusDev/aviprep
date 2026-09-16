@@ -3,6 +3,7 @@ import { cookies } from "next/headers"
 import { prisma } from "@lib/prisma"
 import { verifyToken } from "@lib/auth"
 import { getStaff } from "@lib/staff"
+import { courseContributors } from "@lib/attribution"
 
 export async function GET(
   request: Request,
@@ -29,6 +30,7 @@ export async function GET(
                 contentType: true,
                 estimatedMins: true,
                 order: true,
+                authorId: true,
               },
             },
           },
@@ -73,7 +75,13 @@ export async function GET(
         difficulty: course.difficulty,
         order: course.order,
         isPublished: course.isPublished,
-        modules: course.modules,
+        // Lesson author ids stay on the server; students get names via contributors.
+        modules: course.modules.map((m) => ({ ...m, lessons: m.lessons.map(({ authorId: _authorId, ...l }) => l) })),
+        contributors: await courseContributors({
+          id: course.id,
+          authorId: course.authorId,
+          lessons: course.modules.flatMap((m) => m.lessons.map((l) => ({ id: l.id, authorId: l.authorId }))),
+        }),
         createdAt: course.createdAt,
         updatedAt: course.updatedAt,
         totalLessons,

@@ -89,9 +89,20 @@ export async function logEvent({
   action: EventAction
   staff: Pick<Staff, "userId" | "role">
   message?: string | null
+  /** Approved edits: points credited, or 0 for a minor edit. */
+  points?: number | null
 }) {
   await prisma.reviewEvent.create({
-    data: { contentType, contentId, kind, action, actorId: staff.userId, actorRole: staff.role, message: message?.trim() || null },
+    data: {
+      contentType,
+      contentId,
+      kind,
+      action,
+      actorId: staff.userId,
+      actorRole: staff.role,
+      message: message?.trim() || null,
+      points: typeof points === "number" ? points : null,
+    },
   })
 }
 
@@ -100,6 +111,7 @@ export interface TimelineEvent {
   kind: ReviewKind
   action: EventAction
   message: string | null
+  points: number | null
   createdAt: Date
   actor: Person | null
 }
@@ -112,6 +124,7 @@ export async function timeline(contentType: ContentType, contentId: string): Pro
     kind: e.kind as ReviewKind,
     action: e.action as EventAction,
     message: e.message,
+    points: e.points ?? null,
     createdAt: e.createdAt,
     actor: people.get(e.actorId) ?? null,
   }))
@@ -310,6 +323,44 @@ export async function reviewQueue(): Promise<QueueItem[]> {
   return items.sort((a, b) => (a.submittedAt?.getTime() ?? 0) - (b.submittedAt?.getTime() ?? 0))
 }
 
+/* --- Credit for edits ------------------------------------------------------------ */
+
+/** Points an admin can award for someone else's edit, by content type. 0 is a minor edit. */
+export const CREDIT_OPTIONS: Record<ContentType, number[]> = { question: [1, 3], lesson: [1, 3, 10], course: [1, 3] }
+
+export interface CreditChoice {
+  /** The edit is by a curator other than the author, so the reviewer decides. */
+  required: boolean
+  options: number[]
+}
+
+/** Whether approving this edit needs a credit decision: a curator improving someone else's work. */
+export async function creditChoice(type: ContentType, proposerId: string | null, authorId: string | null): Promise<CreditChoice> {
+  if (!proposerId || proposerId === authorId) return { required: false, options: [] }
+  const curator = await prisma.curator.findUnique({ where: { id: proposerId }, select: { id: true } })
+  return curator ? { required: true, options: CREDIT_OPTIONS[type] } : { required: false, options: [] }
+}
+
+export async function creditsFor(type: ContentType, id: string) {
+  const credits = await prisma.contentCredit.findMany({ where: { contentType: type, contentId: id }, orderBy: { createdAt: "asc" } })
+  const people = await resolvePeople(credits.map((c) => c.curatorId))
+  return credits.map((c) => ({ id: c.id, points: c.points, createdAt: c.createdAt, person: people.get(c.curatorId) ?? null }))
+}
+
+/** Checks the award before anything changes. Returns the points to credit, or null when no choice applies. */
+async function creditGate(type: ContentType, proposerId: string | null, authorId: string | null, award: number | null | undefined) {
+  const choice = await creditChoice(type, proposerId, authorId)
+  if (!choice.required) return { points: null as number | null }
+  if (award === undefined || award === null) return { error: "Choose whether to credit this edit or accept it as a minor one." }
+  if (award !== 0 && !choice.options.includes(award)) return { error: "Pick one of the point options." }
+  return { points: award }
+}
+
+async function grantCredit(type: ContentType, id: string, curatorId: string | null, points: number | null, staff: Staff) {
+  if (!curatorId || !points) return
+  await prisma.contentCredit.create({ data: { contentType: type, contentId: id, curatorId, points, awardedById: staff.userId } })
+}
+
 /* --- Detail --------------------------------------------------------------------- */
 
 export interface FieldChange {
@@ -386,6 +437,8 @@ export async function reviewDetail(type: ContentType, id: string) {
         mos: await mappingsFor("question", q.id),
       },
       changes: proposed ? diff(QUESTION_FIELDS, q as unknown as Record<string, unknown>, proposed) : [],
+      creditChoice: kind === "edit" ? await creditChoice("question", q.pendingRevisionById, q.authorId) : null,
+      credits: await creditsFor("question", q.id),
       events: await timeline("question", q.id),
     }
   }
@@ -428,6 +481,8 @@ export async function reviewDetail(type: ContentType, id: string) {
         mos: await mappingsFor("lesson", l.id),
       },
       changes: proposed ? diff(LESSON_FIELDS, l as unknown as Record<string, unknown>, proposed) : [],
+      creditChoice: proposed ? await creditChoice("lesson", l.pendingRevisionById, l.authorId) : null,
+      credits: await creditsFor("lesson", l.id),
       events: await timeline("lesson", l.id),
     }
   }
@@ -476,6 +531,8 @@ export async function reviewDetail(type: ContentType, id: string) {
       missingMos: lessonIds.filter((lid) => !mapped.has(lid)).length,
     },
     changes: proposed ? diff(COURSE_FIELDS, c as unknown as Record<string, unknown>, proposed) : [],
+    creditChoice: kind === "edit" ? await creditChoice("course", c.pendingRevisionById, c.authorId) : null,
+    credits: await creditsFor("course", c.id),
     events: await timeline("course", c.id),
   }
 }
@@ -527,13 +584,17 @@ export async function decide({
   action,
   message,
   points,
+  award,
   staff,
 }: {
   type: ContentType
   id: string
   action: ReviewAction
   message?: string | null
+  /** New questions: 1 standard or 3 complex. */
   points?: number
+  /** Approving someone else's edit: points to credit them, or 0 for a minor edit. */
+  award?: number | null
   staff: Staff
 }): Promise<DecisionResult> {
   const note = (message ?? "").trim().slice(0, MESSAGE_MAX)
@@ -585,11 +646,14 @@ export async function decide({
 
     if (q.pendingRevision) {
       const revision = q.pendingRevision as Record<string, unknown>
+      const credit = action === "approve" ? await creditGate("question", q.pendingRevisionById, q.authorId, award) : { points: null }
+      if ("error" in credit) return fail(credit.error, 422)
       if (action === "approve") {
         await prisma.question.update({
           where: { id },
           data: { ...questionContent({ ...q, ...revision } as Record<string, unknown>), reviewedById: staff.userId, ...clearRevision, ...clearRejection },
         })
+        await grantCredit("question", id, q.pendingRevisionById, credit.points, staff)
       } else if (action === "request-changes") {
         // The proposal stays with the curator to rework; students still see the live version.
         await prisma.question.update({
@@ -602,7 +666,7 @@ export async function decide({
           data: { ...clearRevision, rejectionReason: note || null, rejectedAt: now, rejectionForId: q.pendingRevisionById, changesRequestedAt: null },
         })
       }
-      await logEvent({ contentType: "question", contentId: id, kind: "edit", action: eventFor(action), staff, message: note || null })
+      await logEvent({ contentType: "question", contentId: id, kind: "edit", action: eventFor(action), staff, message: note || null, points: credit.points })
       return done
     }
     return fail("This question isn't waiting for review.")
@@ -614,11 +678,14 @@ export async function decide({
     if (!l) return fail("Lesson not found.", 404)
     if (!l.pendingRevision) return fail("This lesson has no proposed edits. New lessons are reviewed with their course.")
     const revision = l.pendingRevision as Record<string, unknown>
+    const credit = action === "approve" ? await creditGate("lesson", l.pendingRevisionById, l.authorId, award) : { points: null }
+    if ("error" in credit) return fail(credit.error, 422)
     if (action === "approve") {
       await prisma.lesson.update({
         where: { id },
         data: { ...(pick(revision, LESSON_FIELDS) as Prisma.LessonUpdateInput), ...clearRevision, ...clearRejection },
       })
+      await grantCredit("lesson", id, l.pendingRevisionById, credit.points, staff)
     } else if (action === "request-changes") {
       await prisma.lesson.update({ where: { id }, data: { rejectionReason: note || null, rejectedAt: now, rejectionForId: l.pendingRevisionById, changesRequestedAt: now } })
     } else {
@@ -627,7 +694,7 @@ export async function decide({
         data: { ...clearRevision, rejectionReason: note || null, rejectedAt: now, rejectionForId: l.pendingRevisionById, changesRequestedAt: null },
       })
     }
-    await logEvent({ contentType: "lesson", contentId: id, kind: "edit", action: eventFor(action), staff, message: note || null })
+    await logEvent({ contentType: "lesson", contentId: id, kind: "edit", action: eventFor(action), staff, message: note || null, points: credit.points })
     return done
   }
 
@@ -661,8 +728,11 @@ export async function decide({
 
   if (c.pendingRevision) {
     const revision = c.pendingRevision as Record<string, unknown>
+    const credit = action === "approve" ? await creditGate("course", c.pendingRevisionById, c.authorId, award) : { points: null }
+    if ("error" in credit) return fail(credit.error, 422)
     if (action === "approve") {
       await prisma.course.update({ where: { id }, data: { ...pick(revision, COURSE_FIELDS), ...clearRevision, ...clearRejection } })
+      await grantCredit("course", id, c.pendingRevisionById, credit.points, staff)
     } else if (action === "request-changes") {
       await prisma.course.update({ where: { id }, data: { rejectionReason: note || null, rejectedAt: now, rejectionForId: c.pendingRevisionById, changesRequestedAt: now } })
     } else {
@@ -671,7 +741,7 @@ export async function decide({
         data: { ...clearRevision, rejectionReason: note || null, rejectedAt: now, rejectionForId: c.pendingRevisionById, changesRequestedAt: null },
       })
     }
-    await logEvent({ contentType: "course", contentId: id, kind: "edit", action: eventFor(action), staff, message: note || null })
+    await logEvent({ contentType: "course", contentId: id, kind: "edit", action: eventFor(action), staff, message: note || null, points: credit.points })
     return done
   }
 

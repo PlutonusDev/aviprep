@@ -2,6 +2,9 @@ import "server-only"
 
 import { prisma } from "@lib/prisma"
 import { SUBJECTS } from "@lib/subjects"
+import { shareOfPool, tallyPoints } from "./points"
+
+export { POINTS, ROYALTY_SHARE, questionPoints } from "./points"
 
 /**
  * Royalty estimates for the curator dashboard, following the Contractor
@@ -21,20 +24,17 @@ import { SUBJECTS } from "@lib/subjects"
  *   price, so its price is split evenly across those rows.
  * - "All active points" counts every live question and lesson in the subject,
  *   whoever wrote it, as the agreement's formula does.
+ * - Points are the author's base points (1 or 3 per question, 10 per lesson)
+ *   plus any ContentCredit awarded for an approved edit, on live content only.
+ *   A credit adds to the subject's total as well as the editor's share.
  */
 
-export const ROYALTY_SHARE = 0.25
 export const WINDOW_DAYS = 30
 /** Prices include GST. Set AVIPREP_GST_REGISTERED=false if AviPrep isn't registered. */
 const GST_DIVISOR = process.env.AVIPREP_GST_REGISTERED === "false" ? 1 : 1.1
 /** Stripe's standard Australian card rate. */
 const STRIPE_PERCENT = 0.0175
 const STRIPE_FIXED_CENTS = 30
-
-export const POINTS = { question: 1, complexQuestion: 3, lesson: 10 } as const
-
-/** Question points: 3 when marked complex, otherwise 1. */
-export const questionPoints = (points: number | null | undefined) => (points === POINTS.complexQuestion ? POINTS.complexQuestion : POINTS.question)
 
 const liveQuestion = { OR: [{ status: "published" }, { status: null }, { status: { isSet: false } }] }
 
@@ -89,26 +89,16 @@ async function netRevenueBySubject(subjectIds: string[], since: Date) {
 
 /** Active points per subject: everyone's, and this curator's. */
 async function pointsBySubject(curatorId: string) {
-  const [questions, liveCourses] = await Promise.all([
-    prisma.question.findMany({ where: liveQuestion, select: { subjectId: true, points: true, authorId: true } }),
+  const [questions, liveCourses, credits] = await Promise.all([
+    prisma.question.findMany({ where: liveQuestion, select: { id: true, subjectId: true, points: true, authorId: true } }),
     prisma.course.findMany({
       where: { isPublished: true },
-      select: { subjectId: true, modules: { select: { lessons: { select: { authorId: true } } } } },
+      select: { id: true, subjectId: true, modules: { select: { lessons: { select: { id: true, authorId: true } } } } },
     }),
+    prisma.contentCredit.findMany({ select: { contentType: true, contentId: true, curatorId: true, points: true } }),
   ])
 
-  const total = new Map<string, number>()
-  const mine = new Map<string, number>()
-  const add = (subjectId: string, points: number, authorId: string | null) => {
-    total.set(subjectId, (total.get(subjectId) ?? 0) + points)
-    if (authorId === curatorId) mine.set(subjectId, (mine.get(subjectId) ?? 0) + points)
-  }
-
-  for (const q of questions) add(q.subjectId, questionPoints(q.points), q.authorId)
-  for (const course of liveCourses) {
-    for (const mod of course.modules) for (const lesson of mod.lessons) add(course.subjectId, POINTS.lesson, lesson.authorId)
-  }
-  return { total, mine }
+  return tallyPoints({ questions, liveCourses, credits }, curatorId)
 }
 
 export async function estimateRoyalties(curatorId: string): Promise<RoyaltyEstimate> {
@@ -122,7 +112,7 @@ export async function estimateRoyalties(curatorId: string): Promise<RoyaltyEstim
       const myPoints = mine.get(subjectId) ?? 0
       const totalPoints = total.get(subjectId) ?? 0
       const netCents = Math.round(net.get(subjectId) ?? 0)
-      const estimateCents = totalPoints ? Math.round((netCents * ROYALTY_SHARE * myPoints) / totalPoints) : 0
+      const estimateCents = shareOfPool(netCents, myPoints, totalPoints)
       return {
         subjectId,
         name: SUBJECTS.find((s) => s.id === subjectId)?.name ?? subjectId,

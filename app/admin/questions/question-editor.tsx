@@ -283,11 +283,11 @@ export default function QuestionEditor({
         </div>
       )}
 
-      {canPublish && pendingRevision && onReviewRevision && (
+      {canPublish && pendingRevision && value.id && (
         <div className="space-y-3 rounded-lg border border-warning/40 bg-warning/10 p-4 text-sm">
           <p className="font-medium text-foreground">A curator has proposed changes to this live question.</p>
           <p className="text-muted-foreground">
-            Load them into the form to compare, then apply or discard. Nothing changes for students until you apply.
+            Compare them side by side in Review, where you can approve, credit the editor or send them back. Nothing changes for students until you approve.
           </p>
           <div className="flex flex-wrap gap-2">
             <Button
@@ -300,33 +300,13 @@ export default function QuestionEditor({
               <Eye className="h-3.5 w-3.5" aria-hidden="true" />
               Load proposed changes
             </Button>
-            <Button type="button" size="sm" className="h-9 gap-1.5" disabled={reviewing} onClick={() => onReviewRevision("apply-revision")}>
-              <Check className="h-3.5 w-3.5" aria-hidden="true" />
-              Apply changes
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-9 text-muted-foreground"
-              disabled={reviewing || feedbackFor === "discard"}
-              onClick={() => setFeedbackFor("discard")}
-            >
-              Discard
+            <Button asChild size="sm" className="h-9 gap-1.5">
+              <a href={`/admin/review?item=question:${value.id}`}>
+                <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                Review changes
+              </a>
             </Button>
           </div>
-          {feedbackFor === "discard" && (
-            <FeedbackBox
-              label="Why aren't these changes going ahead?"
-              hint="Optional, but it helps them get the next one right."
-              value={reason}
-              onChange={setReason}
-              busy={reviewing}
-              confirmLabel="Discard changes"
-              onCancel={() => setFeedbackFor(null)}
-              onConfirm={() => onReviewRevision("discard-revision", reason.trim() || undefined)}
-            />
-          )}
         </div>
       )}
 

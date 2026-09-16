@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import confetti from "canvas-confetti"
 import type { QuestionData } from "@lib/types"
+import { ContributorNames } from "@/components/attribution/contributors"
 import { useTenant } from "@lib/tenant-context"
 import { cn } from "@lib/utils"
 import { AnswerReview, type ReviewItem } from "@/components/exam/answer-review"
@@ -719,6 +720,8 @@ export default function ExamPage({ params }: ExamPageProps) {
             )
           })}
         </RadioGroupPrimitive.Root>
+
+        <ContributorNames contributors={question.contributors ?? []} className="mt-4 text-right" />
 
         <p className="mt-8 hidden text-center text-xs text-muted-foreground sm:block">
           1–{question.options.length} to answer &middot; Enter for next &middot; F to flag
