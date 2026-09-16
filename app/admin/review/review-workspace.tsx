@@ -234,7 +234,7 @@ export function ReviewWorkspace() {
               className="h-10 bg-background pl-9"
             />
           </div>
-          <Segmented
+          <Segmented<KindFilter>
             label="Kind"
             value={kind}
             onChange={setKind}
@@ -244,7 +244,7 @@ export function ReviewWorkspace() {
               { id: "edit", label: "Edits", count: counts.edit },
             ]}
           />
-          <Segmented
+          <Segmented<TypeFilter>
             label="Content type"
             value={type}
             onChange={setType}
