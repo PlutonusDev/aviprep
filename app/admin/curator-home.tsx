@@ -154,7 +154,7 @@ function Feedback({ items }: { items: HomeData["feedback"] }) {
       {items.length === 0 ? (
         <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-5">
           <CircleCheck className="h-5 w-5 shrink-0 text-success" aria-hidden="true" />
-          <p className="text-sm text-muted-foreground">Nothing to fix. Anything an admin sends back shows up here with their notes.</p>
+          <p className="text-sm text-muted-foreground">Nothing to fix.</p>
         </div>
       ) : (
         <ul className="space-y-3">
@@ -193,7 +193,7 @@ function InReview({ items, total }: { items: HomeData["inReview"]; total: number
       {items.length === 0 ? (
         <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-5">
           <Clock className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
-          <p className="text-sm text-muted-foreground">Nothing waiting. Submit a draft and it lands here until an admin checks it.</p>
+          <p className="text-sm text-muted-foreground">There's nothing currently in the queue.</p>
         </div>
       ) : (
         <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card shadow-e1">
@@ -267,9 +267,7 @@ export function CuratorHome() {
         description={
           needsChanges
             ? `${needsChanges} ${needsChanges === 1 ? "thing needs" : "things need"} your attention.`
-            : background.length
-              ? background.join(" · ")
-              : "Here’s how your writing is tracking."
+            : "Here’s how your writing is tracking."
         }
       >
         <div className="flex flex-wrap gap-2 self-start">

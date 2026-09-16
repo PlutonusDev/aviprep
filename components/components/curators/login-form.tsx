@@ -173,7 +173,6 @@ export function CuratorLoginForm() {
                   "Continue"
                 )}
               </Button>
-              <p className="text-center text-xs text-muted-foreground">We’ll text a code to your mobile to finish signing in.</p>
             </form>
           </CardContent>
         </>

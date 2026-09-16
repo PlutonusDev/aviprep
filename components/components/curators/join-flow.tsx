@@ -305,7 +305,7 @@ export function JoinFlow({
         </CardContent>
         <CardFooter className="border-t border-border bg-muted/30 px-6 py-4 sm:px-8">
           <p className="w-full text-center text-xs text-muted-foreground">
-            Bookmark <span className="font-medium text-foreground">curators.aviprep.com.au</span>. Each sign-in texts a code to your mobile.
+            Bookmark <span className="font-medium text-foreground">curators.aviprep.com.au</span> for easy access.
           </p>
         </CardFooter>
       </Card>
@@ -397,7 +397,7 @@ export function JoinFlow({
             {prefill.firstName ? `Welcome, ${prefill.firstName}` : "Welcome to the studio"}
           </h1>
           <CardDescription>
-            {inviterName} invited you to write for AviPrep. We’ve filled in what we know, so check it over and add the rest.
+            {inviterName} invited you to write for AviPrep. We’ve prefilled some details, please ensure they’re correct.
           </CardDescription>
           {note && (
             <figure className="mt-3 rounded-lg bg-primary/10 px-4 py-3">
@@ -426,7 +426,7 @@ export function JoinFlow({
                   <Lock className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
                 </div>
                 <p id={`${id("email")}-hint`} className="text-xs text-muted-foreground">
-                  Your invite is for this address. You’ll sign in with it.
+                  You’ll sign in with this email address.
                 </p>
               </div>
 
@@ -575,7 +575,7 @@ export function JoinFlow({
         </CardContent>
 
         <CardFooter className="border-t border-border bg-muted/30 px-6 py-4 sm:px-8">
-          <p className="w-full text-center text-xs text-muted-foreground">This invite works until {expires}.</p>
+          <p className="w-full text-center text-xs text-muted-foreground">This invite is valid until {expires}.</p>
         </CardFooter>
       </Card>
     </>

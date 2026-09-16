@@ -109,15 +109,14 @@ export function getCuratorInviteTemplate({ firstName, inviterName, note, joinUrl
           <tr><td height="4" style="height:4px;line-height:4px;font-size:0;background-color:${BRAND};">&nbsp;</td></tr>
           <tr>
             <td style="padding:32px 40px 8px 40px;">
-              <img src="${publicAssetUrl("/email/logo.png")}" alt="AviPrep" height="34" style="display:block;max-height:34px;border:0;outline:none;text-decoration:none;">
+              <img src="${publicAssetUrl("/email/logo.png")}" alt="AviPrep" height="42" style="display:block;max-height:42px;border:0;outline:none;text-decoration:none;">
             </td>
           </tr>
           <tr>
             <td style="padding:24px 40px 0 40px;font-family:${FONT};">
-              <p style="margin:0;font-size:12px;line-height:16px;font-weight:bold;letter-spacing:0.08em;text-transform:uppercase;color:${BRAND_INK};">Content studio invite</p>
               <h1 style="margin:8px 0 0 0;font-size:26px;line-height:32px;font-weight:bold;color:${INK};">${name ? `${name}, come write with us` : "Come write with us"}</h1>
               <p style="margin:14px 0 28px 0;font-size:16px;line-height:26px;color:${TEXT};">
-                ${inviter} has invited you to join AviPrep as a content curator. You’ll write questions and lessons that help student pilots pass their CASA theory exams, and earn royalties on everything that goes live.
+                You've been invited to join AviPrep as a content curator. You’ll write questions and lessons that help student pilots pass their CASA theory exams, and earn royalties on everything that goes live.
               </p>
             </td>
           </tr>
@@ -131,15 +130,15 @@ export function getCuratorInviteTemplate({ firstName, inviterName, note, joinUrl
                   </td>
                 </tr>
               </table>
-              <p style="margin:12px 0 0 0;font-family:${FONT};font-size:13px;line-height:20px;color:${MUTED};">Takes about two minutes. The link works until ${until}.</p>
+              <p style="margin:12px 0 0 0;font-family:${FONT};font-size:13px;line-height:20px;color:${MUTED};">Invite expires ${until}.</p>
             </td>
           </tr>
           <tr>
             <td style="padding:28px 40px 14px 40px;">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-top:1px solid ${BORDER};">
                 <tr><td style="padding:24px 0 16px 0;font-family:${FONT};font-size:12px;line-height:16px;font-weight:bold;letter-spacing:0.08em;text-transform:uppercase;color:${MUTED};">What happens next</td></tr>
-                ${step(1, "Check your details", "We’ve filled in what we know. Add anything missing and choose a password.")}
-                ${step(2, "Confirm your mobile", "We’ll text you a code. You’ll get one each time you sign in, too.")}
+                ${step(1, "Check your details", "We’ve prefilled some details. Check them and choose a password.")}
+                ${step(2, "Confirm your mobile", "Mobile 2FA is enabled by default. We’ll text a code to confirm.")}
                 ${step(3, "Start writing", "You’ll land in the content studio at curators.aviprep.com.au.")}
               </table>
             </td>
