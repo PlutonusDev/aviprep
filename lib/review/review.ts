@@ -82,6 +82,7 @@ export async function logEvent({
   action,
   staff,
   message,
+  points,
 }: {
   contentType: ContentType
   contentId: string
