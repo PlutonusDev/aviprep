@@ -23,12 +23,16 @@ export interface PointSources {
   credits: { contentType: string; contentId: string; curatorId: string; points: number }[]
 }
 
-export function tallyPoints({ questions, liveCourses, credits }: PointSources, curatorId: string) {
+/** Everyone's points at once: the subject totals, and each earner's points per subject. */
+export function tallyByEarner({ questions, liveCourses, credits }: PointSources) {
   const total = new Map<string, number>()
-  const mine = new Map<string, number>()
+  const byEarner = new Map<string, Map<string, number>>()
   const add = (subjectId: string, points: number, earnerId: string | null) => {
     total.set(subjectId, (total.get(subjectId) ?? 0) + points)
-    if (earnerId === curatorId) mine.set(subjectId, (mine.get(subjectId) ?? 0) + points)
+    if (!earnerId) return
+    const mine = byEarner.get(earnerId) ?? new Map<string, number>()
+    mine.set(subjectId, (mine.get(subjectId) ?? 0) + points)
+    byEarner.set(earnerId, mine)
   }
 
   // Where each piece of live content belongs, so credits on it can be counted.
@@ -51,7 +55,12 @@ export function tallyPoints({ questions, liveCourses, credits }: PointSources, c
     const subjectId = liveSubject.get(`${credit.contentType}:${credit.contentId}`)
     if (subjectId && credit.points > 0) add(subjectId, credit.points, credit.curatorId)
   }
-  return { total, mine }
+  return { total, byEarner }
+}
+
+export function tallyPoints(sources: PointSources, curatorId: string) {
+  const { total, byEarner } = tallyByEarner(sources)
+  return { total, mine: byEarner.get(curatorId) ?? new Map<string, number>() }
 }
 
 /** A curator's cut of a subject's pool, in cents. */

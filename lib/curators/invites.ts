@@ -11,7 +11,7 @@ import { curatorOriginFor } from "@lib/tenant"
 export const INVITE_TTL_DAYS = 7
 
 /** Shipped with the invite. Rebuild it from docs/contractors/source when the guide changes. */
-export const GUIDELINES_FILE = path.join(process.cwd(), "docs", "contractors", "AviPrep-Content-Guidelines.pdf")
+export const GUIDELINES_FILE = path.join(/*turbopackIgnore: true*/ process.cwd(), "docs", "contractors", "AviPrep-Content-Guidelines.pdf")
 export const GUIDELINES_NAME = "AviPrep-Content-Guidelines.pdf"
 
 export type InviteStatus = "pending" | "expired" | "accepted" | "revoked"
@@ -52,7 +52,7 @@ export async function findInvite(token: unknown) {
 
 export async function readGuidelines(): Promise<Buffer | null> {
   try {
-    return await readFile(GUIDELINES_FILE)
+    return await readFile(/*turbopackIgnore: true*/ GUIDELINES_FILE)
   } catch (error) {
     console.error("Content guidelines PDF not found:", GUIDELINES_FILE, error)
     return null

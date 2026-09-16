@@ -106,11 +106,15 @@ function PayoutCard({ data }: { data: HomeData }) {
         <p className="mt-2 text-sm text-foreground">
           For {period}, paid by {paidBy}
         </p>
-        <div className="mt-5 flex flex-wrap items-center gap-2">
+        <div className="mt-5 flex flex-wrap items-center gap-3">
           <Badge variant="outline" className="gap-1.5 border-primary/30 bg-background/60 py-1 text-xs font-medium">
             <Sparkles className="h-3 w-3 text-primary" aria-hidden="true" />
             {royalties.myPoints.toLocaleString()} active {royalties.myPoints === 1 ? "point" : "points"}
           </Badge>
+          <Link href="/admin/earnings" className="inline-flex items-center gap-1 text-xs font-medium text-foreground underline-offset-4 hover:underline">
+            Statements and payouts
+            <ArrowRight className="h-3 w-3" aria-hidden="true" />
+          </Link>
         </div>
         <p className="mt-5 flex items-start gap-1.5 text-xs leading-relaxed text-muted-foreground">
           <Info className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />

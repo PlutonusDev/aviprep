@@ -2,6 +2,7 @@ import "server-only"
 
 import { prisma } from "@lib/prisma"
 import { SUBJECTS } from "@lib/subjects"
+import { subjectSalesFor } from "@lib/finance/sales"
 import { shareOfPool, tallyPoints } from "./points"
 
 export { POINTS, ROYALTY_SHARE, questionPoints } from "./points"
@@ -16,12 +17,9 @@ export { POINTS, ROYALTY_SHARE, questionPoints } from "./points"
  *
  * It's an estimate, and the dashboard says so. The real statement is worked out
  * from Stripe at month end. Here:
- * - Revenue is the Purchase records from the last 30 days, projected forward as
- *   next month's.
- * - Net = price less GST and an estimated Stripe fee. Refunds aren't recorded
- *   on Purchase, so they aren't taken off.
- * - A bundle writes one Purchase per subject, each carrying the full bundle
- *   price, so its price is split evenly across those rows.
+ * - Revenue is the last 30 days of sales, projected forward as next month's,
+ *   from Stripe where possible (actual charges, fees and refunds), otherwise
+ *   estimated from list prices. See lib/finance/money.ts.
  * - "All active points" counts every live question and lesson in the subject,
  *   whoever wrote it, as the agreement's formula does.
  * - Points are the author's base points (1 or 3 per question, 10 per lesson)
@@ -30,11 +28,6 @@ export { POINTS, ROYALTY_SHARE, questionPoints } from "./points"
  */
 
 export const WINDOW_DAYS = 30
-/** Prices include GST. Set AVIPREP_GST_REGISTERED=false if AviPrep isn't registered. */
-const GST_DIVISOR = process.env.AVIPREP_GST_REGISTERED === "false" ? 1 : 1.1
-/** Stripe's standard Australian card rate. */
-const STRIPE_PERCENT = 0.0175
-const STRIPE_FIXED_CENTS = 30
 
 const liveQuestion = { OR: [{ status: "published" }, { status: null }, { status: { isSet: false } }] }
 
@@ -55,36 +48,11 @@ export interface RoyaltyEstimate {
   subjects: SubjectEstimate[]
 }
 
-/** Net revenue per subject over the window, in cents. */
+/** Net revenue per subject over the window, in cents: Stripe's figures where it has them (lib/finance/sales.ts). */
 async function netRevenueBySubject(subjectIds: string[], since: Date) {
-  const purchases = await prisma.purchase.findMany({
-    where: {
-      purchasedAt: { gte: since },
-      purchaseType: { in: ["individual", "bundle"] },
-      priceAud: { gt: 0 },
-    },
-    select: { subjectId: true, priceAud: true, purchaseType: true, stripePaymentId: true },
-  })
-
-  // Rows per payment, so a bundle's price and fee are shared across its subjects.
-  const rowsPerPayment = new Map<string, number>()
-  for (const p of purchases) {
-    if (p.purchaseType === "bundle" && p.stripePaymentId) {
-      rowsPerPayment.set(p.stripePaymentId, (rowsPerPayment.get(p.stripePaymentId) ?? 0) + 1)
-    }
-  }
-
+  const sales = await subjectSalesFor(since, new Date())
   const wanted = new Set(subjectIds)
-  const net = new Map<string, number>()
-  for (const p of purchases) {
-    if (!wanted.has(p.subjectId)) continue
-    const rows = p.purchaseType === "bundle" && p.stripePaymentId ? rowsPerPayment.get(p.stripePaymentId) ?? 1 : 1
-    const gross = p.priceAud
-    const fee = gross * STRIPE_PERCENT + STRIPE_FIXED_CENTS
-    const value = (gross / GST_DIVISOR - fee) / rows
-    net.set(p.subjectId, (net.get(p.subjectId) ?? 0) + Math.max(0, value))
-  }
-  return net
+  return new Map([...sales.bySubject].filter(([id]) => wanted.has(id)).map(([id, s]) => [id, s.netCents]))
 }
 
 /** Active points per subject: everyone's, and this curator's. */

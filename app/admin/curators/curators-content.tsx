@@ -4,7 +4,7 @@ import type React from "react"
 import { useCallback, useEffect, useState } from "react"
 import { formatDistanceToNowStrict } from "date-fns"
 import { toast } from "sonner"
-import { Clock, HelpCircle, Loader2, Mail, MoreHorizontal, PenLine, Plus, Power, RotateCw, Users, X } from "lucide-react"
+import { Clock, HelpCircle, Landmark, Loader2, Mail, MoreHorizontal, PenLine, Plus, Power, RotateCw, Users, X } from "lucide-react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,6 +27,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { EmptyState, PageHeader, PageShell, SectionHeading, StatTile } from "@/components/hub/page-primitives"
 import { credentialLabel, formatMobile } from "@lib/curators/details"
 import { cn } from "@lib/utils"
+import { PaymentDetailsDialog } from "@/components/admin/payment-details-dialog"
 import { InviteDialog } from "./invite-dialog"
 
 interface Curator {
@@ -125,6 +126,7 @@ export function CuratorsContent() {
   const [inviteOpen, setInviteOpen] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
   const [confirm, setConfirm] = useState<Confirm>(null)
+  const [paymentFor, setPaymentFor] = useState<{ id: string; name: string } | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -359,6 +361,10 @@ export function CuratorsContent() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem onSelect={() => setPaymentFor({ id: curator.id, name: `${curator.firstName} ${curator.lastName}` })}>
+                            <Landmark className="mr-2 h-4 w-4" aria-hidden="true" />
+                            Payment details
+                          </DropdownMenuItem>
                           <DropdownMenuItem asChild>
                             <a href={`mailto:${curator.email}`}>
                               <Mail className="mr-2 h-4 w-4" aria-hidden="true" />
@@ -389,6 +395,8 @@ export function CuratorsContent() {
           </section>
         </>
       )}
+
+      <PaymentDetailsDialog curator={paymentFor} open={!!paymentFor} onOpenChange={(o) => !o && setPaymentFor(null)} />
 
       <InviteDialog open={inviteOpen} onOpenChange={setInviteOpen} onInvited={load} onResend={resend} />
 

@@ -1,5 +1,6 @@
 import type React from "react"
 import {
+  BarChart3,
   Building2,
   ClipboardCheck,
   GraduationCap,
@@ -16,6 +17,7 @@ import {
   Ticket,
   UserCircle,
   Users,
+  Wallet,
 } from "lucide-react"
 
 export interface AdminNavItem {
@@ -64,6 +66,8 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
   {
     label: "Sales",
     items: [
+      { name: "Sales report", href: "/admin/sales", icon: BarChart3 },
+      { name: "Curator payouts", href: "/admin/payouts", icon: Wallet },
       { name: "Products", href: "/admin/products", icon: Package },
       { name: "Coupons", href: "/admin/coupons", icon: Ticket },
     ],
@@ -78,7 +82,10 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
   },
   {
     label: "You",
-    items: [{ name: "Account", href: "/admin/account", icon: UserCircle, curator: true, curatorOnly: true }],
+    items: [
+      { name: "Earnings", href: "/admin/earnings", icon: Wallet, curator: true, curatorOnly: true },
+      { name: "Account", href: "/admin/account", icon: UserCircle, curator: true, curatorOnly: true },
+    ],
   },
 ]
 
@@ -86,7 +93,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
 export const ADMIN_NAVIGATION: AdminNavItem[] = ADMIN_NAV_GROUPS.flatMap((g) => g.items)
 
 /** Admin-panel paths a curator may open. The APIs enforce the same rule. */
-export const CURATOR_PATHS = ["/admin/courses", "/admin/questions", "/admin/mos", "/admin/account"]
+export const CURATOR_PATHS = ["/admin/courses", "/admin/questions", "/admin/mos", "/admin/account", "/admin/earnings"]
 
 /** Admin-only pages inside otherwise curator-accessible sections. */
 const CURATOR_EXCLUDED = ["/admin/questions/generate"]
