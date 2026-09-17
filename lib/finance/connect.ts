@@ -103,7 +103,10 @@ async function ensureAccount(curatorId: string) {
       country: "AU",
       email: curator.email,
       business_type: "individual",
-      capabilities: { transfers: { requested: true } },
+      capabilities: {
+        transfers: { requested: true },
+        card_payments: { requested: true },
+      },
       business_profile: { product_description: "Writes exam questions and lessons for AviPrep and receives content royalties." },
       individual: { first_name: curator.firstName, last_name: curator.lastName, email: curator.email },
       metadata: { curatorId: curator.id },
