@@ -313,8 +313,7 @@ export default function QuestionEditor({
         <div className="flex items-start gap-2.5 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2.5 text-sm">
           <Radio className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
           <p className="text-foreground">
-            This question is live. Your edits go to an admin for review, and students keep seeing the current version
-            until they&apos;re approved.
+            This one is live. Your changes go for review; students keep seeing the current version until then.
           </p>
         </div>
       )}
@@ -325,9 +324,6 @@ export default function QuestionEditor({
           <div className="min-w-0 space-y-1">
             <p className="font-medium text-foreground">{isLive ? "Your last edit wasn't accepted" : "Changes requested"}</p>
             <p className="whitespace-pre-line text-foreground/90">{value.rejectionReason}</p>
-            <p className="text-muted-foreground">
-              {isLive ? "Make the changes and submit them again." : "Update it, then submit it for review again."}
-            </p>
           </div>
         </div>
       )}
@@ -337,7 +333,7 @@ export default function QuestionEditor({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="font-medium text-foreground">Waiting for your review</p>
-              <p className="text-muted-foreground">Publish it below, or send it back to its author with feedback.</p>
+              <p className="text-muted-foreground">Publish below, or send it back with feedback.</p>
             </div>
             {feedbackFor !== "send-back" && (
               <Button type="button" variant="outline" size="sm" className="h-9 gap-1.5" onClick={() => setFeedbackFor("send-back")}>
@@ -366,8 +362,7 @@ export default function QuestionEditor({
         <div className="space-y-2.5 rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-sm">
           <p className="font-medium text-foreground">A curator has proposed changes to this live question.</p>
           <p className="text-muted-foreground">
-            Compare them side by side in Review, where you can approve, credit the editor or send them back. Nothing
-            changes for students until you approve.
+            Nothing changes for students until you approve them.
           </p>
           <div className="flex flex-wrap gap-2">
             <Button
@@ -531,7 +526,7 @@ export default function QuestionEditor({
                 <Plus className="h-3.5 w-3.5" aria-hidden="true" />
                 Add option
               </Button>
-              <p className="text-xs text-muted-foreground">Click a letter to mark the right answer</p>
+              <p className="text-xs text-muted-foreground">Click a letter to mark the answer</p>
             </div>
 
             {optionErrors.map((message, i) => (
@@ -671,7 +666,7 @@ export default function QuestionEditor({
           <p className="mt-2 hidden text-xs text-muted-foreground sm:block">
             {canPublish
               ? QUESTION_STATUSES.map((s) => `${s.label}: ${s.description}`).join("  ·  ")
-              : "Draft: only you and admins see it  ·  In review: ready for an admin to check and publish"}
+              : "Drafts stay with you. Submit when it's ready."}
           </p>
         )}
       </div>

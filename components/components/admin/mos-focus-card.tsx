@@ -39,15 +39,13 @@ export function MosFocusCard({
           <Target className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
           No MOS item yet
         </p>
-        <p className="mt-1.5 text-muted-foreground">
-          Pick the Part 61 standard this question proves. It can&apos;t go live without one.
-        </p>
+        <p className="mt-1.5 text-muted-foreground">Needed before it can go live.</p>
         {subjectId && (
           <Link
             href={`/admin/mos/${subjectId}`}
             className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-primary underline-offset-4 hover:underline"
           >
-            Open MOS coverage
+            Pick one
             <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
           </Link>
         )}

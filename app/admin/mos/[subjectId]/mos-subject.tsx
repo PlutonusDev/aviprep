@@ -50,6 +50,7 @@ import { MIN_QUESTIONS_PER_ITEM, type MosStatus } from "@lib/mos/subjects"
 import type { CoverageDetail, ItemCoverage, ReviewItem } from "@lib/mos/coverage"
 import type { LibraryStatus } from "@lib/mos/library"
 import { useStudioActivity } from "@/components/curators/presence-beacon"
+import { useUser } from "@lib/user-context"
 
 type Filter = "attention" | "all" | "missing" | "low" | "draft" | "excluded"
 type View = "review" | "items" | "content" | "modules"
@@ -272,6 +273,7 @@ function ItemRow({
 }
 
 export function MosSubject({ subjectId }: { subjectId: string }) {
+  const { user } = useUser()
   const [data, setData] = useState<Payload | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [view, setView] = useState<View | null>(null)
@@ -340,12 +342,6 @@ export function MosSubject({ subjectId }: { subjectId: string }) {
 
   const searching = query.trim().length > 0
   const allOpen = groups.length > 0 && groups.every((g) => expanded.has(g.key))
-  /** Items in view that still want a question written for them. */
-  const toWrite = useMemo(
-    () => groups.reduce((n, g) => n + g.items.filter((i) => !i.excluded && i.status !== "covered").length, 0),
-    [groups],
-  )
-
   async function exportPdf() {
     if (!data) return
     setExporting(true)
@@ -385,7 +381,7 @@ export function MosSubject({ subjectId }: { subjectId: string }) {
   if (error) {
     return (
       <PageShell>
-        <BackLink />
+        <BackLink isAdmin={!!user?.isAdmin} />
         <div role="alert">
           <EmptyState icon={AlertTriangle} title="Couldn't load coverage" description={error} />
         </div>
@@ -396,7 +392,7 @@ export function MosSubject({ subjectId }: { subjectId: string }) {
   if (!data) {
     return (
       <PageShell>
-        <BackLink />
+        <BackLink isAdmin={!!user?.isAdmin} />
         <div className="space-y-3">
           <Skeleton className="h-8 w-72 max-w-full" />
           <Skeleton className="h-4 w-96 max-w-full" />
@@ -420,7 +416,7 @@ export function MosSubject({ subjectId }: { subjectId: string }) {
 
   return (
     <PageShell>
-      <BackLink />
+      <BackLink isAdmin={!!user?.isAdmin} />
 
       <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0 space-y-1.5">
@@ -432,9 +428,6 @@ export function MosSubject({ subjectId }: { subjectId: string }) {
           </p>
           <h1 className="text-display-3 font-bold text-foreground">{s.name}</h1>
           <p className="text-muted-foreground">
-            Every question for {s.code} starts here: pick the standard it proves, and write against it.
-          </p>
-          <p className="text-sm text-muted-foreground">
             {s.assessable === 0
               ? "No Schedule 3 items for this subject."
               : notMapped === 0
@@ -588,16 +581,6 @@ export function MosSubject({ subjectId }: { subjectId: string }) {
                 </div>
               </div>
 
-              {groups.length > 0 && (
-                <p className="mb-3 text-sm text-muted-foreground">
-                  {searching
-                    ? `${groups.reduce((n, g) => n + g.items.length, 0)} item${groups.reduce((n, g) => n + g.items.length, 0) === 1 ? "" : "s"} found.`
-                    : toWrite > 0
-                      ? `Open a topic to see its standards. ${toWrite} of them still want a question.`
-                      : "Open a topic to see its standards."}
-                </p>
-              )}
-
               {groups.length === 0 ? (
                 <EmptyState
                   icon={ListChecks}
@@ -702,7 +685,7 @@ export function MosSubject({ subjectId }: { subjectId: string }) {
 
               <div className="min-w-0">
                 <h2 className="mb-1 text-base font-semibold text-foreground">Lessons</h2>
-                <p className="mb-3 text-sm text-muted-foreground">Courses can&apos;t go live until every lesson is linked.</p>
+                <p className="mb-3 text-sm text-muted-foreground">Lessons must be linked before a course goes live.</p>
                 {data.unmappedLessons.length === 0 ? (
                   <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">All mapped.</p>
                 ) : (
@@ -835,12 +818,12 @@ export function MosSubject({ subjectId }: { subjectId: string }) {
   )
 }
 
-function BackLink() {
+function BackLink({ isAdmin }: { isAdmin: boolean }) {
   return (
     <Button asChild variant="ghost" className="-ml-2 h-9 w-fit gap-1.5 text-muted-foreground">
       <Link href="/admin/mos">
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        MOS coverage
+        {isAdmin ? "MOS coverage" : "Question bank"}
       </Link>
     </Button>
   )

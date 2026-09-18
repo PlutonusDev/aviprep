@@ -7,6 +7,7 @@ import {
   HelpCircle,
   ImageIcon,
   LayoutDashboard,
+  Library,
   Mail,
   MessageSquare,
   Package,
@@ -29,6 +30,8 @@ export interface AdminNavItem {
   curator?: boolean
   /** Only curators see it (their own account). */
   curatorOnly?: boolean
+  /** What curators call it. "MOS coverage" is an admin's framing. */
+  curatorName?: string
 }
 
 export interface AdminNavGroup {
@@ -50,11 +53,13 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     items: [
       { name: "Review", href: "/admin/review", icon: ClipboardCheck },
       { name: "Courses", href: "/admin/courses", icon: GraduationCap, curator: true },
-      // Curators reach the editor from MOS coverage, so the question bank stays
-      // admin-only in the sidebar: one way in, against the MOS item they're filling.
+      // Curators reach the editor from the question bank, so the raw list stays
+      // admin-only: one way in, against the MOS item they're filling.
       { name: "Questions", href: "/admin/questions", icon: HelpCircle },
       //{ name: "AI generator", href: "/admin/questions/generate", icon: Sparkles },
-      { name: "MOS coverage", href: "/admin/mos", icon: ShieldCheck, curator: true },
+      { name: "MOS coverage", href: "/admin/mos", icon: ShieldCheck, curator: true, curatorName: "Question bank" },
+      // Their own work: everything they've written, in whatever state it's in.
+      { name: "Library", href: "/admin/library", icon: Library, curator: true, curatorOnly: true },
     ],
   },
   {
@@ -106,6 +111,7 @@ export const CURATOR_PATHS = [
   "/admin/earnings",
   "/admin/documents",
   "/admin/community",
+  "/admin/library",
 ]
 
 /** Admin-only pages inside otherwise curator-accessible sections. */
@@ -123,7 +129,9 @@ export function navGroupsForRole(isAdmin: boolean): AdminNavGroup[] {
   if (isAdmin) return ADMIN_NAV_GROUPS.map((g) => ({ ...g, items: g.items.filter((i) => !i.curatorOnly) })).filter((g) => g.items.length)
   return ADMIN_NAV_GROUPS.map((g) => ({
     ...g,
-    items: g.items.filter((i) => i.curator).map((i) => (i.href === "/admin" ? { ...i, name: "Home" } : i)),
+    items: g.items
+      .filter((i) => i.curator)
+      .map((i) => ({ ...i, name: i.href === "/admin" ? "Home" : (i.curatorName ?? i.name) })),
   })).filter((g) => g.items.length)
 }
 
