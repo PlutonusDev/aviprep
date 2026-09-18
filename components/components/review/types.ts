@@ -55,8 +55,17 @@ export interface QuestionBody {
   topic: string
   difficulty: string
   questionText: string
+  imageUrl?: string | null
+  imageAlt?: string | null
+  /** "choice" | "numeric". Null reads as multiple choice. */
+  answerType?: string | null
   options: string[]
-  correctIndex: number
+  correctIndex: number | null
+  /** Typed answers: the value wanted, and how far out still counts. */
+  answerValue?: number | null
+  answerUnit?: string | null
+  tolerance?: number | null
+  toleranceType?: string | null
   explanation: string
   reference: string
   points?: number

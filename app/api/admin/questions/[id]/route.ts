@@ -13,8 +13,31 @@ import {
   saveMappings,
 } from "@lib/mos/mappings"
 import { decide, logEvent } from "@lib/review/review"
+import { answerTypeOf } from "@lib/exam/marking"
 
-const CONTENT_FIELDS = ["subjectId", "topic", "difficulty", "questionText", "options", "correctIndex", "explanation", "reference"] as const
+const CONTENT_FIELDS = [
+  "subjectId",
+  "topic",
+  "difficulty",
+  "questionText",
+  "imageUrl",
+  "imageAlt",
+  "answerType",
+  "options",
+  "correctIndex",
+  "answerValue",
+  "answerUnit",
+  "tolerance",
+  "toleranceType",
+  "explanation",
+  "reference",
+] as const
+
+/** Numbers arrive as strings from a form; anything unreadable is simply absent. */
+const numberOrNull = (value: unknown) => {
+  const n = typeof value === "string" ? Number(value.trim()) : typeof value === "number" ? value : NaN
+  return Number.isFinite(n) ? n : null
+}
 
 function contentFrom(source: Record<string, unknown>) {
   return {
@@ -22,8 +45,15 @@ function contentFrom(source: Record<string, unknown>) {
     topic: source.topic as string,
     difficulty: source.difficulty as string,
     questionText: source.questionText as string,
-    options: source.options as string[],
-    correctIndex: source.correctIndex as number,
+    imageUrl: (source.imageUrl as string) || null,
+    imageAlt: (source.imageAlt as string) || null,
+    answerType: answerTypeOf(source as { answerType?: string | null }),
+    options: (source.options as string[]) ?? [],
+    correctIndex: (source.correctIndex as number) ?? null,
+    answerValue: numberOrNull(source.answerValue),
+    answerUnit: (source.answerUnit as string)?.trim() || null,
+    tolerance: numberOrNull(source.tolerance),
+    toleranceType: source.toleranceType === "absolute" ? "absolute" : "percent",
     explanation: source.explanation as string,
     // Previously omitted on edit, which silently wiped the citation.
     reference: (source.reference as string) || "",

@@ -8,7 +8,7 @@
  *   always full length (or the whole bank, if it's smaller).
  * - Question order is always random, and so is answer order - except where an
  *   option refers to the others ("All of the above"), which only makes sense in
- *   its written position.
+ *   its written position, and except for typed answers, which have no options.
  *
  * Pure apart from the injected random source, so it can be tested directly.
  */
@@ -19,6 +19,8 @@ export interface BankQuestion {
   id: string
   options: string[]
   correctIndex: number
+  /** "numeric" questions have no options, so nothing to shuffle. */
+  answerType?: string | null
 }
 
 export interface PastResult {
@@ -59,6 +61,10 @@ const REFERS_TO_OTHERS =
   /\b(all|none|both|neither|any) of (the )?(above|these|those|them|the options|the answers)\b|\b(both|neither|either) [a-f]\b.*\b(and|or|nor) [a-f]\b|\b(options?|answers?) [a-f]\b/i
 
 export function shuffleOptions<Q extends BankQuestion>(q: Q, random: () => number = Math.random): ShuffledQuestion<Q> {
+  // A typed answer has no options. Shuffling an empty list would be harmless,
+  // but returning early keeps correctIndex from drifting to -1.
+  if (q.answerType === "numeric" || q.options.length === 0) return { ...q, optionOrder: [] }
+
   const identity = q.options.map((_, i) => i)
   const pinned = q.options.some((o) => REFERS_TO_OTHERS.test(o))
   const order = pinned ? identity : shuffle(identity, random)

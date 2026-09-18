@@ -26,8 +26,18 @@ export interface QuestionData {
   topic: string
   difficulty: "easy" | "medium" | "hard"
   questionText: string
+  /** A chart or diagram the question is asked about. */
+  imageUrl?: string | null
+  imageAlt?: string | null
+  /** "choice" | "numeric". Undefined reads as multiple choice. */
+  answerType?: string | null
   options: string[]
   correctIndex: number
+  /** Typed answers: the value, its unit and how far out is still right. */
+  answerValue?: number | null
+  answerUnit?: string | null
+  tolerance?: number | null
+  toleranceType?: string | null
   explanation: string
   /**
    * Answers are shuffled per exam. optionOrder[shownIndex] is the option's index

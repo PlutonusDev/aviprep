@@ -6,13 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   AlertCircle,
   Check,
@@ -28,6 +22,7 @@ import {
 } from "lucide-react"
 import { cn } from "@lib/utils"
 import {
+  ANSWER_TYPES,
   DIFFICULTIES,
   MAX_OPTIONS,
   MIN_OPTIONS,
@@ -39,6 +34,8 @@ import {
   type QuestionDraft,
 } from "@lib/question-validation"
 import { MosTagger } from "@/components/admin/mos-tagger"
+import { NumericAnswerFields, StemImage } from "@/components/admin/question-answer-fields"
+import { answerTypeOf } from "@lib/exam/marking"
 import { MosFocusCard } from "@/components/admin/mos-focus-card"
 import { ReviewActivity } from "@/components/review/review-activity"
 import { questionMatchText } from "@lib/mos/content-text"
@@ -76,12 +73,7 @@ function FieldError({ message }: { message?: string }) {
  * whole stem back before they trust it, and a scrollbar in a four-line box
  * hides the end of the sentence they're checking.
  */
-function GrowTextarea({
-  className,
-  value,
-  minRows = 2,
-  ...props
-}: React.ComponentProps<typeof Textarea> & { minRows?: number }) {
+function GrowTextarea({ className, value, minRows = 2, ...props }: React.ComponentProps<typeof Textarea> & { minRows?: number }) {
   const ref = useRef<HTMLTextAreaElement | null>(null)
   useEffect(() => {
     const el = ref.current
@@ -89,15 +81,7 @@ function GrowTextarea({
     el.style.height = "auto"
     el.style.height = `${el.scrollHeight}px`
   }, [value])
-  return (
-    <Textarea
-      {...props}
-      ref={ref}
-      value={value}
-      rows={minRows}
-      className={cn("resize-none overflow-hidden", className)}
-    />
-  )
+  return <Textarea {...props} ref={ref} value={value} rows={minRows} className={cn("resize-none overflow-hidden", className)} />
 }
 
 /** A section that stays out of the way until it's wanted. */
@@ -123,7 +107,10 @@ function Disclosure({
       >
         {label}
         {detail && <span className="truncate text-xs font-normal text-muted-foreground">{detail}</span>}
-        <ChevronDown className={cn("ml-auto h-4 w-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} aria-hidden="true" />
+        <ChevronDown
+          className={cn("ml-auto h-4 w-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")}
+          aria-hidden="true"
+        />
       </button>
       {open && <div className="border-t border-border p-4">{children}</div>}
     </div>
@@ -188,7 +175,11 @@ function PointsPicker({ value, onChange }: { value?: number | null; onChange: (p
   const current = value === 3 ? 3 : 1
   const options = [
     { points: 1 as const, label: "Standard", hint: "1 point" },
-    { points: 3 as const, label: "Complex", hint: "3 points: charts, multi-step calculations or images" },
+    {
+      points: 3 as const,
+      label: "Complex",
+      hint: "3 points: charts, multi-step calculations or images",
+    },
   ]
   return (
     <div role="radiogroup" aria-label="Royalty points" className="flex h-10 items-center rounded-lg border border-border bg-muted/40 p-1">
@@ -263,10 +254,34 @@ export default function QuestionEditor({
 
   const errors = useMemo(() => validateQuestion(value), [value])
   const warnings = useMemo(() => questionWarnings(value), [value])
-  const shown: FieldErrors = touched ? { ...errors, ...serverErrors } : serverErrors ?? {}
+  const shown: FieldErrors = touched ? { ...errors, ...serverErrors } : (serverErrors ?? {})
   const ready = isValid(errors)
 
   const set = (patch: Partial<EditableQuestion>) => onChange({ ...value, ...patch })
+
+  const answerType = answerTypeOf(value)
+
+  /**
+   * Switching format keeps what the other side needs and clears what it
+   * doesn't, so a half-converted question can't be saved. A default tolerance
+   * is set on the way in: "exact" is rarely what anyone means.
+   */
+  const setAnswerType = (next: "choice" | "numeric") => {
+    if (next === answerType) return
+    if (next === "numeric") {
+      set({
+        answerType: "numeric",
+        tolerance: value.tolerance ?? 5,
+        toleranceType: value.toleranceType ?? "percent",
+      })
+    } else {
+      set({
+        answerType: "choice",
+        options: value.options?.length ? value.options : ["", "", "", ""],
+        correctIndex: value.correctIndex ?? 0,
+      })
+    }
+  }
 
   const setOption = (index: number, text: string) => {
     const options = [...value.options]
@@ -361,9 +376,7 @@ export default function QuestionEditor({
       {canPublish && pendingRevision && value.id && (
         <div className="space-y-2.5 rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-sm">
           <p className="font-medium text-foreground">A curator has proposed changes to this live question.</p>
-          <p className="text-muted-foreground">
-            Nothing changes for students until you approve them.
-          </p>
+          <p className="text-muted-foreground">Nothing changes for students until you approve them.</p>
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
@@ -458,82 +471,132 @@ export default function QuestionEditor({
               <FieldError message={shown.questionText} />
             </div>
 
-            {/* Options, lettered and sized like the exam. The letter is the
-                control: tapping it marks the answer, as marking one is the
-                only decision here that isn't typing. */}
-            <ul className="mt-4 space-y-2">
-              {value.options.map((option, index) => {
-                const correct = value.correctIndex === index
-                const optionId = `q-option-${index}`
-                return (
-                  <li
-                    key={index}
-                    className={cn(
-                      "group flex items-center gap-2.5 rounded-xl border px-2.5 py-2 transition-colors",
-                      correct ? "border-success/60 bg-success/[0.06]" : "border-border hover:border-primary/40",
-                    )}
-                  >
+            <StemImage url={value.imageUrl} alt={value.imageAlt} onChange={set} error={shown.imageAlt} />
+
+            {/* How it's answered. Two formats, so a segmented control rather
+                than a select: both options stay readable at a glance. */}
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <div
+                role="radiogroup"
+                aria-label="Answer format"
+                className="flex h-9 items-center rounded-lg border border-border bg-muted/40 p-1"
+              >
+                {ANSWER_TYPES.map((format) => {
+                  const active = answerType === format.id
+                  return (
                     <button
+                      key={format.id}
                       type="button"
                       role="radio"
-                      aria-checked={correct}
-                      aria-label={`Mark option ${LETTERS[index]} as the correct answer`}
-                      onClick={() => set({ correctIndex: index })}
+                      aria-checked={active}
+                      title={format.description}
+                      onClick={() => setAnswerType(format.id)}
                       className={cn(
-                        "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                        correct
-                          ? "border-success bg-success text-white"
-                          : "border-border text-muted-foreground hover:border-primary hover:text-foreground",
+                        "h-full rounded-md px-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        active ? "bg-background font-medium text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
                       )}
                     >
-                      {correct ? <Check className="h-4 w-4" aria-hidden="true" /> : LETTERS[index]}
+                      {format.label}
                     </button>
-                    <Input
-                      id={optionId}
-                      value={option}
-                      onChange={(e) => setOption(index, e.target.value)}
-                      onBlur={() => setTouched(true)}
-                      aria-invalid={shown[`option-${index}`] ? true : undefined}
-                      aria-label={`Option ${LETTERS[index]}`}
-                      className="h-9 min-w-0 flex-1 border-transparent bg-transparent px-1.5 shadow-none hover:border-border focus-visible:border-border"
-                      placeholder={`Option ${LETTERS[index]}`}
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeOption(index)}
-                      disabled={value.options.length <= MIN_OPTIONS}
-                      aria-label={`Remove option ${LETTERS[index]}`}
-                      className="h-8 w-8 shrink-0 text-muted-foreground opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 disabled:hidden"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                    </Button>
-                  </li>
-                )
-              })}
-            </ul>
-
-            <div className="mt-2 flex flex-wrap items-center gap-3">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={addOption}
-                disabled={value.options.length >= MAX_OPTIONS}
-                className="h-8 gap-1.5 text-muted-foreground"
-              >
-                <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-                Add option
-              </Button>
-              <p className="text-xs text-muted-foreground">Click a letter to mark the answer</p>
+                  )
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground">{ANSWER_TYPES.find((f) => f.id === answerType)?.description}</p>
             </div>
 
-            {optionErrors.map((message, i) => (
-              <FieldError key={i} message={message} />
-            ))}
-            <FieldError message={shown.options} />
-            <FieldError message={shown.correctIndex} />
+            {answerType === "numeric" ? (
+              <NumericAnswerFields
+                answerValue={value.answerValue}
+                answerUnit={value.answerUnit}
+                tolerance={value.tolerance}
+                toleranceType={value.toleranceType}
+                onChange={set}
+                errors={{
+                  answerValue: shown.answerValue,
+                  answerUnit: shown.answerUnit,
+                  tolerance: shown.tolerance,
+                }}
+              />
+            ) : (
+              <>
+                {/* Options, lettered and sized like the exam. The letter is the
+                control: tapping it marks the answer, as marking one is the
+                only decision here that isn't typing. */}
+                <ul className="mt-4 space-y-2">
+                  {value.options.map((option, index) => {
+                    const correct = value.correctIndex === index
+                    const optionId = `q-option-${index}`
+                    return (
+                      <li
+                        key={index}
+                        className={cn(
+                          "group flex items-center gap-2.5 rounded-xl border px-2.5 py-2 transition-colors",
+                          correct ? "border-success/60 bg-success/[0.06]" : "border-border hover:border-primary/40",
+                        )}
+                      >
+                        <button
+                          type="button"
+                          role="radio"
+                          aria-checked={correct}
+                          aria-label={`Mark option ${LETTERS[index]} as the correct answer`}
+                          onClick={() => set({ correctIndex: index })}
+                          className={cn(
+                            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                            correct
+                              ? "border-success bg-success text-white"
+                              : "border-border text-muted-foreground hover:border-primary hover:text-foreground",
+                          )}
+                        >
+                          {correct ? <Check className="h-4 w-4" aria-hidden="true" /> : LETTERS[index]}
+                        </button>
+                        <Input
+                          id={optionId}
+                          value={option}
+                          onChange={(e) => setOption(index, e.target.value)}
+                          onBlur={() => setTouched(true)}
+                          aria-invalid={shown[`option-${index}`] ? true : undefined}
+                          aria-label={`Option ${LETTERS[index]}`}
+                          className="h-9 min-w-0 flex-1 border-transparent bg-transparent px-1.5 shadow-none hover:border-border focus-visible:border-border"
+                          placeholder={`Option ${LETTERS[index]}`}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeOption(index)}
+                          disabled={value.options.length <= MIN_OPTIONS}
+                          aria-label={`Remove option ${LETTERS[index]}`}
+                          className="h-8 w-8 shrink-0 text-muted-foreground opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 disabled:hidden"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                        </Button>
+                      </li>
+                    )
+                  })}
+                </ul>
+
+                <div className="mt-2 flex flex-wrap items-center gap-3">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={addOption}
+                    disabled={value.options.length >= MAX_OPTIONS}
+                    className="h-8 gap-1.5 text-muted-foreground"
+                  >
+                    <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                    Add option
+                  </Button>
+                  <p className="text-xs text-muted-foreground">Click a letter to mark the answer</p>
+                </div>
+
+                {optionErrors.map((message, i) => (
+                  <FieldError key={i} message={message} />
+                ))}
+                <FieldError message={shown.options} />
+                <FieldError message={shown.correctIndex} />
+              </>
+            )}
 
             {/* The explanation belongs with the question, not a scroll away:
                 it's written against the option just marked correct. */}
@@ -565,9 +628,7 @@ export default function QuestionEditor({
                 value={value.reference ?? ""}
                 onChange={(e) => set({ reference: e.target.value })}
                 className="h-9 min-w-0 flex-1 border-transparent bg-transparent px-2 text-sm shadow-none hover:border-border focus-visible:border-border"
-                placeholder={
-                  primaryMos ? `e.g. CASA Part 61 MOS, Schedule 3, ${primaryMos.ref}` : "e.g. CASA Part 61 MOS, Schedule 3, 2.1"
-                }
+                placeholder={primaryMos ? `e.g. CASA Part 61 MOS, Schedule 3, ${primaryMos.ref}` : "e.g. CASA Part 61 MOS, Schedule 3, 2.1"}
               />
             </div>
           </div>

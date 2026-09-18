@@ -34,6 +34,7 @@ import QuestionEditor, { type EditableQuestion } from "./question-editor"
 import { useStudioActivity } from "@/components/curators/presence-beacon"
 import { useUser } from "@lib/user-context"
 import { toast } from "sonner"
+import { answerTypeOf, formatTolerance, formatValue } from "@lib/exam/marking"
 
 interface SubjectCounts {
   total: number
@@ -69,8 +70,17 @@ const BLANK: EditableQuestion = {
   topic: "",
   difficulty: "medium",
   questionText: "",
+  imageUrl: null,
+  imageAlt: null,
+  answerType: "choice",
   options: ["", "", "", ""],
   correctIndex: 0,
+  answerValue: null,
+  answerUnit: null,
+  // A typed answer that only accepts the exact value is rarely what's meant,
+  // so the format switch starts at 5% when it's chosen.
+  tolerance: 5,
+  toleranceType: "percent",
   explanation: "",
   reference: "",
   status: "draft",
@@ -591,7 +601,13 @@ export function QuestionsContent() {
                         <p className="line-clamp-2 text-sm text-foreground">{q.questionText}</p>
 
                         <p className="line-clamp-1 text-xs text-muted-foreground">
-                          Answer: {q.options?.[q.correctIndex] ?? "—"}
+                          Answer:{" "}
+                          {answerTypeOf(q) === "numeric"
+                            ? typeof q.answerValue === "number"
+                              ? `${formatValue(q.answerValue, q.answerUnit)} ${formatTolerance(q)}`
+                              : "—"
+                            : (q.options?.[q.correctIndex] ?? "—")}
+                          {q.imageUrl && <span className="ml-1.5 text-muted-foreground">· has an image</span>}
                         </p>
 
                         <div className="flex items-center gap-1 pt-1">

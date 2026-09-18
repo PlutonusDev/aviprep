@@ -28,6 +28,7 @@ import { mosId, type MosLink } from "@lib/mos/subjects"
 import { cn } from "@lib/utils"
 import { PersonChip, ReviewThread } from "./review-thread"
 import type { ContentType, FieldChange, LessonBody, QuestionBody, ReviewAction, ReviewDetail } from "./types"
+import { answerTypeOf, formatTolerance, formatValue } from "@lib/exam/marking"
 
 export const TYPE_META: Record<ContentType, { label: string; icon: React.ComponentType<{ className?: string }> }> = {
   question: { label: "Question", icon: HelpCircle },
@@ -59,6 +60,26 @@ function QuestionView({ q }: { q: QuestionBody }) {
         <span className="capitalize">{q.difficulty}</span>
       </div>
       <p className="whitespace-pre-line text-base font-medium leading-relaxed text-foreground">{q.questionText}</p>
+
+      {q.imageUrl && (
+        <div className="overflow-hidden rounded-lg border border-border bg-white">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={q.imageUrl} alt={q.imageAlt || ""} className="mx-auto block max-h-72 w-auto max-w-full object-contain" />
+          <p className="border-t border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+            {q.imageAlt || "No description. A screen reader has nothing to read out."}
+          </p>
+        </div>
+      )}
+
+      {answerTypeOf(q) === "numeric" ? (
+        <div className="rounded-lg border border-success/40 bg-success/10 px-3 py-2.5">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Correct value</p>
+          <p className="mt-0.5 text-base font-semibold text-foreground" data-tabular>
+            {typeof q.answerValue === "number" ? formatValue(q.answerValue, q.answerUnit) : "Not set"}
+            <span className="ml-2 text-sm font-normal text-muted-foreground">{formatTolerance(q)}</span>
+          </p>
+        </div>
+      ) : (
       <ol className="space-y-2">
         {q.options.map((option, i) => {
           const correct = i === q.correctIndex
@@ -86,6 +107,8 @@ function QuestionView({ q }: { q: QuestionBody }) {
           )
         })}
       </ol>
+      )}
+
       <div className="space-y-1 border-t border-border pt-4">
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Explanation</p>
         <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">{q.explanation || "No explanation."}</p>

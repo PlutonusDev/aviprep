@@ -277,8 +277,28 @@ model Question {
   difficulty   String // "easy", "medium", "hard"
   
   questionText String
+  /// A chart, diagram or photo the question is asked about. Served from /uploads.
+  imageUrl     String?
+  /// What the image shows, for students who can't see it.
+  imageAlt     String?
+
+  /// How it's answered: "choice" (multiple choice) or "numeric" (a typed value
+  /// within a tolerance). Null reads as "choice" - the bank predates the field.
+  answerType   String?
+
+  // Multiple choice. Empty on a numeric question.
   options      String[] // Array of options
-  correctIndex Int
+  correctIndex Int?
+
+  // Numeric answers. The unit is shown beside the input rather than typed, so a
+  // student is never marked wrong for writing "kt" instead of "knots".
+  answerValue   Float?
+  answerUnit    String?
+  /// How far out an answer may be: a percentage of the value, or a flat amount.
+  tolerance     Float?
+  /// "percent" | "absolute"
+  toleranceType String?
+
   explanation  String
   reference    String
 

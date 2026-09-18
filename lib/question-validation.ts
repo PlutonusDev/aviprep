@@ -1,3 +1,5 @@
+import { answerTypeOf, type AnswerType } from "@lib/exam/marking"
+
 /**
  * One set of authoring rules, used by both the editor and the API. Keeping them
  * here is what stops the client showing a green tick for something the server
@@ -21,19 +23,36 @@ export function effectiveStatus(status?: string | null): QuestionStatus {
 
 export const DIFFICULTIES = ["easy", "medium", "hard"] as const
 
+export const ANSWER_TYPES: { id: AnswerType; label: string; description: string }[] = [
+  { id: "choice", label: "Multiple choice", description: "Lettered options, one correct." },
+  { id: "numeric", label: "Typed answer", description: "A value, marked within a tolerance." },
+]
+
 export interface QuestionDraft {
   subjectId: string
   topic: string
   difficulty: string
   questionText: string
+  /** A chart or diagram the question is asked about. */
+  imageUrl?: string | null
+  imageAlt?: string | null
+  /** "choice" | "numeric". Undefined reads as multiple choice. */
+  answerType?: string | null
   options: string[]
   correctIndex: number
+  /** Numeric answers. */
+  answerValue?: number | null
+  answerUnit?: string | null
+  tolerance?: number | null
+  toleranceType?: string | null
   explanation: string
   reference?: string
   status?: string | null
 }
 
 export type FieldErrors = Partial<Record<keyof QuestionDraft | `option-${number}`, string>>
+
+export const MAX_UNIT = 12
 
 export const MIN_OPTIONS = 2
 export const MAX_OPTIONS = 6
@@ -54,33 +73,56 @@ export function validateQuestion(q: QuestionDraft): FieldErrors {
   const text = q.questionText?.trim() ?? ""
   if (text.length < 10) errors.questionText = "Write the full question (at least 10 characters)."
 
-  const options = q.options ?? []
-  if (options.length < MIN_OPTIONS) {
-    errors.options = `At least ${MIN_OPTIONS} options are needed.`
-  } else if (options.length > MAX_OPTIONS) {
-    errors.options = `No more than ${MAX_OPTIONS} options.`
+  // An image nobody can see is an image half the students can't answer from.
+  if (q.imageUrl?.trim() && !q.imageAlt?.trim()) {
+    errors.imageAlt = "Describe the image, for students using a screen reader."
   }
 
-  options.forEach((opt, i) => {
-    if (!opt?.trim()) errors[`option-${i}`] = "Options cannot be blank."
-  })
+  if (answerTypeOf(q) === "numeric") {
+    if (typeof q.answerValue !== "number" || !Number.isFinite(q.answerValue)) {
+      errors.answerValue = "Give the correct value."
+    }
 
-  // Two identical options make one of them unmarkable.
-  const seen = new Map<string, number>()
-  options.forEach((opt, i) => {
-    const key = opt?.trim().toLowerCase()
-    if (!key) return
-    if (seen.has(key)) errors[`option-${i}`] = "Duplicates another option."
-    else seen.set(key, i)
-  })
+    const tolerance = q.tolerance ?? 0
+    if (!Number.isFinite(tolerance) || tolerance < 0) {
+      errors.tolerance = "A tolerance can't be negative."
+    } else if (q.toleranceType === "percent" && tolerance > 0 && q.answerValue === 0) {
+      // A percentage of zero is zero, so the question would accept nothing but 0.
+      errors.tolerance = "A percentage of zero is zero. Use an exact amount instead."
+    }
 
-  if (
-    q.correctIndex === undefined ||
-    q.correctIndex === null ||
-    q.correctIndex < 0 ||
-    q.correctIndex >= options.length
-  ) {
-    errors.correctIndex = "Mark which option is correct."
+    if (q.answerUnit && q.answerUnit.trim().length > MAX_UNIT) {
+      errors.answerUnit = `Keep the unit under ${MAX_UNIT} characters.`
+    }
+  } else {
+    const options = q.options ?? []
+    if (options.length < MIN_OPTIONS) {
+      errors.options = `At least ${MIN_OPTIONS} options are needed.`
+    } else if (options.length > MAX_OPTIONS) {
+      errors.options = `No more than ${MAX_OPTIONS} options.`
+    }
+
+    options.forEach((opt, i) => {
+      if (!opt?.trim()) errors[`option-${i}`] = "Options cannot be blank."
+    })
+
+    // Two identical options make one of them unmarkable.
+    const seen = new Map<string, number>()
+    options.forEach((opt, i) => {
+      const key = opt?.trim().toLowerCase()
+      if (!key) return
+      if (seen.has(key)) errors[`option-${i}`] = "Duplicates another option."
+      else seen.set(key, i)
+    })
+
+    if (
+      q.correctIndex === undefined ||
+      q.correctIndex === null ||
+      q.correctIndex < 0 ||
+      q.correctIndex >= options.length
+    ) {
+      errors.correctIndex = "Mark which option is correct."
+    }
   }
 
   const explanation = q.explanation?.trim() ?? ""
@@ -102,12 +144,22 @@ export function questionWarnings(q: QuestionDraft): string[] {
   if (!q.reference?.trim()) {
     warnings.push("No reference. Add the CASA/source citation so the question can be defended.")
   }
-  if ((q.options ?? []).length < 4) {
+  if (answerTypeOf(q) === "choice" && (q.options ?? []).length < 4) {
     warnings.push("CASA exams normally present four options.")
+  }
+  if (answerTypeOf(q) === "numeric") {
+    if (!q.answerUnit?.trim() && q.answerValue !== 0) {
+      warnings.push("No unit. Students can't tell feet from metres.")
+    }
+    if (!(q.tolerance ?? 0)) {
+      warnings.push("No tolerance: only the exact value will be marked right.")
+    }
   }
   if ((q.questionText ?? "").trim().length > 400) {
     warnings.push("This question is long; consider tightening the stem.")
   }
+
+  if (answerTypeOf(q) !== "choice") return warnings
 
   const lengths = (q.options ?? []).map((o) => o?.trim().length ?? 0)
   const longest = Math.max(...lengths, 0)

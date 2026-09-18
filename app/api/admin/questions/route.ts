@@ -4,6 +4,7 @@ import { isResponse, requireStaff } from "@lib/staff"
 import { validateQuestion, isValid } from "@lib/question-validation"
 import { MOS_PUBLISH_ERROR, checkLinksForSubject, parseMosInput, saveMappings, withPrimaryMapping } from "@lib/mos/mappings"
 import { logEvent } from "@lib/review/review"
+import { answerTypeOf } from "@lib/exam/marking"
 
 export async function GET(request: NextRequest) {
   const staff = await requireStaff({ curators: true })
@@ -63,6 +64,40 @@ export async function GET(request: NextRequest) {
   })
 }
 
+/** Numbers arrive as strings from a form; anything unreadable is simply absent. */
+const numberOrNull = (value: unknown) => {
+  const n = typeof value === "string" ? Number(value.trim()) : typeof value === "number" ? value : NaN
+  return Number.isFinite(n) ? n : null
+}
+
+/**
+ * How the question is answered, written whole. A question that changes format
+ * must not keep the other format's fields: a numeric question with a leftover
+ * correctIndex would mark against an option that isn't there.
+ */
+function answerFields(body: Record<string, unknown>) {
+  if (answerTypeOf(body as { answerType?: string | null }) === "numeric") {
+    return {
+      answerType: "numeric",
+      options: [],
+      correctIndex: null,
+      answerValue: numberOrNull(body.answerValue),
+      answerUnit: (body.answerUnit as string)?.trim() || null,
+      tolerance: numberOrNull(body.tolerance) ?? 0,
+      toleranceType: body.toleranceType === "absolute" ? "absolute" : "percent",
+    }
+  }
+  return {
+    answerType: "choice",
+    options: (body.options as string[]) ?? [],
+    correctIndex: (body.correctIndex as number) ?? 0,
+    answerValue: null,
+    answerUnit: null,
+    tolerance: null,
+    toleranceType: null,
+  }
+}
+
 export async function POST(request: NextRequest) {
   const staff = await requireStaff({ curators: true })
   if (isResponse(staff)) return staff
@@ -92,8 +127,11 @@ export async function POST(request: NextRequest) {
         topic: body.topic,
         difficulty: body.difficulty,
         questionText: body.questionText,
-        options: body.options,
-        correctIndex: body.correctIndex,
+        imageUrl: body.imageUrl || null,
+        imageAlt: body.imageAlt || null,
+        // Everything about how it's answered, so a numeric question never
+        // carries a stale option list and a choice never carries a tolerance.
+        ...answerFields(body),
         explanation: body.explanation,
         reference: body.reference || "",
         status,

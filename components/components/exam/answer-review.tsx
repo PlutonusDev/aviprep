@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react"
 import { Check, X, Flag } from "lucide-react"
 import { cn } from "@lib/utils"
+import { QuestionImage } from "./question-image"
+import { answerTypeOf, formatTolerance, formatValue, parseNumericAnswer, toleranceBand } from "@lib/exam/marking"
 
 const LETTERS = "ABCDEF"
 
@@ -14,14 +16,25 @@ export interface ReviewItem {
   topic: string
   /** Null when the question has been removed from the bank since. */
   questionText: string | null
+  imageUrl?: string | null
+  imageAlt?: string | null
+  /** "choice" | "numeric". Undefined reads as multiple choice. */
+  answerType?: string | null
   options: string[]
-  correctIndex: number
+  correctIndex: number | null | undefined
+  /** Typed answers: the value that was wanted, and how far out still counted. */
+  answerValue?: number | null
+  answerUnit?: string | null
+  tolerance?: number | null
+  toleranceType?: string | null
   explanation?: string | null
   /**
    * The option chosen. `null` means skipped; `undefined` means it was never
    * recorded - attempts saved before the choice was stored.
    */
   selectedIndex: number | null | undefined
+  /** What they typed, for questions answered with a value. */
+  answerText?: string | null
   status: ReviewStatus
   flagged: boolean
 }
@@ -110,6 +123,57 @@ export function AnswerReview({
   )
 }
 
+/**
+ * A marked typed answer: what they wrote, what was wanted, and the band it had
+ * to fall in. Someone who missed by a rounding step should be able to see that.
+ */
+function NumericOutcome({ item }: { item: ReviewItem }) {
+  const band = toleranceBand(item)
+  const given = parseNumericAnswer(item.answerText)
+  const wrong = item.status === "incorrect"
+
+  return (
+    <div className="mt-4 space-y-2">
+      {item.answerText?.trim() ? (
+        <div
+          className={cn(
+            "flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 rounded-lg border p-3 text-sm",
+            wrong ? "border-destructive bg-destructive/10" : "border-success bg-success/10",
+          )}
+        >
+          <span className="text-muted-foreground">Your answer</span>
+          <span className="font-semibold text-foreground" data-tabular>
+            {given === null ? item.answerText : formatValue(given, item.answerUnit)}
+          </span>
+        </div>
+      ) : (
+        <p className="rounded-lg border border-border p-3 text-sm text-muted-foreground">You didn&apos;t answer this one.</p>
+      )}
+
+      {typeof item.answerValue === "number" && (
+        <div
+          className={cn(
+            "flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 rounded-lg border p-3 text-sm",
+            wrong || item.status === "skipped" ? "border-success bg-success/10" : "border-border",
+          )}
+        >
+          <span className="text-muted-foreground">
+            Correct answer
+            {band && band.min !== band.max && (
+              <span className="ml-1.5 text-xs" data-tabular>
+                ({formatValue(band.min)} to {formatValue(band.max)}, {formatTolerance(item)})
+              </span>
+            )}
+          </span>
+          <span className="font-semibold text-foreground" data-tabular>
+            {formatValue(item.answerValue, item.answerUnit)}
+          </span>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function ReviewCard({ item }: { item: ReviewItem }) {
   const stemId = `review-${item.key}-stem`
   const recorded = item.selectedIndex !== undefined
@@ -158,6 +222,11 @@ function ReviewCard({ item }: { item: ReviewItem }) {
             {item.questionText}
           </p>
 
+          {item.imageUrl && <QuestionImage src={item.imageUrl} alt={item.imageAlt} className="mt-4" />}
+
+          {answerTypeOf(item) === "numeric" ? (
+            <NumericOutcome item={item} />
+          ) : (
           <ul className="mt-4 space-y-2">
             {item.options.map((option, oi) => {
               const isAnswer = oi === item.correctIndex
@@ -203,6 +272,7 @@ function ReviewCard({ item }: { item: ReviewItem }) {
               )
             })}
           </ul>
+          )}
 
           {item.explanation && (
             <div className="mt-4 rounded-lg bg-muted/50 p-4">

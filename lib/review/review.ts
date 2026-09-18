@@ -9,6 +9,7 @@ import { htmlToText, sanitizeHtml } from "@lib/sanitize-html"
 import { hasPrimaryMapping, mappingsFor, MOS_PUBLISH_ERROR, withPrimaryMapping } from "@lib/mos/mappings"
 import { lessonsMissingPrimary } from "@lib/mos/coverage"
 import { resolvePeople, type Person } from "./people"
+import { answerTypeOf } from "@lib/exam/marking"
 
 /**
  * Content review: one place that knows what's waiting for an admin, what each
@@ -39,8 +40,15 @@ const FIELD_LABELS: Record<string, string> = {
   topic: "Topic",
   difficulty: "Difficulty",
   questionText: "Question",
+  imageUrl: "Image",
+  imageAlt: "Image description",
+  answerType: "Answer format",
   options: "Options",
   correctIndex: "Correct answer",
+  answerValue: "Correct value",
+  answerUnit: "Unit",
+  tolerance: "Tolerance",
+  toleranceType: "Tolerance type",
   explanation: "Explanation",
   reference: "Reference",
   title: "Title",
@@ -57,14 +65,27 @@ const unset = (field: string) => ({ OR: [{ [field]: null }, { [field]: { isSet: 
 const subjectName = (id: string) => SUBJECTS.find((s) => s.id === id)?.name ?? id
 const snippet = (text: string, max = 140) => (text && text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text ?? "")
 
+/** Numbers arrive as strings from a form; anything unreadable is simply absent. */
+const numberOrNull = (value: unknown) => {
+  const n = typeof value === "string" ? Number(value.trim()) : typeof value === "number" ? value : NaN
+  return Number.isFinite(n) ? n : null
+}
+
 export function questionContent(source: Record<string, unknown>) {
   return {
     subjectId: source.subjectId as string,
     topic: source.topic as string,
     difficulty: source.difficulty as string,
     questionText: source.questionText as string,
-    options: source.options as string[],
-    correctIndex: source.correctIndex as number,
+    imageUrl: (source.imageUrl as string) || null,
+    imageAlt: (source.imageAlt as string) || null,
+    answerType: answerTypeOf(source as { answerType?: string | null }),
+    options: (source.options as string[]) ?? [],
+    correctIndex: (source.correctIndex as number) ?? null,
+    answerValue: numberOrNull(source.answerValue),
+    answerUnit: (source.answerUnit as string)?.trim() || null,
+    tolerance: numberOrNull(source.tolerance),
+    toleranceType: source.toleranceType === "absolute" ? "absolute" : "percent",
     explanation: source.explanation as string,
     reference: (source.reference as string) || "",
   }
@@ -378,6 +399,10 @@ function display(field: string, value: unknown, options?: string[]): string {
     return options?.[value] != null ? `${String.fromCharCode(65 + value)}. ${options[value]}` : String(value)
   }
   if (field === "subjectId") return subjectName(String(value))
+  if (field === "answerType") return value === "numeric" ? "Typed answer" : "Multiple choice"
+  if (field === "toleranceType") return value === "absolute" ? "An exact amount" : "A percentage"
+  // A full upload URL in a diff is noise; the filename is what identifies it.
+  if (field === "imageUrl") return String(value).split("/").pop() || String(value)
   if (field === "content" && typeof value === "object") {
     const c = value as Record<string, unknown>
     if (typeof c.html === "string") return htmlToText(c.html)

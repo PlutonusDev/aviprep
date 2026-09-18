@@ -34,6 +34,15 @@ import { ContributorNames } from "@/components/attribution/contributors"
 import { useTenant } from "@lib/tenant-context"
 import { cn } from "@lib/utils"
 import { AnswerReview, type ReviewItem } from "@/components/exam/answer-review"
+import { QuestionImage } from "@/components/exam/question-image"
+import { NumericAnswer } from "@/components/exam/numeric-answer"
+import {
+  answerTypeOf,
+  isAnswerCorrect,
+  isAnswered,
+  parseNumericAnswer,
+  type StudentAnswer,
+} from "@lib/exam/marking"
 
 interface ExamPageProps {
   params: Promise<{ subjectId: string }>
@@ -72,7 +81,8 @@ export default function ExamPage({ params }: ExamPageProps) {
   const [error, setError] = useState<string | null>(null)
 
   const [current, setCurrent] = useState(0)
-  const [answers, setAnswers] = useState<(number | null)[]>([])
+  // An option index for multiple choice, or what they typed for a value.
+  const [answers, setAnswers] = useState<StudentAnswer[]>([])
   const [flagged, setFlagged] = useState<Set<number>>(new Set())
   const [mapOpen, setMapOpen] = useState(false)
   const [exitOpen, setExitOpen] = useState(false)
@@ -129,7 +139,7 @@ export default function ExamPage({ params }: ExamPageProps) {
   const question = questions[current]
   const selected = answers[current] ?? null
   const isLast = current === questions.length - 1
-  const answeredCount = answers.filter((a) => a !== null).length
+  const answeredCount = answers.filter(isAnswered).length
   const unansweredCount = answers.length - answeredCount
 
   /** Add the time spent on `index` since it was entered. */
@@ -161,16 +171,23 @@ export default function ExamPage({ params }: ExamPageProps) {
     stemRef.current?.focus({ preventScroll: true })
   }, [current])
 
-  const choose = useCallback(
-    (index: number) => {
-      if (!question || index < 0 || index >= question.options.length) return
+  const record = useCallback(
+    (answer: StudentAnswer) => {
       setAnswers((prev) => {
         const next = [...prev]
-        next[current] = index
+        next[current] = answer
         return next
       })
     },
-    [question, current],
+    [current],
+  )
+
+  const choose = useCallback(
+    (index: number) => {
+      if (!question || index < 0 || index >= question.options.length) return
+      record(index)
+    },
+    [question, record],
   )
 
   const toggleFlag = useCallback(() => {
@@ -210,12 +227,9 @@ export default function ExamPage({ params }: ExamPageProps) {
     setMapOpen(false)
     bankTime(current)
 
-    const correct = answers.reduce<number>(
-      (n, a, i) => (a !== null && a === questions[i].correctIndex ? n + 1 : n),
-      0,
-    )
+    const correct = answers.reduce<number>((n, a, i) => (isAnswerCorrect(questions[i], a) ? n + 1 : n), 0)
     const total = questions.length
-    const unanswered = answers.filter((a) => a === null).length
+    const unanswered = answers.filter((a) => !isAnswered(a)).length
     const percentage = total > 0 ? Math.round((correct / total) * 100) : 0
     // A completed sitting always took some time; never record 0 minutes.
     const timeSpentMins = Math.max(1, Math.round((Date.now() - startedAtRef.current) / 60000))
@@ -237,16 +251,23 @@ export default function ExamPage({ params }: ExamPageProps) {
       totalQuestions: total,
       correctAnswers: correct,
       timeSpentMins,
-      questionResults: questions.map((q, i) => ({
-        questionId: q.id,
-        topic: q.topic,
-        correct: answers[i] === q.correctIndex,
-        // The option chosen, as its index in the question bank - answers are
-        // shuffled on screen, so the shown index would point at the wrong option later.
-        selectedIndex: answers[i] === null ? null : (q.optionOrder?.[answers[i]!] ?? answers[i]),
-        flagged: flagged.has(i),
-        timeTaken: Math.round((timesRef.current[i] ?? 0) / 1000),
-      })),
+      questionResults: questions.map((q, i) => {
+        const answer = answers[i] ?? null
+        const typed = answerTypeOf(q) === "numeric"
+        return {
+          questionId: q.id,
+          topic: q.topic,
+          correct: isAnswerCorrect(q, answer),
+          // The option chosen, as its index in the question bank - answers are
+          // shuffled on screen, so the shown index would point at the wrong option later.
+          selectedIndex:
+            typed || typeof answer !== "number" ? null : (q.optionOrder?.[answer] ?? answer),
+          /** What they typed, for questions answered with a value. */
+          answerText: typed && typeof answer === "string" ? answer : null,
+          flagged: flagged.has(i),
+          timeTaken: Math.round((timesRef.current[i] ?? 0) / 1000),
+        }
+      }),
     }
 
     window.scrollTo({ top: 0 })
@@ -305,6 +326,16 @@ export default function ExamPage({ params }: ExamPageProps) {
       if (target?.closest('input, textarea, a, [role="dialog"], button:not([role="radio"])')) return
 
       const key = e.key.toLowerCase()
+
+      // A typed answer owns the keyboard: every digit belongs in the box.
+      if (answerTypeOf(question) === "numeric") {
+        if (key === "enter") {
+          e.preventDefault()
+          next()
+        }
+        return
+      }
+
       const numeric = Number.parseInt(key, 10)
       const letterIndex = LETTERS.toLowerCase().indexOf(key)
 
@@ -337,16 +368,25 @@ export default function ExamPage({ params }: ExamPageProps) {
     () =>
       questions.map((q, i) => {
         const answer = answers[i] ?? null
+        const typed = answerTypeOf(q) === "numeric"
         return {
           key: q.id,
           number: i + 1,
           topic: q.topic,
           questionText: q.questionText,
+          imageUrl: q.imageUrl,
+          imageAlt: q.imageAlt,
+          answerType: q.answerType,
           options: q.options,
           correctIndex: q.correctIndex,
+          answerValue: q.answerValue,
+          answerUnit: q.answerUnit,
+          tolerance: q.tolerance,
+          toleranceType: q.toleranceType,
           explanation: q.explanation,
-          selectedIndex: answer,
-          status: answer === null ? "skipped" : answer === q.correctIndex ? "correct" : "incorrect",
+          selectedIndex: typed || typeof answer !== "number" ? null : answer,
+          answerText: typed && typeof answer === "string" ? answer : null,
+          status: !isAnswered(answer) ? "skipped" : isAnswerCorrect(q, answer) ? "correct" : "incorrect",
           flagged: flagged.has(i),
         }
       }),
@@ -678,8 +718,21 @@ export default function ExamPage({ params }: ExamPageProps) {
           {question.questionText}
         </p>
 
+        {question.imageUrl && (
+          <QuestionImage src={question.imageUrl} alt={question.imageAlt} className="mt-5" />
+        )}
+
+        {answerTypeOf(question) === "numeric" ? (
+          <NumericAnswer
+            className="mt-8"
+            value={typeof selected === "string" ? selected : ""}
+            onChange={record}
+            unit={question.answerUnit}
+            labelledBy={stemId}
+          />
+        ) : (
         <RadioGroupPrimitive.Root
-          value={selected === null ? "" : String(selected)}
+          value={typeof selected === "number" ? String(selected) : ""}
           onValueChange={(v) => choose(Number.parseInt(v, 10))}
           aria-labelledby={stemId}
           className="mt-8 space-y-3"
@@ -720,11 +773,14 @@ export default function ExamPage({ params }: ExamPageProps) {
             )
           })}
         </RadioGroupPrimitive.Root>
+        )}
 
         <ContributorNames contributors={question.contributors ?? []} className="mt-4 text-right" />
 
         <p className="mt-8 hidden text-center text-xs text-muted-foreground sm:block">
-          1–{question.options.length} to answer &middot; Enter for next &middot; F to flag
+          {answerTypeOf(question) === "numeric"
+            ? "Enter for next"
+            : `1–${question.options.length} to answer · Enter for next · F to flag`}
         </p>
       </div>
 
@@ -740,7 +796,7 @@ export default function ExamPage({ params }: ExamPageProps) {
           </p>
 
           <Button onClick={next} disabled={submitting} className="ml-auto h-11 min-w-36 gap-1.5 sm:ml-4">
-            {isLast ? "Finish exam" : selected === null ? "Skip" : "Next question"}
+            {isLast ? "Finish exam" : isAnswered(selected) ? "Next question" : "Skip"}
             {!isLast && <ArrowRight className="h-4 w-4" aria-hidden="true" />}
           </Button>
         </div>

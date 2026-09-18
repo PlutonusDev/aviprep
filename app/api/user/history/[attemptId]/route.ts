@@ -9,6 +9,8 @@ interface StoredResult {
   correct?: boolean
   /** Only on attempts saved after answers started being recorded. */
   selectedIndex?: number | null
+  /** What they typed, on questions answered with a value. */
+  answerText?: string | null
   flagged?: boolean
   timeTaken?: number
 }
@@ -45,26 +47,53 @@ export async function GET(_request: Request, { params }: { params: Promise<{ att
     const questions = ids.length
       ? await prisma.question.findMany({
           where: { id: { in: ids } },
-          select: { id: true, topic: true, questionText: true, options: true, correctIndex: true, explanation: true },
+          select: {
+            id: true,
+            topic: true,
+            questionText: true,
+            imageUrl: true,
+            imageAlt: true,
+            answerType: true,
+            options: true,
+            correctIndex: true,
+            answerValue: true,
+            answerUnit: true,
+            tolerance: true,
+            toleranceType: true,
+            explanation: true,
+          },
         })
       : []
     const byId = new Map(questions.map((q) => [q.id, q]))
 
     const items = stored.map((r, i) => {
       const q = r.questionId ? byId.get(r.questionId) : undefined
-      const recorded = r.selectedIndex !== undefined
-      const selectedIndex = recorded ? (r.selectedIndex ?? null) : undefined
+      const typed = q?.answerType === "numeric"
+      const answerText = typeof r.answerText === "string" ? r.answerText : null
+      // A typed answer records what they wrote rather than an option index, so
+      // "answered" means different things for the two kinds.
+      const recorded = typed ? true : r.selectedIndex !== undefined
+      const selectedIndex = typed ? null : r.selectedIndex !== undefined ? (r.selectedIndex ?? null) : undefined
+      const blank = typed ? !answerText?.trim() : recorded && selectedIndex === null
       // Older attempts only know right or wrong, so a skip reads as incorrect there.
-      const status = r.correct ? "correct" : recorded && selectedIndex === null ? "skipped" : "incorrect"
+      const status = r.correct ? "correct" : blank ? "skipped" : "incorrect"
       return {
         key: `${r.questionId ?? "q"}-${i}`,
         number: i + 1,
         topic: q?.topic ?? r.topic ?? "",
         questionText: q ? q.questionText : null,
+        imageUrl: q?.imageUrl ?? null,
+        imageAlt: q?.imageAlt ?? null,
+        answerType: q?.answerType ?? null,
         options: q?.options ?? [],
         correctIndex: q?.correctIndex ?? -1,
+        answerValue: q?.answerValue ?? null,
+        answerUnit: q?.answerUnit ?? null,
+        tolerance: q?.tolerance ?? null,
+        toleranceType: q?.toleranceType ?? null,
         explanation: q?.explanation ?? null,
         selectedIndex,
+        answerText,
         status,
         flagged: !!r.flagged,
       }
@@ -84,7 +113,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ att
       },
       items,
       /** False for attempts saved before chosen answers were recorded. */
-      answersRecorded: stored.some((r) => r.selectedIndex !== undefined),
+      answersRecorded: stored.some((r) => r.selectedIndex !== undefined || typeof r.answerText === "string"),
     })
   } catch (error) {
     console.error("Error fetching attempt:", error)
