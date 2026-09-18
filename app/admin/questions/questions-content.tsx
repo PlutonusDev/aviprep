@@ -31,6 +31,7 @@ import { SUBJECTS } from "@lib/subjects"
 import { cn } from "@lib/utils"
 import { effectiveStatus, type QuestionStatus } from "@lib/question-validation"
 import QuestionEditor, { type EditableQuestion } from "./question-editor"
+import { useStudioActivity } from "@/components/curators/presence-beacon"
 import { useUser } from "@lib/user-context"
 import { toast } from "sonner"
 
@@ -142,6 +143,11 @@ export function QuestionsContent() {
       }
     }
   }, [searchParams, router, isAdmin])
+
+  // Lets the admin roster say what they're on, not just that they're here.
+  useStudioActivity(
+    editing ? [subject?.code, editing.id ? "editing" : "new"].filter(Boolean).join(" · ") : subject?.code || null,
+  )
 
   const filteredSubjects = useMemo(() => {
     const q = subjectQuery.trim().toLowerCase()
@@ -375,46 +381,40 @@ export function QuestionsContent() {
   // --- Editor --------------------------------------------------------------
   if (editing) {
     return (
-      <div className="mx-auto w-full max-w-4xl space-y-6 p-4 lg:p-8">
-        <Button
-          variant="ghost"
-          onClick={() => setEditing(null)}
-          className="h-9 gap-1.5 text-muted-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          Back to {subject?.code}
-        </Button>
+      <div className="mx-auto w-full max-w-6xl space-y-4 p-4 lg:p-6">
+        {/* The header is one line: on a screen you write on, chrome is scroll. */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <Button
+            variant="ghost"
+            onClick={() => setEditing(null)}
+            className="-ml-2 h-9 shrink-0 gap-1.5 text-muted-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            {subject?.code}
+          </Button>
+          <h1 className="text-lg font-semibold text-foreground">{editing.id ? "Edit question" : "New question"}</h1>
+          <p className="truncate text-sm text-muted-foreground">{subject?.name}</p>
+        </div>
 
-        <header className="space-y-1.5">
-          <h1 className="text-display-3 font-bold text-foreground">
-            {editing.id ? "Edit question" : "New question"}
-          </h1>
-          <p className="text-muted-foreground">{subject?.name}</p>
-        </header>
-
-        <Card className="shadow-e1">
-          <CardContent className="p-5 lg:p-6">
-            <QuestionEditor
-              value={editing}
-              onChange={setEditing}
-              onSave={handleSave}
-              onCancel={() => {
-                setEditing(null)
-                setOriginal(null)
-              }}
-              saving={saving}
-              serverErrors={serverErrors}
-              knownTopics={topics.map((t) => t.topic)}
-              canPublish={isAdmin}
-              isLive={!!original && effectiveStatus(original.status) === "published"}
-              pendingRevision={isAdmin ? original?.pendingRevision : null}
-              onReviewRevision={reviewRevision}
-              onSendBack={sendBack}
-              inReview={!!original && original.status === "review"}
-              reviewing={reviewing}
-            />
-          </CardContent>
-        </Card>
+        <QuestionEditor
+          value={editing}
+          onChange={setEditing}
+          onSave={handleSave}
+          onCancel={() => {
+            setEditing(null)
+            setOriginal(null)
+          }}
+          saving={saving}
+          serverErrors={serverErrors}
+          knownTopics={topics.map((t) => t.topic)}
+          canPublish={isAdmin}
+          isLive={!!original && effectiveStatus(original.status) === "published"}
+          pendingRevision={isAdmin ? original?.pendingRevision : null}
+          onReviewRevision={reviewRevision}
+          onSendBack={sendBack}
+          inReview={!!original && original.status === "review"}
+          reviewing={reviewing}
+        />
       </div>
     )
   }

@@ -20,7 +20,10 @@ export async function GET() {
   const [curators, invites] = await Promise.all([
     prisma.curator.findMany({
       orderBy: { createdAt: "desc" },
-      select: { id: true, email: true, firstName: true, lastName: true, phone: true, credentials: true, isActive: true, lastLoginAt: true, createdAt: true },
+      select: {
+        id: true, email: true, firstName: true, lastName: true, phone: true, credentials: true,
+        isActive: true, lastLoginAt: true, lastSeenAt: true, activityKind: true, activityLabel: true, createdAt: true,
+      },
     }),
     prisma.curatorInvite.findMany({ where: notAccepted, orderBy: { sentAt: "desc" } }),
   ])

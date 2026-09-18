@@ -104,3 +104,20 @@ export function curatorOriginFor(origin: string): string {
   const base = sub ? url.hostname.slice(sub.length + 1) : url.hostname.replace(/^www\./, "")
   return `${url.protocol}//${CURATOR_SUBDOMAIN}.${base}${url.port ? `:${url.port}` : ""}`
 }
+
+/**
+ * The main site's origin, seen from a subdomain. The inverse of
+ * curatorOriginFor, used to send a curator back across to the community.
+ *
+ * curators.aviprep.com.au -> https://aviprep.com.au
+ * curators.localhost:8001 -> http://curators.localhost:8001's parent
+ */
+export function mainSiteOrigin(host: string): string {
+  const clean = host.split(",")[0].trim()
+  const sub = getSubdomain(clean)
+  const [name, port] = clean.split(":")
+  const bare = sub ? name.slice(sub.length + 1) : name
+  // Everything but local development is served over https behind the proxy.
+  const protocol = bare.startsWith("localhost") || bare.startsWith("127.") ? "http" : "https"
+  return `${protocol}://${bare}${port ? `:${port}` : ""}`
+}

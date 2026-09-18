@@ -54,6 +54,7 @@ import RichTextEditor, { type RichTextEditorRef } from "@/components/forum/rich-
 import { htmlToText } from "@lib/sanitize-html"
 import { useUser } from "@lib/user-context"
 import { cn } from "@lib/utils"
+import { CuratorBadge } from "@/components/forum/curator-badge"
 
 const REACTIONS = [
   { type: "thumbsup", icon: ThumbsUp, label: "Helpful" },
@@ -70,6 +71,8 @@ interface Author {
   lastName: string
   profilePicture: string | null
   isAdmin: boolean
+  isCurator?: boolean | null
+  curatorCredential?: string | null
   postCount?: number
 }
 
@@ -650,6 +653,7 @@ function PostCard({
                 Moderator
               </Badge>
             )}
+            <CuratorBadge isCurator={author?.isCurator} credential={author?.curatorCredential} />
             {isOriginalAuthor && !post.isFirstPost && (
               <Badge variant="secondary" className="h-5 px-1.5 text-[11px] font-normal">
                 Author

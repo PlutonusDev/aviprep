@@ -33,6 +33,8 @@ export async function GET(request: Request) {
             firstName: true,
             lastName: true,
             profilePicture: true,
+            isCurator: true,
+            curatorCredential: true,
           },
         },
         receiver: {
@@ -41,6 +43,8 @@ export async function GET(request: Request) {
             firstName: true,
             lastName: true,
             profilePicture: true,
+            isCurator: true,
+            curatorCredential: true,
           },
         },
       },
@@ -126,10 +130,10 @@ export async function POST(request: Request) {
       },
       include: {
         sender: {
-          select: { id: true, firstName: true, lastName: true, profilePicture: true },
+          select: { id: true, firstName: true, lastName: true, profilePicture: true, isCurator: true, curatorCredential: true },
         },
         receiver: {
-          select: { id: true, firstName: true, lastName: true, profilePicture: true },
+          select: { id: true, firstName: true, lastName: true, profilePicture: true, isCurator: true, curatorCredential: true },
         },
       },
     })

@@ -100,7 +100,7 @@ export function MosOverview() {
     <PageShell>
       <PageHeader
         title="MOS coverage"
-        description="Part 61 MOS Schedule 3 coverage by subject."
+        description="Where writing starts. Open a subject to see which Part 61 standards still need questions."
       >
         {library.loaded && (
           <span className="inline-flex items-center gap-2 self-start rounded-full border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground">

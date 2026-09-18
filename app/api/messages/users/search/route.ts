@@ -44,6 +44,8 @@ export async function GET(request: Request) {
         firstName: true,
         lastName: true,
         profilePicture: true,
+        isCurator: true,
+        curatorCredential: true,
       },
       take: 10,
     })

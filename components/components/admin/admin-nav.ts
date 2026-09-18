@@ -13,6 +13,7 @@ import {
   PenLine,
   Settings,
   ShieldCheck,
+  Signature,
   Sparkles,
   Ticket,
   UserCircle,
@@ -49,7 +50,9 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     items: [
       { name: "Review", href: "/admin/review", icon: ClipboardCheck },
       { name: "Courses", href: "/admin/courses", icon: GraduationCap, curator: true },
-      { name: "Questions", href: "/admin/questions", icon: HelpCircle, curator: true },
+      // Curators reach the editor from MOS coverage, so the question bank stays
+      // admin-only in the sidebar: one way in, against the MOS item they're filling.
+      { name: "Questions", href: "/admin/questions", icon: HelpCircle },
       //{ name: "AI generator", href: "/admin/questions/generate", icon: Sparkles },
       { name: "MOS coverage", href: "/admin/mos", icon: ShieldCheck, curator: true },
     ],
@@ -83,7 +86,9 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
   {
     label: "You",
     items: [
+      { name: "Community", href: "/admin/community", icon: MessageSquare, curator: true, curatorOnly: true },
       { name: "Earnings", href: "/admin/earnings", icon: Wallet, curator: true, curatorOnly: true },
+      { name: "Paperwork", href: "/admin/documents", icon: Signature, curator: true, curatorOnly: true },
       { name: "Account", href: "/admin/account", icon: UserCircle, curator: true, curatorOnly: true },
     ],
   },
@@ -93,7 +98,15 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
 export const ADMIN_NAVIGATION: AdminNavItem[] = ADMIN_NAV_GROUPS.flatMap((g) => g.items)
 
 /** Admin-panel paths a curator may open. The APIs enforce the same rule. */
-export const CURATOR_PATHS = ["/admin/courses", "/admin/questions", "/admin/mos", "/admin/account", "/admin/earnings"]
+export const CURATOR_PATHS = [
+  "/admin/courses",
+  "/admin/questions",
+  "/admin/mos",
+  "/admin/account",
+  "/admin/earnings",
+  "/admin/documents",
+  "/admin/community",
+]
 
 /** Admin-only pages inside otherwise curator-accessible sections. */
 const CURATOR_EXCLUDED = ["/admin/questions/generate"]

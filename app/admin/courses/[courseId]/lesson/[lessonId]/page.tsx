@@ -39,6 +39,7 @@ import { MosTagger } from "@/components/admin/mos-tagger"
 import { ReviewActivity } from "@/components/review/review-activity"
 import { lessonMatchText } from "@lib/mos/content-text"
 import type { MosLink } from "@lib/mos/subjects"
+import { useStudioActivity } from "@/components/curators/presence-beacon"
 
 interface Lesson {
   id: string
@@ -79,6 +80,8 @@ export default function LessonEditorPage({
   useEffect(() => {
     fetchLesson()
   }, [lessonId])
+
+  useStudioActivity(lesson?.title ?? null)
 
   async function fetchLesson() {
     setLoading(true)

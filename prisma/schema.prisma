@@ -18,9 +18,12 @@ model User {
   phone                 String    // Australian phone number format
   stripeCustomerId      String?   @unique // Stripe customer ID for payments
   isAdmin               Boolean   @default(false)
-  // Legacy: curators now have their own Curator accounts on the curators
-  // subdomain. Kept only so old documents still read; nothing checks it.
+  /// Set when a curator links this account to join the community, so the
+  /// forums and messages can badge them without a second lookup per post.
   isCurator             Boolean?
+  /// Their highest credential, e.g. "Grade 1 FI". Kept in step by
+  /// lib/curators/community.ts whenever their credentials change.
+  curatorCredential     String?
   profilePicture        String?   // URL to profile picture
   isSuspendedFromForum  Boolean   @default(false) // Forum posting suspension
   createdAt             DateTime  @default(now())
@@ -874,7 +877,24 @@ model Curator {
   /// Deactivated curators can't sign in, and live sessions stop working.
   isActive        Boolean   @default(true)
   lastLoginAt     DateTime?
+
+  // Presence, for the admin roster. The studio sends a heartbeat while a
+  // curator has it open, so "online" means online rather than "has an account".
+  lastSeenAt      DateTime?
+  /// What they're on: "question" | "course" | "lesson" | "mos" | "review" | "earnings" | "account" | "home".
+  activityKind    String?
+  /// The human version, e.g. "Writing a question · CPL Aerodynamics".
+  activityLabel   String?
+
   invitedById     String?   @db.ObjectId
+  signedDocuments SignedDocument[]
+
+  /// The member account this curator uses for the community: the forums and
+  /// private messages belong to members, so a curator joins them as one rather
+  /// than as a second class of person. Linked to an existing account where they
+  /// already have one. No relation: it's looked up on its own, and a relation
+  /// here would need a unique index Prisma only creates on `db push`.
+  userId          String?   @db.ObjectId
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 }
@@ -991,4 +1011,46 @@ model JobRun {
   result     Json?
 
   @@index([key])
+}
+
+/// A contractor document a curator has filled in and signed on the platform.
+///
+/// The record is the evidence: what they were shown (template kind + version),
+/// what they typed, their drawn signature, when, from where, and a SHA-256 of
+/// the exact PDF produced. `seal` is an HMAC over all of that, so a row that has
+/// been edited in the database afterwards no longer verifies.
+model SignedDocument {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  curatorId  String   @db.ObjectId
+  curator    Curator  @relation(fields: [curatorId], references: [id], onDelete: Cascade)
+  /// "contractor-agreement" | "rcti-agreement" | "supplier-statement"
+  kind       String
+  /// The template version signed. Old signatures keep their own wording.
+  version    String
+  title      String
+  /// The field values, as typed.
+  values     Json
+  /// Their drawn signature, as a PNG data URL.
+  signatureImage String
+  /// The name they typed under the signature.
+  signerName String
+  signedAt   DateTime @default(now())
+  ip         String?
+  userAgent  String?
+  /// Their OTP-verified mobile at the moment of signing.
+  phone      String?
+  /// SHA-256 (hex) of the PDF bytes generated and stored.
+  documentHash String
+  /// SHA-256 (hex) of any source document incorporated by reference.
+  sourceHash String?
+  seal       String
+  /// Where the generated PDF lives, as a /uploads/... URL.
+  pdfUrl     String
+  /// Set when an admin voids a signature (superseded, signed in error).
+  voidedAt   DateTime?
+  voidReason String?
+  createdAt  DateTime @default(now())
+
+  @@index([curatorId, kind])
+  @@index([signedAt])
 }

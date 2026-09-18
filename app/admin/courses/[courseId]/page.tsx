@@ -48,6 +48,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { EmptyState, PageHeader, PageShell } from "@/components/hub/page-primitives"
 import { ReviewActivity } from "@/components/review/review-activity"
 import { cn } from "@lib/utils"
+import { useStudioActivity } from "@/components/curators/presence-beacon"
 
 interface Lesson {
   id: string
@@ -113,6 +114,8 @@ export default function CourseEditorPage({ params }: { params: Promise<{ courseI
   useEffect(() => {
     fetchCourse()
   }, [courseId])
+
+  useStudioActivity(course?.title ?? null)
 
   async function fetchCourse() {
     setLoading(true)

@@ -49,6 +49,7 @@ import { cn } from "@lib/utils"
 import { MIN_QUESTIONS_PER_ITEM, type MosStatus } from "@lib/mos/subjects"
 import type { CoverageDetail, ItemCoverage, ReviewItem } from "@lib/mos/coverage"
 import type { LibraryStatus } from "@lib/mos/library"
+import { useStudioActivity } from "@/components/curators/presence-beacon"
 
 type Filter = "attention" | "all" | "missing" | "low" | "draft" | "excluded"
 type View = "review" | "items" | "content" | "modules"
@@ -237,10 +238,12 @@ function ItemRow({
         </dl>
 
         {!item.excluded && item.status !== "covered" && (
-          <Button asChild variant="outline" size="sm" className="h-8 gap-1">
+          // Solid where there's nothing at all, quieter where it's only thin:
+          // the empty standards are the ones worth walking towards.
+          <Button asChild variant={item.status === "missing" ? "default" : "outline"} size="sm" className="h-8 gap-1.5">
             <Link href={`/admin/questions?subject=${subjectId}&new=1&mos=${item.id}`}>
               <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-              Question
+              Write<span className="hidden sm:inline"> a question</span>
             </Link>
           </Button>
         )}
@@ -274,7 +277,12 @@ export function MosSubject({ subjectId }: { subjectId: string }) {
   const [view, setView] = useState<View | null>(null)
   const [filter, setFilter] = useState<Filter>("attention")
   const [query, setQuery] = useState("")
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+  /**
+   * Which unit groups are open. Empty to begin with: a subject is 100-odd
+   * standards, and a wall of them on arrival buries the two or three that
+   * actually need writing.
+   */
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [exporting, setExporting] = useState(false)
   const [excluding, setExcluding] = useState<ItemCoverage | null>(null)
   const [reason, setReason] = useState("")
@@ -295,6 +303,8 @@ export function MosSubject({ subjectId }: { subjectId: string }) {
   useEffect(() => {
     load()
   }, [load])
+
+  useStudioActivity(data?.summary?.code || subjectId)
 
   const counts = useMemo(() => {
     const c: Record<Filter, number> = { attention: 0, all: 0, missing: 0, low: 0, draft: 0, excluded: 0 }
@@ -327,6 +337,14 @@ export function MosSubject({ subjectId }: { subjectId: string }) {
     }
     return out
   }, [data, filter, query])
+
+  const searching = query.trim().length > 0
+  const allOpen = groups.length > 0 && groups.every((g) => expanded.has(g.key))
+  /** Items in view that still want a question written for them. */
+  const toWrite = useMemo(
+    () => groups.reduce((n, g) => n + g.items.filter((i) => !i.excluded && i.status !== "covered").length, 0),
+    [groups],
+  )
 
   async function exportPdf() {
     if (!data) return
@@ -414,6 +432,9 @@ export function MosSubject({ subjectId }: { subjectId: string }) {
           </p>
           <h1 className="text-display-3 font-bold text-foreground">{s.name}</h1>
           <p className="text-muted-foreground">
+            Every question for {s.code} starts here: pick the standard it proves, and write against it.
+          </p>
+          <p className="text-sm text-muted-foreground">
             {s.assessable === 0
               ? "No Schedule 3 items for this subject."
               : notMapped === 0
@@ -539,20 +560,43 @@ export function MosSubject({ subjectId }: { subjectId: string }) {
                     ) : null,
                   )}
                 </div>
-                <div className="relative w-full lg:w-72">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-                  <Label htmlFor="mos-item-search" className="sr-only">
-                    Search items
-                  </Label>
-                  <Input
-                    id="mos-item-search"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search items"
-                    className="h-9 pl-9"
-                  />
+                <div className="flex w-full items-center gap-2 lg:w-auto">
+                  <div className="relative min-w-0 flex-1 lg:w-72 lg:flex-none">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                    <Label htmlFor="mos-item-search" className="sr-only">
+                      Search items
+                    </Label>
+                    <Input
+                      id="mos-item-search"
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder="Search items"
+                      className="h-9 pl-9"
+                    />
+                  </div>
+                  {groups.length > 1 && !searching && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-9 shrink-0"
+                      onClick={() => setExpanded(allOpen ? new Set() : new Set(groups.map((g) => g.key)))}
+                    >
+                      {allOpen ? "Close all" : "Open all"}
+                    </Button>
+                  )}
                 </div>
               </div>
+
+              {groups.length > 0 && (
+                <p className="mb-3 text-sm text-muted-foreground">
+                  {searching
+                    ? `${groups.reduce((n, g) => n + g.items.length, 0)} item${groups.reduce((n, g) => n + g.items.length, 0) === 1 ? "" : "s"} found.`
+                    : toWrite > 0
+                      ? `Open a topic to see its standards. ${toWrite} of them still want a question.`
+                      : "Open a topic to see its standards."}
+                </p>
+              )}
 
               {groups.length === 0 ? (
                 <EmptyState
@@ -563,15 +607,17 @@ export function MosSubject({ subjectId }: { subjectId: string }) {
               ) : (
                 <div className="space-y-3">
                   {groups.map((g) => {
-                    const open = !collapsed.has(g.key)
+                    // Searching opens what it found: hiding the matches
+                    // behind a chevron is the one thing a search can't do.
+                    const open = expanded.has(g.key) || searching
                     return (
                       <section key={g.key} className="overflow-hidden rounded-xl border border-border bg-card shadow-e1">
                         <button
                           type="button"
                           aria-expanded={open}
                           onClick={() =>
-                            setCollapsed((c) => {
-                              const next = new Set(c)
+                            setExpanded((open) => {
+                              const next = new Set(open)
                               if (next.has(g.key)) next.delete(g.key)
                               else next.add(g.key)
                               return next
@@ -581,6 +627,14 @@ export function MosSubject({ subjectId }: { subjectId: string }) {
                         >
                           <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", !open && "-rotate-90")} aria-hidden="true" />
                           <span className="min-w-0 flex-1 truncate font-medium text-foreground">{g.label}</span>
+                          {(() => {
+                            const toWrite = g.items.filter((i) => !i.excluded && i.status !== "covered").length
+                            return toWrite > 0 ? (
+                              <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary" data-tabular>
+                                {toWrite} to write
+                              </span>
+                            ) : null
+                          })()}
                           <span className="hidden text-xs text-muted-foreground sm:inline" data-tabular>
                             {g.mapped}/{g.assessable} mapped
                           </span>

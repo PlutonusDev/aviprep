@@ -16,6 +16,7 @@ import { ForumBreadcrumb, ForumLocked, Pagination, UserAvatar, fullName, timeAgo
 import RichTextEditor, { type RichTextEditorRef } from "@/components/forum/rich-text-editor"
 import { useUser } from "@lib/user-context"
 import { cn } from "@lib/utils"
+import { CuratorBadge } from "@/components/forum/curator-badge"
 
 interface Thread {
   id: string
@@ -26,7 +27,14 @@ interface Thread {
   viewCount: number
   createdAt: string
   updatedAt: string
-  author: { id: string; firstName: string; lastName: string; profilePicture: string | null } | null
+  author: {
+    id: string
+    firstName: string
+    lastName: string
+    profilePicture: string | null
+    isCurator?: boolean | null
+    curatorCredential?: string | null
+  } | null
   _count: { posts: number }
   posts: Array<{ createdAt: string; author: { firstName: string; lastName: string } | null }>
 }
@@ -293,6 +301,7 @@ function ThreadRow({ thread, forumSlug }: { thread: Thread; forumSlug: string })
         </div>
         <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-sm text-muted-foreground">
           <span>{fullName(thread.author)}</span>
+          <CuratorBadge isCurator={thread.author?.isCurator} credential={thread.author?.curatorCredential} />
           <span aria-hidden="true">&middot;</span>
           <span>{timeAgo(thread.createdAt)}</span>
           {/* Counts inline on small screens, in columns from md up. */}

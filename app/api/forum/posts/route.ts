@@ -67,6 +67,8 @@ export async function POST(request: Request) {
               firstName: true,
               lastName: true,
               profilePicture: true,
+              isCurator: true,
+              curatorCredential: true,
               isAdmin: true,
             },
           },

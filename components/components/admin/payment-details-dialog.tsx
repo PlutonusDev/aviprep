@@ -3,7 +3,7 @@
 import type React from "react"
 import { useEffect, useId, useMemo, useState } from "react"
 import { toast } from "sonner"
-import { AlertCircle, CheckCircle2, FileText, Landmark, Loader2, ReceiptText, UserRound } from "lucide-react"
+import { AlertCircle, CheckCircle2, ExternalLink, FileText, Landmark, Loader2, ReceiptText, ShieldCheck, ShieldX, Signature, UserRound } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -33,6 +33,20 @@ interface StripeStatus {
   requirementsDue: number
   bankName: string | null
   last4: string | null
+}
+
+interface Signed {
+  id: string
+  kind: string
+  title: string
+  version: string
+  signerName: string
+  signedAt: string
+  ip: string | null
+  phone: string | null
+  fingerprint: string
+  voidedAt: string | null
+  voidReason: string | null
 }
 
 const EMPTY: Payment = {
@@ -105,6 +119,9 @@ export function PaymentDetailsDialog({
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [stripeStatus, setStripeStatus] = useState<StripeStatus | null>(null)
+  const [signatures, setSignatures] = useState<Signed[] | null>(null)
+  /** Per-signature verification, once an admin asks for it. */
+  const [checked, setChecked] = useState<Record<string, { ok: boolean; problem?: string } | "checking">>({})
 
   useEffect(() => {
     if (!open || !curator) return
@@ -135,7 +152,33 @@ export function PaymentDetailsDialog({
       })
       .catch(() => toast.error("Couldn't load payment details."))
       .finally(() => setLoading(false))
+
+    setSignatures(null)
+    setChecked({})
+    fetch(`/api/admin/curators/${curator.id}/documents`)
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((d) => setSignatures(d.signatures))
+      .catch(() => setSignatures([]))
   }, [open, curator])
+
+  /** Re-checks the seal and the stored PDF against the hash taken at signing. */
+  async function verify(documentId: string) {
+    if (!curator) return
+    setChecked((c) => ({ ...c, [documentId]: "checking" }))
+    try {
+      const res = await fetch(`/api/admin/curators/${curator.id}/documents/${documentId}?verify=1`)
+      const data = await res.json()
+      setChecked((c) => ({ ...c, [documentId]: { ok: !!data.ok, problem: data.problem } }))
+      if (data.ok) toast.success("Checks out: the record and the PDF both match what was signed.")
+      else toast.error(data.problem || "This signature didn't verify.")
+    } catch {
+      setChecked((c) => {
+        const { [documentId]: _drop, ...rest } = c
+        return rest
+      })
+      toast.error("Couldn't run the check.")
+    }
+  }
 
   const set = <K extends keyof Payment>(key: K, value: Payment[K]) => {
     setForm((f) => ({ ...f, [key]: value }))
@@ -339,6 +382,69 @@ export function PaymentDetailsDialog({
                       </div>
                     )
                   })()}
+                </Section>
+
+                <Section icon={Signature} title="Signed paperwork">
+                  {signatures === null ? (
+                    <Skeleton className="h-16 w-full" />
+                  ) : signatures.length === 0 ? (
+                    <p className="rounded-lg bg-muted p-4 text-sm text-muted-foreground">
+                      Nothing signed yet. They fill these in themselves under Paperwork in the content studio.
+                    </p>
+                  ) : (
+                    <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border">
+                      {signatures.map((row) => {
+                        const state = checked[row.id]
+                        return (
+                          <li key={row.id} className="px-3.5 py-3">
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-medium text-foreground">
+                                  {row.title}
+                                  {row.voidedAt && <span className="ml-2 text-xs font-normal text-destructive">Voided</span>}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {row.signerName} ·{" "}
+                                  {new Date(row.signedAt).toLocaleString("en-AU", { dateStyle: "medium", timeStyle: "short" })}
+                                  {row.ip && ` · ${row.ip}`}
+                                </p>
+                              </div>
+                              <Button asChild type="button" variant="ghost" size="sm" className="h-8 gap-1.5">
+                                <a href={`/api/admin/curators/${curator?.id}/documents/${row.id}`} target="_blank" rel="noreferrer">
+                                  <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                                  Open
+                                </a>
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-8 gap-1.5"
+                                onClick={() => verify(row.id)}
+                                disabled={state === "checking"}
+                              >
+                                {state === "checking" ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                                ) : state && state.ok ? (
+                                  <ShieldCheck className="h-3.5 w-3.5 text-success" aria-hidden="true" />
+                                ) : state ? (
+                                  <ShieldX className="h-3.5 w-3.5 text-destructive" aria-hidden="true" />
+                                ) : (
+                                  <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                                )}
+                                {state && state !== "checking" ? (state.ok ? "Verified" : "Failed") : "Verify"}
+                              </Button>
+                            </div>
+                            {state && state !== "checking" && !state.ok && state.problem && (
+                              <p role="alert" className="mt-1.5 text-xs text-destructive">
+                                {state.problem}
+                              </p>
+                            )}
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
                 </Section>
 
                 <Section icon={FileText} title="Notes">

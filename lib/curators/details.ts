@@ -32,6 +32,30 @@ export const credentialLabel = (id: string, short = false) => {
   return found ? (short ? found.short : found.label) : id
 }
 
+/**
+ * The one credential worth putting on a badge, in the order the industry reads
+ * them: an examiner outranks an instructor, an instructor outranks a licence.
+ * Someone with only "none" gets no credential, just the curator badge.
+ */
+const CREDENTIAL_RANK: string[] = [
+  "flight-examiner",
+  "fi-grade-1",
+  "fi-grade-2",
+  "fi-grade-3",
+  "atpl",
+  "cpl",
+  "atc",
+  "ame",
+  "ppl",
+]
+
+/** The badge shown beside a curator's name, e.g. "Grade 1 FI". Null for none. */
+export function highestCredential(credentials: string[] | null | undefined, short = true): string | null {
+  if (!credentials?.length) return null
+  const best = CREDENTIAL_RANK.find((id) => credentials.includes(id))
+  return best ? credentialLabel(best, short) : null
+}
+
 /** Applies the rules when a chip is toggled: one instructor grade, and "none" on its own. */
 export function toggleCredential(current: string[], id: string): string[] {
   if (current.includes(id)) return current.filter((c) => c !== id)

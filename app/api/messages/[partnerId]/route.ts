@@ -31,7 +31,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ part
     // Get partner info
     const partner = await prisma.user.findUnique({
       where: { id: partnerId },
-      select: { id: true, firstName: true, lastName: true, profilePicture: true },
+      select: { id: true, firstName: true, lastName: true, profilePicture: true, isCurator: true, curatorCredential: true },
     })
 
     if (!partner) {
@@ -51,7 +51,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ part
       take: 300,
       include: {
         sender: {
-          select: { id: true, firstName: true, lastName: true, profilePicture: true },
+          select: { id: true, firstName: true, lastName: true, profilePicture: true, isCurator: true, curatorCredential: true },
         },
       },
     })

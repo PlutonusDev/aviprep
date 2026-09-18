@@ -4,7 +4,6 @@ import { hashPassword } from "@lib/auth"
 import { australianMobile, checkDetails, checkPassword, readCredentials, readDetails } from "@lib/curators/details"
 import { INVITE_UNAVAILABLE, findInvite, notAccepted, notRevoked } from "@lib/curators/invites"
 import { startCuratorSession } from "@lib/curators/session"
-import { ensureCustomer } from "@lib/finance/connect"
 import { checkOtp, readChallenge } from "@lib/otp"
 import { isCuratorHost } from "@lib/tenant"
 
@@ -68,9 +67,6 @@ export async function POST(request: Request) {
       where: { email: invite.email, id: { not: invite.id }, AND: [notAccepted, notRevoked] },
       data: { revokedAt: now },
     })
-
-    // Their Stripe customer, for payouts later. Doesn't block joining if Stripe is down.
-    await ensureCustomer(curator)
 
     await startCuratorSession(curator)
     return NextResponse.json({ success: true, firstName: curator.firstName })

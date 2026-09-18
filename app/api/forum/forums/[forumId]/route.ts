@@ -56,6 +56,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ foru
               firstName: true,
               lastName: true,
               profilePicture: true,
+              isCurator: true,
+              curatorCredential: true,
             },
           },
           _count: {

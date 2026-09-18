@@ -5,6 +5,8 @@ import Link from "next/link"
 import { Loader2, Lock } from "lucide-react"
 import { AdminHeader } from "@/components/admin/header"
 import { AdminSidebar } from "@/components/admin/sidebar"
+import { CuratorSetupBanner } from "@/components/curators/setup-banner"
+import { CuratorPresence } from "@/components/curators/presence-beacon"
 import { curatorCanOpen } from "@/components/admin/admin-nav"
 import { Button } from "@/components/ui/button"
 import { useUser } from "@lib/user-context"
@@ -61,9 +63,11 @@ export default ({ children }: { children: React.ReactNode }) => {
 
   return (
     <div className="relative overflow-x-clip bg-background">
+      <CuratorPresence />
       <AdminSidebar />
       <div className="lg:pl-64">
         <AdminHeader />
+        <CuratorSetupBanner />
         <main className="min-h-[calc(100dvh-4rem)]">{content}</main>
       </div>
     </div>

@@ -4,7 +4,25 @@ import type React from "react"
 import { useCallback, useEffect, useState } from "react"
 import { formatDistanceToNowStrict } from "date-fns"
 import { toast } from "sonner"
-import { Clock, HelpCircle, Landmark, Loader2, Mail, MoreHorizontal, PenLine, Plus, Power, RotateCw, Users, X } from "lucide-react"
+import {
+  Clock,
+  GraduationCap,
+  HelpCircle,
+  Landmark,
+  Loader2,
+  Mail,
+  MoreHorizontal,
+  PenLine,
+  Plus,
+  Radio,
+  Power,
+  RotateCw,
+  ShieldCheck,
+  UserCircle,
+  Users,
+  Wallet,
+  X,
+} from "lucide-react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,6 +44,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { EmptyState, PageHeader, PageShell, SectionHeading, StatTile } from "@/components/hub/page-primitives"
 import { credentialLabel, formatMobile } from "@lib/curators/details"
+import { presenceOf, statusLine, type Presence } from "@lib/curators/presence"
 import { cn } from "@lib/utils"
 import { PaymentDetailsDialog } from "@/components/admin/payment-details-dialog"
 import { InviteDialog } from "./invite-dialog"
@@ -39,6 +58,9 @@ interface Curator {
   credentials: string[]
   isActive: boolean
   lastLoginAt: string | null
+  lastSeenAt: string | null
+  activityKind: string | null
+  activityLabel: string | null
   createdAt: string
   questions: { total: number; live: number }
 }
@@ -80,6 +102,80 @@ function StatusDot({ tone, children }: { tone: "success" | "warning" | "muted" |
       {children}
     </span>
   )
+}
+
+/** The icon beside what someone's on, so the roster scans without reading. */
+const ACTIVITY_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  question: HelpCircle,
+  course: GraduationCap,
+  lesson: GraduationCap,
+  mos: ShieldCheck,
+  review: PenLine,
+  earnings: Wallet,
+  account: UserCircle,
+  home: Users,
+}
+
+/**
+ * Whether someone is in the studio right now, and what they're on. A live dot
+ * only ever means live: the account switch is a separate, quieter line.
+ */
+function PresenceCell({ curator, now }: { curator: Curator; now: number }) {
+  const { presence, label } = statusLine(curator, now)
+  const Icon = ACTIVITY_ICONS[curator.activityKind ?? "home"] ?? Users
+  const live = presence === "online" || presence === "idle"
+
+  return (
+    <div className="min-w-0">
+      <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm text-foreground">
+        <span aria-hidden="true" className="relative flex h-2 w-2 shrink-0 items-center justify-center">
+          {presence === "online" && (
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success/70 motion-reduce:hidden" />
+          )}
+          <span
+            className={cn(
+              "relative h-2 w-2 rounded-full",
+              presence === "online" && "bg-success",
+              presence === "idle" && "bg-warning",
+              presence === "offline" && "bg-muted-foreground/40",
+              presence === "off" && "bg-destructive/60",
+            )}
+          />
+        </span>
+        <span className={cn("font-medium", !live && "text-muted-foreground")}>
+          {presence === "online" ? "Online" : presence === "idle" ? "Idle" : presence === "off" ? "Switched off" : "Offline"}
+        </span>
+      </span>
+
+      {live ? (
+        <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Icon className="h-3 w-3 shrink-0" aria-hidden="true" />
+          <span className="truncate" title={label}>
+            {curator.activityLabel || "In the studio"}
+          </span>
+        </p>
+      ) : (
+        <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+          <Clock className="h-3 w-3 shrink-0" aria-hidden="true" />
+          {curator.lastSeenAt
+            ? `Last here ${ago(curator.lastSeenAt)}`
+            : curator.lastLoginAt
+              ? `Signed in ${ago(curator.lastLoginAt)}`
+              : `Joined ${shortDate(curator.createdAt)}`}
+        </p>
+      )}
+    </div>
+  )
+}
+
+/** Online first, then idle, then whoever was here most recently. */
+const RANK: Record<Presence, number> = { online: 0, idle: 1, offline: 2, off: 3 }
+function byPresence(now: number) {
+  return (a: Curator, b: Curator) => {
+    const rank = RANK[presenceOf(a, now)] - RANK[presenceOf(b, now)]
+    if (rank !== 0) return rank
+    return (b.lastSeenAt ? Date.parse(b.lastSeenAt) : 0) - (a.lastSeenAt ? Date.parse(a.lastSeenAt) : 0)
+  }
 }
 
 function Person({
@@ -127,6 +223,8 @@ export function CuratorsContent() {
   const [busy, setBusy] = useState<string | null>(null)
   const [confirm, setConfirm] = useState<Confirm>(null)
   const [paymentFor, setPaymentFor] = useState<{ id: string; name: string } | null>(null)
+  /** Ticks so "online" fades to "idle" on screen without a reload. */
+  const [now, setNow] = useState(() => Date.now())
 
   const load = useCallback(async () => {
     try {
@@ -144,6 +242,21 @@ export function CuratorsContent() {
 
   useEffect(() => {
     load()
+  }, [load])
+
+  // Presence is only useful if it's current: re-read every half minute while
+  // the tab is in front of someone, and pick straight back up on return.
+  useEffect(() => {
+    const tick = () => {
+      setNow(Date.now())
+      if (document.visibilityState === "visible") load()
+    }
+    const timer = setInterval(tick, 30_000)
+    document.addEventListener("visibilitychange", tick)
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener("visibilitychange", tick)
+    }
   }, [load])
 
   const resend = useCallback(
@@ -208,8 +321,11 @@ export function CuratorsContent() {
 
   const openInvites = invites.filter((i) => i.status !== "revoked")
   const active = curators.filter((c) => c.isActive)
+  const online = curators.filter((c) => presenceOf(c, now) === "online")
+  const idle = curators.filter((c) => presenceOf(c, now) === "idle")
   const written = curators.reduce((n, c) => n + c.questions.total, 0)
   const live = curators.reduce((n, c) => n + c.questions.live, 0)
+  const roster = [...curators].sort(byPresence(now))
 
   const inviteButton = (
     <Button onClick={() => setInviteOpen(true)} className="h-10 gap-2 self-start">
@@ -224,8 +340,14 @@ export function CuratorsContent() {
         {inviteButton}
       </PageHeader>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-        <StatTile icon={Users} label="Active curators" value={loading ? "–" : String(active.length)} />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatTile
+          icon={Radio}
+          label="In the studio"
+          value={loading ? "–" : String(online.length)}
+          detail={loading ? undefined : idle.length ? `${idle.length} idle` : "right now"}
+        />
+        <StatTile icon={Users} label="Curators" value={loading ? "–" : String(active.length)} />
         <StatTile
           icon={Mail}
           label="Invites waiting"
@@ -318,15 +440,19 @@ export function CuratorsContent() {
           )}
 
           <section>
-            <SectionHeading title="Curators" count={String(curators.length)} />
+            <SectionHeading
+              title="Curators"
+              count={String(curators.length)}
+              description={online.length ? `${online.length} in the studio right now` : "Nobody in the studio right now"}
+            />
             {curators.length === 0 ? (
               <p className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
                 Nobody has joined yet. Accepted invites show up here.
               </p>
             ) : (
               <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card shadow-e1">
-                {curators.map((curator) => (
-                  <li key={curator.id} className="grid gap-3 px-4 py-3.5 sm:grid-cols-[minmax(0,1fr)_9rem_10rem_auto] sm:items-center sm:gap-4">
+                {roster.map((curator) => (
+                  <li key={curator.id} className="grid gap-3 px-4 py-3.5 sm:grid-cols-[minmax(0,1fr)_8.5rem_minmax(0,13rem)_auto] sm:items-center sm:gap-4">
                     <Person first={curator.firstName} last={curator.lastName} email={curator.email} dim={!curator.isActive} credentials={curator.credentials} />
 
                     <div className="text-sm">
@@ -338,13 +464,7 @@ export function CuratorsContent() {
                       </p>
                     </div>
 
-                    <div>
-                      {curator.isActive ? <StatusDot tone="success">Active</StatusDot> : <StatusDot tone="muted">Switched off</StatusDot>}
-                      <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
-                        <Clock className="h-3 w-3" aria-hidden="true" />
-                        {curator.lastLoginAt ? `Seen ${ago(curator.lastLoginAt)}` : `Joined ${shortDate(curator.createdAt)}`}
-                      </p>
-                    </div>
+                    <PresenceCell curator={curator} now={now} />
 
                     <div className="flex items-center justify-end gap-1">
                       <span className="mr-2 hidden text-xs text-muted-foreground xl:inline" data-tabular>

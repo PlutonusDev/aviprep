@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { UserAvatar, fullName } from "@/components/forum/forum-ui"
 import { useUser } from "@lib/user-context"
 import { cn } from "@lib/utils"
+import { CuratorBadge } from "@/components/forum/curator-badge"
 
 const THREAD_POLL_MS = 4000
 const LIST_POLL_MS = 15000
@@ -22,6 +23,8 @@ interface Person {
   firstName: string
   lastName: string
   profilePicture: string | null
+  isCurator?: boolean | null
+  curatorCredential?: string | null
 }
 
 interface Message {
@@ -284,8 +287,11 @@ function ConversationRow({
       />
       <span className="min-w-0 flex-1">
         <span className="flex items-baseline justify-between gap-2">
-          <span className={cn("truncate text-sm text-foreground", unread ? "font-semibold" : "font-medium")}>
-            {fullName(c.partner)}
+          <span className="flex min-w-0 items-center gap-1.5">
+            <span className={cn("truncate text-sm text-foreground", unread ? "font-semibold" : "font-medium")}>
+              {fullName(c.partner)}
+            </span>
+            <CuratorBadge isCurator={c.partner.isCurator} credential={null} />
           </span>
           <span className={cn("shrink-0 text-xs", unread ? "font-medium text-primary" : "text-muted-foreground")}>
             {listTime(c.lastMessage.createdAt)}
@@ -468,6 +474,7 @@ function Thread({
           <>
             <UserAvatar firstName={partner.firstName} lastName={partner.lastName} src={partner.profilePicture} className="h-9 w-9" />
             <h2 className="truncate font-semibold text-foreground">{name}</h2>
+            <CuratorBadge isCurator={partner.isCurator} credential={partner.curatorCredential} />
           </>
         ) : status === "loading" ? (
           <Skeleton className="h-5 w-40" />
@@ -764,7 +771,8 @@ function ComposeDialog({
                   )}
                 >
                   <UserAvatar firstName={r.firstName} lastName={r.lastName} src={r.profilePicture} className="h-9 w-9" />
-                  <span className="font-medium text-foreground">{fullName(r)}</span>
+                  <span className="min-w-0 truncate font-medium text-foreground">{fullName(r)}</span>
+                  <CuratorBadge isCurator={r.isCurator} credential={r.curatorCredential} className="ml-auto" />
                 </li>
               ))}
             </ul>

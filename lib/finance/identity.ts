@@ -3,9 +3,16 @@ import "server-only"
 import type Stripe from "stripe"
 import { prisma } from "@lib/prisma"
 import { stripe } from "@lib/stripe"
-import { ensureCustomer, stripeReturnOrigin } from "./connect"
+import { accountPerson, ensureAccount, stripeReturnOrigin } from "./connect"
 
-/** Curator KYC through Stripe Identity, using AviPrep's verification flow. Required before payouts. */
+/**
+ * Curator KYC through Stripe Identity, using AviPrep's verification flow.
+ * Required before payouts.
+ *
+ * The check is attached to the person on their connected account, so Stripe can
+ * count it towards that account's requirements instead of asking for ID twice.
+ * That means the account is created here, before onboarding.
+ */
 
 export const IDENTITY_FLOW = process.env.STRIPE_IDENTITY_FLOW || "vf_1UGLtLL8qLbqF4tCnOBGU0aO"
 
@@ -41,15 +48,30 @@ export async function verificationLink(curatorId: string, origin: string) {
     if (existing.status === "requires_input" && existing.url) return existing.url
   }
 
-  const customerId = await ensureCustomer(curator)
-  const session = await stripe.identity.verificationSessions.create({
+  const accountId = await ensureAccount(curator.id)
+  const personId = await accountPerson(accountId).catch((error) => {
+    console.error("Couldn't find the person on the connected account:", accountId, error)
+    return null
+  })
+
+  const params: Stripe.Identity.VerificationSessionCreateParams = {
     verification_flow: IDENTITY_FLOW,
     client_reference_id: curator.id,
-    ...(customerId ? { related_customer: customerId } : {}),
     provided_details: { email: curator.email, phone: curator.phone },
     return_url: `${stripeReturnOrigin(origin)}/admin/earnings?identity=returned`,
-    metadata: { curatorId: curator.id },
-  })
+    metadata: { curatorId: curator.id, stripeAccountId: accountId },
+  }
+
+  // Sharing the result with the connected account isn't available on every
+  // Stripe setup; if it's refused, verify them on their own.
+  const session = personId
+    ? await stripe.identity.verificationSessions
+        .create({ ...params, related_person: { account: accountId, person: personId } })
+        .catch((error) => {
+          console.error("Identity session with related_person failed, retrying without it:", error)
+          return stripe.identity.verificationSessions.create(params)
+        })
+    : await stripe.identity.verificationSessions.create(params)
   await prisma.curator.update({
     where: { id: curator.id },
     data: { identitySessionId: session.id, identityStatus: session.status, identityError: null },

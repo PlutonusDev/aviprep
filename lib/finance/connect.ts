@@ -3,14 +3,16 @@ import "server-only"
 import type Stripe from "stripe"
 import { prisma } from "@lib/prisma"
 import { stripe } from "@lib/stripe"
+import { BUSINESS, MERCHANT_CATEGORY_CODE, payoutDescriptor } from "./business"
 
 /**
  * Curator payouts through Stripe.
  *
- * - Each curator gets a Stripe customer when they join, and a Stripe connected
- *   account (Express) when they set up payouts. They enter their bank details
- *   on Stripe's own pages, so AviPrep never sees or stores them. All we keep
- *   is the bank name and last four digits, for showing them back.
+ * - A curator gets a Stripe connected account (Express) the first time they
+ *   verify their identity, so the ID check can be attached to the person on
+ *   that account and Stripe can reuse it during onboarding. They enter their
+ *   bank details on Stripe's own pages, so AviPrep never sees or stores them.
+ *   All we keep is the bank name and last four digits, for showing them back.
  * - A royalty is paid by transferring the statement's amount from AviPrep's
  *   Stripe balance to the curator's account. Stripe then pays it out to their
  *   bank on its usual schedule.
@@ -67,52 +69,57 @@ export function stripeErrorMessage(error: unknown) {
   return "Stripe couldn’t start that. Try again, or email hello@aviprep.com.au if it keeps happening."
 }
 
-/** Creates their Stripe customer if they don't have one. Never throws: joining mustn't fail because Stripe did. */
-export async function ensureCustomer(curator: { id: string; email: string; firstName: string; lastName: string; phone: string; stripeCustomerId?: string | null }) {
-  if (curator.stripeCustomerId || !configured()) return curator.stripeCustomerId ?? null
-  try {
-    const customer = await stripe.customers.create({
-      email: curator.email,
-      name: `${curator.firstName} ${curator.lastName}`.trim(),
-      phone: curator.phone,
-      metadata: { curatorId: curator.id, kind: "curator" },
-    })
-    await prisma.curator.update({ where: { id: curator.id }, data: { stripeCustomerId: customer.id } })
-    return customer.id
-  } catch (error) {
-    console.error("Stripe customer for curator failed:", curator.id, error)
-    return null
-  }
-}
-
 /** Their connected account, created on first use. */
-async function ensureAccount(curatorId: string) {
+export async function ensureAccount(curatorId: string) {
   const curator = await prisma.curator.findUnique({
     where: { id: curatorId },
-    select: { id: true, email: true, firstName: true, lastName: true, phone: true, stripeCustomerId: true, stripeAccountId: true },
+    select: { id: true, email: true, firstName: true, lastName: true, phone: true, stripeAccountId: true },
   })
   if (!curator) throw new Error("Curator not found")
   if (curator.stripeAccountId) return curator.stripeAccountId
 
-  await ensureCustomer(curator)
   // No idempotency key: Stripe replays a failed response for 24 hours, which
   // would keep the button broken after the cause is fixed. The id is saved
   // straight away, so a second account can't come from a normal retry.
+  // Everything we already know is prefilled, so onboarding is mostly confirming.
   const account = await stripe.accounts.create({
-      type: "express",
-      country: "AU",
+    type: "express",
+    country: "AU",
+    email: curator.email,
+    business_type: "individual",
+    capabilities: {
+      transfers: { requested: true },
+      card_payments: { requested: true },
+    },
+    business_profile: {
+      mcc: MERCHANT_CATEGORY_CODE,
+      url: `https://${BUSINESS.website}`,
+      support_email: BUSINESS.email,
+      product_description: "Writes exam questions and lessons for AviPrep and receives content royalties.",
+    },
+    individual: {
+      first_name: curator.firstName,
+      last_name: curator.lastName,
       email: curator.email,
-      business_type: "individual",
-      capabilities: {
-        transfers: { requested: true },
-        card_payments: { requested: true },
-      },
-      business_profile: { product_description: "Writes exam questions and lessons for AviPrep and receives content royalties." },
-      individual: { first_name: curator.firstName, last_name: curator.lastName, email: curator.email },
-      metadata: { curatorId: curator.id },
+      // Confirmed by SMS code when they joined.
+      phone: curator.phone,
+    },
+    settings: { payouts: { statement_descriptor: payoutDescriptor() } },
+    metadata: { curatorId: curator.id },
   })
   await prisma.curator.update({ where: { id: curator.id }, data: { stripeAccountId: account.id, stripeSyncedAt: new Date() } })
   return account.id
+}
+
+/**
+ * The individual on their connected account. An ID check pointed at this person
+ * satisfies Stripe's document requirement, so onboarding doesn't ask again.
+ */
+export async function accountPerson(accountId: string) {
+  const account = await stripe.accounts.retrieve(accountId)
+  if (account.individual?.id) return account.individual.id
+  const people = await stripe.accounts.listPersons(accountId, { limit: 1 })
+  return people.data[0]?.id ?? null
 }
 
 /** Refreshes what we show about their Stripe account. Bank details come back only as a name and last four digits. */
@@ -155,7 +162,18 @@ export async function payoutSetupLink(curatorId: string, requestOrigin: string) 
   const verified = await prisma.curator.findUnique({ where: { id: curatorId }, select: { identityStatus: true } })
   if (verified?.identityStatus !== "verified") throw new IdentityRequiredError()
   const accountId = await ensureAccount(curatorId)
-  const account = await stripe.accounts.retrieve(accountId)
+  let account = await stripe.accounts.retrieve(accountId)
+
+  // Accounts made before the descriptor existed, or if it changes.
+  const descriptor = payoutDescriptor()
+  if (account.settings?.payouts?.statement_descriptor !== descriptor) {
+    account = await stripe.accounts
+      .update(accountId, { settings: { payouts: { statement_descriptor: descriptor } } })
+      .catch((error) => {
+        console.error("Couldn't set the payout descriptor:", accountId, error)
+        return account
+      })
+  }
   await syncAccount(account)
 
   if (account.details_submitted) {
