@@ -37,9 +37,12 @@ export function primitiveSvg(p: Primitive, ink: string): string {
     attr("fill", fill) +
     attr("stroke", stroke) +
     (p.sw ? attr("stroke-width", p.sw) : "") +
+    ("dash" in p && p.dash ? attr("stroke-dasharray", p.dash) : "") +
     ' stroke-linecap="round" stroke-linejoin="round"'
 
   switch (p.t) {
+    case "text":
+      return `<text x="${p.x}" y="${p.y}" font-family="Inter, Arial, sans-serif" font-size="${p.size}" text-anchor="${p.anchor ?? "middle"}"${p.bold === false ? "" : ' font-weight="700"'}${attr("fill", fill)}>${esc(p.text)}</text>`
     case "circle":
       return `<circle cx="${p.cx}" cy="${p.cy}" r="${p.r}"${common}/>`
     case "rect":
