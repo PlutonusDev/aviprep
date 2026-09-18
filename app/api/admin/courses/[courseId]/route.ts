@@ -50,6 +50,16 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ co
 
   if (body.action === "submit") {
     if (existing.isPublished) return NextResponse.json({ error: "This course is already live." }, { status: 400 })
+    if (existing.reviewStatus === "review") {
+      return NextResponse.json({ error: "It's already with a reviewer." }, { status: 400 })
+    }
+
+    // An empty course costs a reviewer a round trip to say the obvious.
+    const lessons = await prisma.lesson.count({ where: { module: { courseId } } })
+    if (lessons === 0) {
+      return NextResponse.json({ error: "Add at least one lesson before submitting." }, { status: 400 })
+    }
+
     const course = await prisma.course.update({
       where: { id: courseId },
       data: { reviewStatus: "review", submittedById: staff.userId, submittedAt: new Date(), ...clearRejection },

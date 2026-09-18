@@ -45,6 +45,7 @@ import {
   Video,
   HelpCircle,
   Layers,
+  Send,
   CreditCard,
 } from "lucide-react"
 import { LICENSE_TYPES, getSubjectsByLicense } from "@lib/subjects"
@@ -437,13 +438,24 @@ export default function CoursesAdminContent() {
                       )}
                     </p>
 
-                    <div className="mt-auto pt-4">
-                      <Button asChild variant="outline" className="h-10 w-full gap-1.5">
+                    <div className="mt-auto flex gap-2 pt-4">
+                      <Button asChild variant="outline" className="h-10 flex-1 gap-1.5">
                         <Link href={`/admin/courses/${course.id}`}>
                           Open course
                           <ChevronRight className="h-4 w-4" aria-hidden="true" />
                         </Link>
                       </Button>
+                      {/* A curator's draft says what to do with it, rather than
+                          hiding the only way forward in the actions menu. */}
+                      {!isAdmin && !course.isPublished && course.reviewStatus !== "review" && (
+                        <Button
+                          className="h-10 shrink-0 gap-1.5"
+                          onClick={() => courseAction(course.id, "submit")}
+                        >
+                          <Send className="h-4 w-4" aria-hidden="true" />
+                          {course.reviewStatus === "changes" || course.reviewStatus === "rejected" ? "Resubmit" : "Submit"}
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </article>

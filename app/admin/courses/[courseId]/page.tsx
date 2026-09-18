@@ -49,6 +49,7 @@ import { EmptyState, PageHeader, PageShell } from "@/components/hub/page-primiti
 import { ReviewActivity } from "@/components/review/review-activity"
 import { cn } from "@lib/utils"
 import { useStudioActivity } from "@/components/curators/presence-beacon"
+import { CourseSubmit } from "@/components/admin/course-submit"
 
 interface Lesson {
   id: string
@@ -73,6 +74,9 @@ interface Course {
   description: string
   subjectId: string
   isPublished: boolean
+  /** null | "review" | "changes" | "rejected". Unpublished courses only. */
+  reviewStatus?: string | null
+  rejectionReason?: string | null
   modules: Module[]
 }
 
@@ -365,6 +369,18 @@ export default function CourseEditorPage({ params }: { params: Promise<{ courseI
           Courses
         </Link>
       </Button>
+
+      {/* A curator's one hand-over point. Admins publish instead, so they
+          don't need it. */}
+      {!user?.isAdmin && !course.isPublished && (
+        <CourseSubmit
+          courseId={course.id}
+          reviewStatus={course.reviewStatus}
+          lessonCount={lessonCount}
+          feedback={course.rejectionReason}
+          onSubmitted={fetchCourse}
+        />
+      )}
 
       <PageHeader
         title={course.title}
