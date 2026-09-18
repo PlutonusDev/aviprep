@@ -97,6 +97,8 @@ export default function CourseEditorPage({ params }: { params: Promise<{ courseI
   const [reordering, setReordering] = useState(false)
   /** Lessons without a primary Part 61 MOS item - they block publishing. */
   const [mosUnmapped, setMosUnmapped] = useState<string[]>([])
+  /** Curators: whether they've written anything in this course. */
+  const [canSubmit, setCanSubmit] = useState(false)
 
   // Module dialog
   const [moduleDialogOpen, setModuleDialogOpen] = useState(false)
@@ -128,6 +130,7 @@ export default function CourseEditorPage({ params }: { params: Promise<{ courseI
       const data = await res.json()
       setCourse(data.course)
       setMosUnmapped(data.mosUnmappedLessonIds ?? [])
+      setCanSubmit(!!data.canSubmit)
     } catch (error) {
       console.error("Failed to fetch course:", error)
     } finally {
@@ -376,6 +379,7 @@ export default function CourseEditorPage({ params }: { params: Promise<{ courseI
         <CourseSubmit
           courseId={course.id}
           reviewStatus={course.reviewStatus}
+          canSubmit={canSubmit}
           lessonCount={lessonCount}
           feedback={course.rejectionReason}
           onSubmitted={fetchCourse}

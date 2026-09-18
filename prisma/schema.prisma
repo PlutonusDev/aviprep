@@ -1074,3 +1074,30 @@ model SignedDocument {
   @@index([curatorId, kind])
   @@index([signedAt])
 }
+
+/// A diagram drawn in the studio: charts, circuit patterns, navaid layouts.
+///
+/// The scene is the source of truth and stays editable; `pngUrl` is a flat
+/// render of it, published so a question or a lesson can point at an image
+/// without knowing anything about diagrams.
+model Diagram {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  title     String
+  /// Which subject it belongs to, for finding it again. Blank means general.
+  subjectId String?
+  /// The document (lib/diagrams/scene.ts). Read through readScene(), never raw.
+  scene     Json
+  width     Int      @default(1200)
+  height    Int      @default(675)
+  /// The last published render, as a /uploads URL.
+  pngUrl    String?
+  publishedAt DateTime?
+  /// Whoever drew it: an admin User id or a Curator id, like the rest of the
+  /// content workflow.
+  authorId  String?  @db.ObjectId
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([subjectId])
+  @@index([updatedAt])
+}

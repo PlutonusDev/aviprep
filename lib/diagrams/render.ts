@@ -9,6 +9,7 @@
 import {
   DASH_ARRAY,
   boundsOf,
+  type Point,
   type DiagramNode,
   type ImageNode,
   type LineNode,
@@ -81,11 +82,42 @@ function textSvg(node: TextNode): string {
   return `<text x="${n(node.x)}" y="${n(node.y)}" text-anchor="${node.align}" font-family="Inter, Arial, sans-serif" font-size="${n(node.size)}"${node.bold ? ' font-weight="700"' : ""} fill="${esc(node.colour)}"${transformFor(node)}>${spans}</text>`
 }
 
-function lineSvg(node: LineNode, idPrefix: string): string {
+/**
+ * An arrowhead as a filled triangle, tip on the vertex.
+ *
+ * SVG markers would be the idiomatic way, and browsers render them correctly -
+ * but several SVG rasterisers ignore markers entirely, and the export path runs
+ * through one. Geometry works everywhere, and it isn't much geometry.
+ */
+function arrowHead(tip: Point, from: Point, colour: string, width: number): string {
+  const angle = Math.atan2(tip.y - from.y, tip.x - from.x)
+  const length = Math.max(8, width * 4)
+  const half = Math.max(3, width * 1.6)
+  // The two base corners, square to the line.
+  const base = { x: tip.x - Math.cos(angle) * length, y: tip.y - Math.sin(angle) * length }
+  const nx = Math.cos(angle + Math.PI / 2) * half
+  const ny = Math.sin(angle + Math.PI / 2) * half
+  const points = [
+    `${n(tip.x)},${n(tip.y)}`,
+    `${n(base.x + nx)},${n(base.y + ny)}`,
+    `${n(base.x - nx)},${n(base.y - ny)}`,
+  ].join(" ")
+  return `<polygon points="${points}" fill="${esc(colour)}"/>`
+}
+
+function lineSvg(node: LineNode): string {
   const points = node.points.map((p) => `${n(p.x)},${n(p.y)}`).join(" ")
   const dash = DASH_ARRAY[node.dash]
-  const marker = (end: "start" | "end") => `url(#${idPrefix}arrow-${end}-${node.id})`
-  return `<polyline points="${points}" fill="none" stroke="${esc(node.colour)}" stroke-width="${n(node.width)}"${attr("stroke-dasharray", dash)} stroke-linecap="round" stroke-linejoin="round"${node.arrowStart ? ` marker-start="${marker("start")}"` : ""}${node.arrowEnd ? ` marker-end="${marker("end")}"` : ""}${transformFor(node)}/>`
+  const line = `<polyline points="${points}" fill="none" stroke="${esc(node.colour)}" stroke-width="${n(node.width)}"${attr("stroke-dasharray", dash)} stroke-linecap="round" stroke-linejoin="round"/>`
+
+  const last = node.points[node.points.length - 1]
+  const secondLast = node.points[node.points.length - 2]
+  const heads =
+    (node.arrowEnd && secondLast ? arrowHead(last, secondLast, node.colour, node.width) : "") +
+    (node.arrowStart && node.points[1] ? arrowHead(node.points[0], node.points[1], node.colour, node.width) : "")
+
+  // Grouped so the whole thing, heads included, rotates together.
+  return heads ? `<g${transformFor(node)}>${line}${heads}</g>` : `<g${transformFor(node)}>${line}</g>`
 }
 
 function shapeSvg(node: ShapeNode): string {
@@ -108,28 +140,12 @@ export function nodeSvg(node: DiagramNode, idPrefix = ""): string {
     case "text":
       return textSvg(node)
     case "line":
-      return lineSvg(node, idPrefix)
+      return lineSvg(node)
     case "image":
       return imageSvg(node)
     default:
       return shapeSvg(node)
   }
-}
-
-/** One marker per line, because an arrowhead takes the line's own colour. */
-function arrowDefs(scene: Scene, idPrefix: string): string {
-  return scene.nodes
-    .filter((node): node is LineNode => node.kind === "line" && (!!node.arrowStart || !!node.arrowEnd))
-    .flatMap((node) => {
-      const head = (end: "start" | "end", path: string) =>
-        `<marker id="${idPrefix}arrow-${end}-${node.id}" viewBox="0 0 10 10" refX="${end === "end" ? 8 : 2}" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse" markerUnits="strokeWidth"><path d="${path}" fill="${esc(node.colour)}"/></marker>`
-      return [
-        node.arrowStart ? head("start", "M 10 0 L 0 5 L 10 10 z") : "",
-        node.arrowEnd ? head("end", "M 0 0 L 10 5 L 0 10 z") : "",
-      ]
-    })
-    .filter(Boolean)
-    .join("")
 }
 
 export const GRID = 40
@@ -160,12 +176,12 @@ export function backgroundSvg(scene: Scene, idPrefix = ""): { defs: string; body
 }
 
 /**
- * The whole diagram. `idPrefix` keeps pattern and marker ids unique when more
+ * The whole diagram. `idPrefix` keeps the background pattern ids unique when more
  * than one diagram is on a page.
  */
 export function sceneToSvg(scene: Scene, { idPrefix = "", title = "" } = {}): string {
   const background = backgroundSvg(scene, idPrefix)
-  const defs = background.defs + arrowDefs(scene, idPrefix)
+  const defs = background.defs
   const body = scene.nodes.map((node) => nodeSvg(node, idPrefix)).join("")
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${scene.width}" height="${scene.height}" viewBox="0 0 ${scene.width} ${scene.height}">` +

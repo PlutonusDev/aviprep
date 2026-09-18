@@ -11,6 +11,7 @@ import {
   Mail,
   MessageSquare,
   Package,
+  PenTool,
   PenLine,
   Settings,
   ShieldCheck,
@@ -58,6 +59,8 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
       { name: "Questions", href: "/admin/questions", icon: HelpCircle },
       //{ name: "AI generator", href: "/admin/questions/generate", icon: Sparkles },
       { name: "MOS coverage", href: "/admin/mos", icon: ShieldCheck, curator: true, curatorName: "Question bank" },
+      // Admin-only while it settles; curators get it once it has.
+      { name: "Diagrams", href: "/admin/diagrams", icon: PenTool },
       // Their own work: everything they've written, in whatever state it's in.
       { name: "Library", href: "/admin/library", icon: Library, curator: true, curatorOnly: true },
     ],

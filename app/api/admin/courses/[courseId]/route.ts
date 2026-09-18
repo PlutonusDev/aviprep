@@ -5,6 +5,7 @@ import { isResponse, pick, requireStaff } from "@lib/staff"
 import { lessonsMissingPrimary } from "@lib/mos/coverage"
 import { withPrimaryMapping } from "@lib/mos/mappings"
 import { decide, logEvent } from "@lib/review/review"
+import { contributedCourseIds, hasContributed } from "@lib/courses/contribution"
 
 const clearRejection = { rejectionReason: null, rejectedAt: null, rejectionForId: null, changesRequestedAt: null }
 
@@ -29,7 +30,13 @@ export async function GET(_request: Request, { params }: { params: Promise<{ cou
   if (!course) return NextResponse.json({ error: "Course not found" }, { status: 404 })
   const lessonIds = course.modules.flatMap((m) => m.lessons.map((l) => l.id))
   const mapped = await withPrimaryMapping("lesson", lessonIds)
-  return NextResponse.json({ course, role: staff.role, mosUnmappedLessonIds: lessonIds.filter((id) => !mapped.has(id)) })
+  return NextResponse.json({
+    course,
+    role: staff.role,
+    mosUnmappedLessonIds: lessonIds.filter((id) => !mapped.has(id)),
+    // Admins publish rather than submit, so the question only applies to curators.
+    canSubmit: staff.isAdmin ? false : await hasContributed(courseId, staff.userId),
+  })
 }
 
 /**
@@ -58,6 +65,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ co
     const lessons = await prisma.lesson.count({ where: { module: { courseId } } })
     if (lessons === 0) {
       return NextResponse.json({ error: "Add at least one lesson before submitting." }, { status: 400 })
+    }
+
+    // Course shells are created in advance, so a curator submitting one they
+    // haven't written in would be handing over somebody else's work.
+    if (!staff.isAdmin && !(await hasContributed(courseId, staff.userId))) {
+      return NextResponse.json({ error: "Write a lesson in this course before submitting it." }, { status: 403 })
     }
 
     const course = await prisma.course.update({

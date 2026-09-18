@@ -66,6 +66,8 @@ interface Course {
   order: number
   isPublished: boolean
   reviewStatus?: string | null
+  /** Curators: they've written something in it, so it's theirs to submit. */
+  canSubmit?: boolean
   hasPendingRevision?: boolean
   _count: {
     modules: number
@@ -402,6 +404,7 @@ export default function CoursesAdminContent() {
                               )}
                             </>
                           ) : (
+                            course.canSubmit &&
                             !course.isPublished &&
                             course.reviewStatus !== "review" && (
                               <DropdownMenuItem onClick={() => courseAction(course.id, "submit")}>
@@ -447,7 +450,7 @@ export default function CoursesAdminContent() {
                       </Button>
                       {/* A curator's draft says what to do with it, rather than
                           hiding the only way forward in the actions menu. */}
-                      {!isAdmin && !course.isPublished && course.reviewStatus !== "review" && (
+                      {!isAdmin && course.canSubmit && !course.isPublished && course.reviewStatus !== "review" && (
                         <Button
                           className="h-10 shrink-0 gap-1.5"
                           onClick={() => courseAction(course.id, "submit")}

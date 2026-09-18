@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@lib/prisma"
 import { getSubjectsByLicense, type LicenseType } from "@lib/subjects"
 import { isResponse, requireStaff } from "@lib/staff"
+import { contributedCourseIds } from "@lib/courses/contribution"
 
 export async function GET(request: Request) {
   const staff = await requireStaff({ curators: true })
@@ -22,8 +23,15 @@ export async function GET(request: Request) {
     orderBy: [{ order: "asc" }, { createdAt: "desc" }],
   })
 
+  const mine = staff.isAdmin ? null : await contributedCourseIds(courses.map((c) => c.id), staff.userId)
+
   return NextResponse.json({
-    courses: courses.map((c) => ({ ...c, hasPendingRevision: !!c.pendingRevision })),
+    courses: courses.map((c) => ({
+      ...c,
+      hasPendingRevision: !!c.pendingRevision,
+      /** Curators only: they've written something in it, so they can submit it. */
+      canSubmit: mine ? mine.has(c.id) : false,
+    })),
     role: staff.role,
   })
 }

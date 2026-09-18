@@ -17,6 +17,7 @@ import { cn } from "@lib/utils"
 export function CourseSubmit({
   courseId,
   reviewStatus,
+  canSubmit,
   lessonCount,
   feedback,
   onSubmitted,
@@ -25,6 +26,8 @@ export function CourseSubmit({
   courseId: string
   /** null | "review" | "changes" | "rejected" */
   reviewStatus?: string | null
+  /** They've written something in this course. Shells they haven't touched aren't theirs to hand over. */
+  canSubmit: boolean
   lessonCount: number
   /** The last thing an admin said, when they asked for changes. */
   feedback?: string | null
@@ -70,6 +73,7 @@ export function CourseSubmit({
 
   const returned = reviewStatus === "changes" || reviewStatus === "rejected"
   const empty = lessonCount === 0
+  const blocked = empty || !canSubmit
 
   return (
     <div
@@ -95,11 +99,13 @@ export function CourseSubmit({
                 : "Ready for review?"}
           </p>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            {empty
-              ? "Add a lesson first. A course goes for review with its modules and lessons."
-              : returned
-                ? "Make the changes and send it back."
-                : "The whole course goes at once, modules and lessons included."}
+            {!canSubmit
+              ? "Write a lesson in this course first. You can only send work you've had a hand in."
+              : empty
+                ? "Add a lesson first. A course goes for review with its modules and lessons."
+                : returned
+                  ? "Make the changes and send it back."
+                  : "The whole course goes at once, modules and lessons included."}
           </p>
           {returned && feedback && (
             <p className="mt-2 whitespace-pre-line rounded-lg bg-background/70 px-3 py-2 text-sm text-foreground">{feedback}</p>
@@ -107,7 +113,7 @@ export function CourseSubmit({
         </div>
 
         {!open && (
-          <Button onClick={() => setOpen(true)} disabled={empty} className="h-10 shrink-0 gap-2">
+          <Button onClick={() => setOpen(true)} disabled={blocked} className="h-10 shrink-0 gap-2">
             <Send className="h-4 w-4" aria-hidden="true" />
             {returned ? "Resubmit" : "Submit for review"}
           </Button>
