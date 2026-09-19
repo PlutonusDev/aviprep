@@ -119,7 +119,7 @@ export function MosOverview() {
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <StatTile icon={Gauge} label="Mapped" value={`${totals.percent}%`} detail={`${totals.mapped.toLocaleString()} of ${totals.assessable.toLocaleString()} items`} />
             <StatTile icon={ListChecks} label="Not mapped" value={totals.notMapped.toLocaleString()} />
-            <StatTile icon={AlertTriangle} label="Low on questions" value={totals.low.toLocaleString()} detail={`Fewer than ${MIN_QUESTIONS_PER_ITEM}`} />
+            <StatTile icon={AlertTriangle} label="Partly covered" value={totals.low.toLocaleString()} detail={`Needs ${MIN_QUESTIONS_PER_ITEM} questions and a lesson`} />
             <StatTile
               icon={FileQuestion}
               label="Unlinked content"
@@ -207,7 +207,7 @@ export function MosOverview() {
                           {notMapped} item{notMapped === 1 ? "" : "s"} missing
                         </>
                       )}
-                      {s.lowDensity > 0 && <span className="text-muted-foreground"> · {s.lowDensity} low on questions</span>}
+                      {s.lowDensity > 0 && <span className="text-muted-foreground"> · {s.lowDensity} partly covered</span>}
                     </p>
                     {unlinked > 0 && (
                       <p className="mt-1 text-xs font-medium text-warning" data-tabular>

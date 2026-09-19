@@ -110,11 +110,11 @@ export async function downloadChangeReportPdf(report: ChangeReport, status: Repo
   sectionTitle("Notes", y)
   bullets(
     [
-      "Items are matched between compilations by their wording, so renumbered and moved items keep their links.",
-      "Links to significantly reworded items are kept but flagged for a reviewer to confirm. Minor wording changes keep their links.",
-      "Links to removed items stop counting towards coverage and are flagged for re-mapping, with likely replacements suggested.",
+      "Items are matched between compilations by wording, so renumbered items keep their links.",
+      "A significant rewording keeps the link and flags it for a reviewer; a minor one doesn't.",
+      "Links on a removed item are moved to the item named in section 2, or flagged for re-mapping.",
       "New items start unmapped and show as gaps until content is linked.",
-      "Every flagged link is resolved by a person. Nothing is re-mapped automatically.",
+      "A person decides each of these. No link is re-mapped on its own.",
     ],
     y + 6,
   )
@@ -150,14 +150,14 @@ export async function downloadChangeReportPdf(report: ChangeReport, status: Repo
     autoTable(doc, {
       ...tableDefaults,
       startY: 37,
-      head: [["MOS ID", "Requirement", "Subjects", "Affected AviPrep content", "Likely replacements"]],
+      head: [["MOS ID", "Requirement", "Subjects", "Affected AviPrep content", "Links moved to"]],
       body: report.removed.map((r) =>
         [
           r.id,
           r.text,
           r.subjects.join(", ") || "-",
           contentCell(r.content),
-          r.suggestions.map((s) => `${s.id} (${Math.round(s.similarity * 100)}%): ${s.text}`).join("\n") || "-",
+          r.movedTo ?? (r.links ? "Flagged for review" : "-"),
         ].map(pdfSafe),
       ),
       columnStyles: { 0: { cellWidth: 28, fontStyle: "bold" }, 1: { cellWidth: 70 }, 2: { cellWidth: 20 }, 3: { cellWidth: 70 } },

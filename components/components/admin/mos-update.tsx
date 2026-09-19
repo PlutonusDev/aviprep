@@ -94,6 +94,22 @@ function UpdateDialog({
   onApplied: () => void
 }) {
   const [applying, setApplying] = useState(false)
+  /**
+   * Where each removed item's links should go, keyed by MOS ID. Starts on the
+   * closest current item so the common case is a glance and an apply; clearing
+   * one sends its links to the review queue instead.
+   */
+  const [remap, setRemap] = useState<Record<string, string>>(() =>
+    // Only rows that are actually listed below: nothing moves unseen.
+    Object.fromEntries(
+      preview.removed
+        .slice(0, LIST_CAP)
+        .filter((r) => r.links > 0 && r.candidates?.length)
+        .map((r) => [r.id, r.candidates![0].id]),
+    ),
+  )
+  const movingLinks = preview.removed.reduce((n, r) => n + (remap[r.id] ? r.links : 0), 0)
+  const toReview = preview.removed.reduce((n, r) => n + (remap[r.id] ? 0 : r.links), 0)
   const [tab, setTab] = useState<Tab>(preview.removed.length ? "removed" : preview.reworded.length ? "reworded" : preview.moved.length ? "moved" : "added")
   const c = preview.counts
 
@@ -103,7 +119,7 @@ function UpdateDialog({
       const res = await fetch("/api/admin/mos/library", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "apply", builtAt: preview.builtAt }),
+        body: JSON.stringify({ action: "apply", builtAt: preview.builtAt, remap }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error)
@@ -113,7 +129,9 @@ function UpdateDialog({
           ? `Loaded ${r.added.toLocaleString()} items`
           : r.flaggedLinks
             ? `Updated. ${r.flaggedLinks} link${r.flaggedLinks === 1 ? "" : "s"} to review.`
-            : "Updated. All links kept.",
+            : r.movedLinks
+              ? `Updated. ${r.movedLinks} link${r.movedLinks === 1 ? "" : "s"} moved.`
+              : "Updated. All links kept.",
       )
       onOpenChange(false)
       onApplied()
@@ -166,18 +184,23 @@ function UpdateDialog({
                 <p className="flex items-center gap-2 rounded-lg border border-success/30 bg-success/10 p-3 text-sm text-foreground">
                   <Link2 className="h-4 w-4 shrink-0 text-success" aria-hidden="true" />
                   <span>
-                    <strong data-tabular>{preview.carriedLinks.toLocaleString()}</strong> link{preview.carriedLinks === 1 ? "" : "s"} kept
+                    <strong data-tabular>{(preview.carriedLinks + movingLinks).toLocaleString()}</strong> link
+                    {preview.carriedLinks + movingLinks === 1 ? "" : "s"} kept
                   </span>
                 </p>
                 <p
                   className={cn(
                     "flex items-center gap-2 rounded-lg border p-3 text-sm text-foreground",
-                    preview.flaggedLinks ? "border-warning/40 bg-warning/10" : "border-border bg-muted/40",
+                    preview.flaggedLinks - movingLinks ? "border-warning/40 bg-warning/10" : "border-border bg-muted/40",
                   )}
                 >
-                  <AlertTriangle className={cn("h-4 w-4 shrink-0", preview.flaggedLinks ? "text-warning" : "text-muted-foreground")} aria-hidden="true" />
+                  <AlertTriangle
+                    className={cn("h-4 w-4 shrink-0", preview.flaggedLinks - movingLinks ? "text-warning" : "text-muted-foreground")}
+                    aria-hidden="true"
+                  />
                   <span>
-                    <strong data-tabular>{preview.flaggedLinks.toLocaleString()}</strong> link{preview.flaggedLinks === 1 ? "" : "s"} to review
+                    <strong data-tabular>{(preview.flaggedLinks - movingLinks).toLocaleString()}</strong> link
+                    {preview.flaggedLinks - movingLinks === 1 ? "" : "s"} to review
                   </span>
                 </p>
               </div>
@@ -215,27 +238,71 @@ function UpdateDialog({
                     (preview.removed.length === 0 ? (
                       <Empty text="Nothing removed." />
                     ) : (
-                      <ul className="space-y-2">
-                        {preview.removed.slice(0, LIST_CAP).map((r) => (
-                          <li key={r.id} className="rounded-lg border border-border p-3">
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="font-mono text-sm font-semibold text-foreground">{r.id}</span>
-                              <Links n={r.links} />
-                            </div>
-                            <p className="mt-1 text-sm text-muted-foreground">{r.text}</p>
-                            {r.suggestions.length > 0 && (
-                              <p className="mt-2 text-xs text-muted-foreground">
-                                Closest:{" "}
-                                {r.suggestions.map((s) => (
-                                  <span key={s.id} className="mr-2 font-mono text-foreground">
-                                    {s.id} <span className="font-sans text-muted-foreground">({Math.round(s.similarity * 100)}%)</span>
-                                  </span>
-                                ))}
-                              </p>
-                            )}
-                          </li>
-                        ))}
-                      </ul>
+                      <>
+                        {movingLinks + toReview > 0 && (
+                          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm">
+                            <span className="text-muted-foreground">
+                              <strong className="font-medium text-foreground" data-tabular>
+                                {movingLinks}
+                              </strong>{" "}
+                              link{movingLinks === 1 ? "" : "s"} moving,{" "}
+                              <strong className="font-medium text-foreground" data-tabular>
+                                {toReview}
+                              </strong>{" "}
+                              going to the review queue
+                            </span>
+                            <Button variant="ghost" size="sm" className="h-7" onClick={() => setRemap({})} disabled={movingLinks === 0}>
+                              Send all to review
+                            </Button>
+                          </div>
+                        )}
+                        <ul className="space-y-2">
+                          {preview.removed.slice(0, LIST_CAP).map((r) => {
+                            const candidates = r.candidates ?? []
+                            const destination = candidates.find((cd) => cd.id === remap[r.id])
+                            return (
+                              <li key={r.id} className="rounded-lg border border-border p-3">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="font-mono text-sm font-semibold text-foreground">{r.id}</span>
+                                  <Links n={r.links} />
+                                </div>
+                                <p className="mt-1 text-sm text-muted-foreground">{r.text}</p>
+
+                                {r.links > 0 && candidates.length > 0 && (
+                                  <div className="mt-3 border-t border-border pt-3">
+                                    <label htmlFor={`to-${r.id}`} className="text-xs font-medium text-muted-foreground">
+                                      Move its links to
+                                    </label>
+                                    <select
+                                      id={`to-${r.id}`}
+                                      value={remap[r.id] ?? ""}
+                                      onChange={(e) =>
+                                        setRemap((prev) => {
+                                          const next = { ...prev }
+                                          if (e.target.value) next[r.id] = e.target.value
+                                          else delete next[r.id]
+                                          return next
+                                        })
+                                      }
+                                      className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                    >
+                                      {candidates.map((cd) => (
+                                        <option key={cd.id} value={cd.id}>
+                                          {cd.id}
+                                        </option>
+                                      ))}
+                                      <option value="">Nothing — send to the review queue</option>
+                                    </select>
+                                    <p className="mt-1.5 text-xs text-muted-foreground">
+                                      {destination ? destination.text : "Someone picks the item later, from the whole Schedule."}
+                                    </p>
+                                  </div>
+                                )}
+                              </li>
+                            )
+                          })}
+                        </ul>
+                      </>
                     ))}
 
                   {tab === "reworded" &&

@@ -67,7 +67,7 @@ function SectionIntro({ eyebrow, title, body, center = true }: { eyebrow: string
 const FAQ = [
   {
     q: "When does AviPrep launch?",
-    a: "We're finishing validation with flight training organisations now. Everyone on the waitlist gets early access before the public launch, and we'll email you the moment it opens.",
+    a: "We're testing it with a handful of flight schools at the moment. Everyone on the waitlist gets in before the public launch, and we'll email you the day it opens.",
   },
   {
     q: "Is it aligned to the CASA syllabus?",
@@ -75,15 +75,15 @@ const FAQ = [
   },
   {
     q: "Which licences are covered?",
-    a: "RPL, PPL and CPL theory subjects at launch, with ATPL and the Instrument Rating (IREX) coming after.",
+    a: "RPL, PPL and CPL theory at launch. ATPL and the Instrument Rating (IREX) come after.",
   },
   {
     q: "What does joining the waitlist get me?",
-    a: "Early access, and 20% off all study hub digital products for life. We ask for your mobile so we can confirm it's really you; we won't spam you.",
+    a: "Early access, and 20% off every study hub digital product for as long as you're with us. We ask for your mobile to check you're a real person, and that's all we use it for.",
   },
   {
     q: "I run a flight school. Can my students use it?",
-    a: "Yes. Schools get their own branded portal on their own subdomain, assign subjects to students or groups, and see their progress. Get in touch below and we'll walk you through it.",
+    a: "Yes. You get your own branded portal on your own subdomain, hand out subjects to students or whole classes, and watch how they're going. Get in touch below and we'll show you.",
   },
 ]
 
@@ -157,8 +157,8 @@ export default function LandingPage() {
                   Pass your CASA theory exams <span className="text-primary">first time.</span>
                 </h1>
                 <p className="mt-6 max-w-xl text-lead text-muted-foreground text-pretty">
-                  Lessons, exam-style practice and insights that show exactly which topics are costing you marks. RPL
-                  through CPL, on your laptop or your phone.
+                  Practice exams modelled on the real sitting, and a breakdown of the topics you&apos;re getting
+                  wrong. RPL through CPL, on a laptop or your phone.
                 </p>
 
                 <div className="mt-8 flex flex-wrap gap-3 lg:mt-7">
@@ -172,7 +172,7 @@ export default function LandingPage() {
                 </div>
 
                 <ul className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
-                  {["20% off for life when you join", `${subjectCount} theory subjects`, "Built in Australia"].map((t) => (
+                  {["20% off for life if you join the waitlist", `${subjectCount} theory subjects`, "Built in Australia"].map((t) => (
                     <li key={t} className="flex items-center gap-2">
                       <Check className="h-4 w-4 text-primary" aria-hidden="true" />
                       {t}
@@ -225,7 +225,7 @@ export default function LandingPage() {
               <SectionIntro
                 eyebrow="How it works"
                 title="Your study plan, run like a pre-flight checklist"
-                body="Five steps from first lesson to exam-ready. Every one is built into AviPrep."
+                body="Five steps between your first lesson and walking into the exam."
               />
               <div className="mt-16">
                 <PreflightChecklist />
@@ -243,7 +243,6 @@ export default function LandingPage() {
               <SectionIntro
                 eyebrow="In the cockpit"
                 title="Everything else you'd want on board"
-                body="The details that make daily study easier, and exam day less of a surprise."
               />
               <div className="mt-14">
                 <FeatureBento />
@@ -257,7 +256,7 @@ export default function LandingPage() {
               <SectionIntro
                 eyebrow="Licences"
                 title="From your first solo to the airline seat"
-                body="Subjects organised by licence, so you always know what's next."
+                body="Subjects grouped by licence."
               />
               <div className="mt-14 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
                 {LICENSE_TYPES.map((l, i) => {
@@ -302,7 +301,8 @@ export default function LandingPage() {
                 <div>
                   <p className="font-heading text-2xl font-bold">20% off, for life.</p>
                   <p className="mt-1 max-w-xl text-background/70">
-                    Everyone who joins the waitlist before launch keeps the discount on all study hub products. Forever.
+                    Join before we launch and you keep 20% off every study hub product, for as long as you&apos;re
+                    with us.
                   </p>
                 </div>
               </div>
@@ -331,15 +331,14 @@ export default function LandingPage() {
                       </p>
                       <h2 className="mt-3 text-display-3 font-bold text-balance">Give your students AviPrep, under your brand</h2>
                       <p className="mt-3 text-muted-foreground">
-                        A white-label theory portal on your own subdomain, with the control and visibility a training
-                        organisation needs.
+                        Your subdomain, your logo, your students. You can see how each of them is tracking.
                       </p>
                       <ul className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2">
                         {[
                           { icon: Palette, title: "Your brand", body: "Your logo, colours and subdomain. Co-branded welcome emails." },
                           { icon: Users, title: "Students & groups", body: "Add students and assign subjects one by one or by class." },
-                          { icon: BarChart3, title: "Progress you can see", body: "Track exam results and study activity across your cohort." },
-                          { icon: BellRing, title: "You choose the features", body: "Turn forums, messages or insights on or off for your school." },
+                          { icon: BarChart3, title: "Progress you can see", body: "Who's studying, who's stalled, and how the cohort is tracking." },
+                          { icon: BellRing, title: "Your call on features", body: "Forums, messages and insights go on or off for your school." },
                         ].map((b) => (
                           <li key={b.title} className="flex gap-3">
                             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
@@ -355,9 +354,10 @@ export default function LandingPage() {
                     </div>
                   </div>
                   <div className="p-8 sm:p-10">
-                    <h3 className="font-heading text-xl font-bold text-foreground">Talk to our partnerships team</h3>
+                    <h3 className="font-heading text-xl font-bold text-foreground">Let&apos;s talk</h3>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      Institutional pricing, a demo portal and onboarding help. We&apos;ll reply within two business days.
+                      Pricing, a demo portal, and a hand getting your students set up. We&apos;ll come back to you
+                      within two business days.
                     </p>
                     <div className="mt-6">
                       <RtoForm />
@@ -378,8 +378,8 @@ export default function LandingPage() {
                   {[
                     { icon: Sparkles, title: "Early access", body: "Start studying before the public launch." },
                     { icon: Percent, title: "20% off for life", body: "On all study hub digital products." },
-                    { icon: BookOpen, title: "Syllabus updates", body: "Hear when CASA changes affect your exams." },
-                    { icon: ClipboardList, title: "Shape the platform", body: "Beta testers help decide what we build next." },
+                    { icon: BookOpen, title: "Syllabus updates", body: "We'll tell you when a CASA change affects your exams." },
+                    { icon: ClipboardList, title: "A say in it", body: "Tell us what's missing and we'll build it next." },
                   ].map((b) => (
                     <li key={b.title} className="flex gap-3">
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">

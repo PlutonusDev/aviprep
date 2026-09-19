@@ -57,7 +57,7 @@ export function CoverageBar({
 export function CoverageLegend() {
   const entries: { status: MosStatus; label: string }[] = [
     { status: "covered", label: "Covered" },
-    { status: "low", label: "Low on questions" },
+    { status: "low", label: "Partly covered" },
     { status: "draft", label: "Drafts only" },
   ]
   return (

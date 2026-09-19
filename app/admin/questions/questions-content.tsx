@@ -107,6 +107,12 @@ export function QuestionsContent() {
   const [saving, setSaving] = useState(false)
   const [serverErrors, setServerErrors] = useState<Record<string, string> | undefined>()
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  /**
+   * Where to go when they're done. Arriving from MOS coverage means they were
+   * working through one unit; dropping them in the question bank afterwards
+   * loses their place in it.
+   */
+  const [returnTo, setReturnTo] = useState<string | null>(null)
 
   const subject = SUBJECTS.find((s) => s.id === subjectId)
 
@@ -124,6 +130,8 @@ export function QuestionsContent() {
     setSubjectId(target)
     const editId = searchParams.get("edit")
     const itemId = searchParams.get("mos")
+    // Captured before the URL is cleaned up, so Back and Save know the way home.
+    if (itemId) setReturnTo(`/admin/mos/${target}?item=${encodeURIComponent(itemId)}`)
     router.replace("/admin/questions", { scroll: false })
 
     if (editId) {
@@ -243,12 +251,14 @@ export function QuestionsContent() {
       await Promise.all([loadTopics(subjectId), loadQuestions(subjectId, activeTopic)])
       setOriginal(null)
 
-      // Keeping the topic and difficulty makes writing a run of questions quick.
-      setEditing(
-        addAnother
-          ? { ...BLANK, subjectId, topic: payload.topic, difficulty: payload.difficulty }
-          : null,
-      )
+      if (addAnother) {
+        // Keeping the topic and difficulty makes writing a run of questions quick.
+        setEditing({ ...BLANK, subjectId, topic: payload.topic, difficulty: payload.difficulty })
+      } else if (returnTo) {
+        router.push(returnTo)
+      } else {
+        setEditing(null)
+      }
     } finally {
       setSaving(false)
     }
@@ -396,11 +406,11 @@ export function QuestionsContent() {
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <Button
             variant="ghost"
-            onClick={() => setEditing(null)}
+            onClick={() => (returnTo ? router.push(returnTo) : setEditing(null))}
             className="-ml-2 h-9 shrink-0 gap-1.5 text-muted-foreground"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-            {subject?.code}
+            {returnTo ? "Question bank" : subject?.code}
           </Button>
           <h1 className="text-lg font-semibold text-foreground">{editing.id ? "Edit question" : "New question"}</h1>
           <p className="truncate text-sm text-muted-foreground">{subject?.name}</p>
@@ -411,8 +421,9 @@ export function QuestionsContent() {
           onChange={setEditing}
           onSave={handleSave}
           onCancel={() => {
-            setEditing(null)
             setOriginal(null)
+            if (returnTo) router.push(returnTo)
+            else setEditing(null)
           }}
           saving={saving}
           serverErrors={serverErrors}

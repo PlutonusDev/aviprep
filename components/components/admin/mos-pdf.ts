@@ -63,7 +63,7 @@ export async function downloadMatrixPdf(detail: CoverageDetail, library: Pick<Li
       { label: "Mapped", value: `${meta.percent}%`, tone: BRAND },
       { label: "Items mapped", value: `${meta.mapped} of ${meta.assessable}` },
       { label: "Not mapped", value: String(meta.missing + detail.summary.draftOnly) },
-      { label: "Low on questions", value: String(meta.lowDensity) },
+      { label: "Partly covered", value: String(meta.lowDensity) },
     ],
     176,
     47,
@@ -75,13 +75,13 @@ export async function downloadMatrixPdf(detail: CoverageDetail, library: Pick<Li
   sectionTitle("Notes", notesY)
   bullets(
     [
-      "Each row in Table 2 is one Schedule 3 item: a lettered paragraph, or an element without paragraphs.",
-      `Mapped means at least one live lesson or question covers the item. Covered items also have ${MIN_QUESTIONS_PER_ITEM} or more live questions. Drafts don't count.`,
-      "Excluded items aren't assessable on their own. The reason is listed against each.",
-      "Every mapping was confirmed by an AviPrep reviewer.",
-      "When CASA amends Schedule 3, mappings carry over to renumbered items. Mappings to reworded or removed items are reviewed again.",
+      "Each row in Table 2 is one Schedule 3 item.",
+      `Mapped means at least one live lesson or question. Covered means a live lesson and ${MIN_QUESTIONS_PER_ITEM} or more live questions. Drafts don't count.`,
+      "Excluded items aren't assessable on their own; the reason is against each.",
+      "An AviPrep reviewer confirmed every mapping.",
+      "On a Schedule 3 amendment, mappings follow renumbered items. Reworded and removed items go back for review.",
       ...(meta.pendingReviews ? [`${meta.pendingReviews} mapping${meta.pendingReviews === 1 ? " is" : "s are"} still being reviewed after the last MOS update.`] : []),
-      "AviPrep is a supplementary study resource. This document doesn't replace an operator's approved syllabus. Check it against the current Part 61 MOS on the Federal Register of Legislation.",
+      "AviPrep is a study resource, not a replacement for an operator's approved syllabus. Check this against the current Part 61 MOS on the Federal Register of Legislation.",
     ],
     notesY + 6,
   )

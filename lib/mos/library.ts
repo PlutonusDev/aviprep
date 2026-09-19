@@ -317,8 +317,19 @@ async function contentRefs(links: { contentType: string; contentId: string }[]) 
   return refs
 }
 
-/** The change report for applying the bundled file on top of the current library. */
-async function summarise(c: Computed): Promise<ChangeReport> {
+/**
+ * Where a removed item's links are to go, keyed by the item's current MOS ID
+ * and naming an item in the new compilation. An entry that isn't there, or is
+ * null, means the links get flagged for a person instead.
+ */
+export type Remap = Record<string, string | null>
+
+/**
+ * The change report for applying the bundled file on top of the current library.
+ * With `remap`, removed items show the destination that was chosen for their
+ * links, and those links count as carried rather than flagged.
+ */
+async function summarise(c: Computed, remap: Remap = {}): Promise<ChangeReport> {
   const { plan, incoming, existing, linkCounts, linksByItem } = c
   const byId = new Map(existing.map((e) => [e.id, e]))
   const links = (id: string) => linkCounts.get(id) ?? 0
@@ -381,15 +392,19 @@ async function summarise(c: Computed): Promise<ChangeReport> {
   const removedRows = plan.removed.map((r) => {
     const e = byId.get(r.existingId)!
     const subjects = subjectCodesFor(e.appendix ?? appendixOf(e.unitNumber), e.unitCode)
+    const id = mosId(e.unitCode, e.ref)
+    const movedTo = links(r.existingId) ? (remap[id] ?? null) : null
     bump(subjects, "removed")
-    bump(subjects, "flaggedLinks", links(r.existingId))
+    bump(subjects, movedTo ? "carriedLinks" : "flaggedLinks", links(r.existingId))
     return {
-      id: mosId(e.unitCode, e.ref),
+      id,
       text: e.fullText,
       subjects: codes(subjects),
       links: links(r.existingId),
       content: contentFor(r.existingId),
-      suggestions: r.suggestions.map((sug) => ({ id: at(incoming[sug.incoming]), text: incoming[sug.incoming].fullText, similarity: sug.similarity })),
+      movedTo,
+      // Best first, and shown as options to choose from rather than as an answer.
+      candidates: r.suggestions.map((sug) => ({ id: at(incoming[sug.incoming]), text: incoming[sug.incoming].fullText })),
     }
   })
 
@@ -406,10 +421,13 @@ async function summarise(c: Computed): Promise<ChangeReport> {
     if (n) bump(subjectCodesFor(incoming[m.incoming].appendix, incoming[m.incoming].unitCode), "carriedLinks", n)
   }
 
+  const stillFlagged = (r: (typeof plan.removed)[number]) => !remap[mosId(byId.get(r.existingId)!.unitCode, byId.get(r.existingId)!.ref)]
   const flaggedLinks =
     reworded.filter((m) => m.needsReview).reduce((n, m) => n + links(m.existingId), 0) +
-    plan.removed.reduce((n, r) => n + links(r.existingId), 0)
-  const carriedLinks = plan.matches.filter((m) => !m.needsReview).reduce((n, m) => n + links(m.existingId), 0)
+    plan.removed.filter(stillFlagged).reduce((n, r) => n + links(r.existingId), 0)
+  const carriedLinks =
+    plan.matches.filter((m) => !m.needsReview).reduce((n, m) => n + links(m.existingId), 0) +
+    plan.removed.filter((r) => !stillFlagged(r)).reduce((n, r) => n + links(r.existingId), 0)
 
   // Subjects pointing at a unit the new compilation doesn't have (renamed or withdrawn code).
   const bundledUnits = new Set(c.bundled.units.map((u) => `${appendixOf(u.number)}/${u.code}`))
@@ -469,14 +487,14 @@ type HistoryEntry = { compilation: string | null; unitCode: string; ref: string;
  * Steps are ordered so a failure part-way can simply be retried: re-running
  * recomputes the plan from whatever state the database is in.
  */
-export async function applyUpdate(userId: string, expectedBuiltAt: string) {
+export async function applyUpdate(userId: string, expectedBuiltAt: string, remap: Remap = {}) {
   const c = await compute()
   const { bundled, stored, incoming, existing, plan } = c
   if (bundled.source.builtAt !== expectedBuiltAt) {
     throw new UpdateMismatchError("The MOS data changed since you previewed it. Preview it again.")
   }
 
-  const preview = await summarise(c)
+  const preview = await summarise(c, remap)
   const to = bundled.source.compilation
   const from = stored.compilation ?? null
   const label = to ?? bundled.source.builtAt.slice(0, 10)
@@ -517,8 +535,18 @@ export async function applyUpdate(userId: string, expectedBuiltAt: string) {
     for (const b of batch) newIdByIncoming.set(b.idx, idByKey.get(b.data.key)!)
   }
   const idForIncoming = (idx: number) => newIdByIncoming.get(idx) ?? plan.matches.find((m) => m.incoming === idx)?.existingId
+  /** A chosen destination, resolved from its MOS ID to the item it now is. */
+  const incomingByMosId = new Map(incoming.map((row, idx) => [mosId(row.unitCode, row.ref), idx]))
+  const destinationFor = (id: string) => {
+    const chosen = remap[id]
+    if (!chosen) return null
+    const idx = incomingByMosId.get(chosen)
+    return idx === undefined ? null : (idForIncoming(idx) ?? null)
+  }
 
   // 2. Flag links that need a person: significant rewording, or removal.
+  // Imported here rather than at the top: lib/mos/mappings.ts imports this file.
+  const { reviewMapping } = await import("@lib/mos/mappings")
   let flaggedLinks = 0
   for (const m of plan.matches.filter((x) => x.kind === "reworded" && x.needsReview)) {
     const e = byId.get(m.existingId)!
@@ -536,8 +564,41 @@ export async function applyUpdate(userId: string, expectedBuiltAt: string) {
     })
     flaggedLinks += r.count
   }
+  let movedLinks = 0
+  /** Removals whose links the report says moved, but some didn't. */
+  let stuckLinks = 0
+  const partlyMoved = new Set<string>()
   for (const removal of plan.removed) {
     const e = byId.get(removal.existingId)!
+    const destination = destinationFor(mosId(e.unitCode, e.ref))
+    if (destination) {
+      // The admin chose where these go, so they move now instead of queuing.
+      const mappings = await prisma.mosMapping.findMany({ where: { itemId: removal.existingId }, select: { id: true } })
+      const stuck: string[] = []
+      for (const m of mappings) {
+        const problem = await reviewMapping(m.id, "move", userId, destination)
+        if (problem) stuck.push(m.id)
+        else movedLinks++
+      }
+      // Anything the move wouldn't take still needs a person.
+      if (!stuck.length) continue
+      stuckLinks += stuck.length
+      if (stuck.length === mappings.length) partlyMoved.add(mosId(e.unitCode, e.ref))
+      const r = await prisma.mosMapping.updateMany({
+        where: { id: { in: stuck } },
+        data: {
+          needsReview: true,
+          reviewReason: "removed",
+          reviewNote: `${mosId(e.unitCode, e.ref)} is not in ${label}, and the link couldn't be moved.`,
+          suggestedItemIds: [destination],
+          flaggedAt: now,
+          reviewedById: null,
+          reviewedAt: null,
+        },
+      })
+      flaggedLinks += r.count
+      continue
+    }
     const suggestions = removal.suggestions.map((s) => idForIncoming(s.incoming)).filter((id): id is string => !!id)
     const r = await prisma.mosMapping.updateMany({
       where: { itemId: removal.existingId },
@@ -615,7 +676,13 @@ export async function applyUpdate(userId: string, expectedBuiltAt: string) {
       restored: preview.counts.restored,
       flaggedLinks,
       // The full change report, so it can be downloaded again later exactly as applied.
-      changes: { ...preview, flaggedLinks } as unknown as Prisma.InputJsonObject,
+      // Candidates were the choices on offer; only what happened is part of the record.
+      changes: {
+        ...preview,
+        flaggedLinks,
+        carriedLinks: preview.carriedLinks - stuckLinks,
+        removed: preview.removed.map(({ candidates, ...r }) => (partlyMoved.has(r.id) ? { ...r, movedTo: null } : r)),
+      } as unknown as Prisma.InputJsonObject,
       appliedById: userId,
     },
   })
@@ -635,7 +702,7 @@ export async function applyUpdate(userId: string, expectedBuiltAt: string) {
 
   unitCache = null
   vectorCache.clear()
-  return { ...preview.counts, flaggedLinks }
+  return { ...preview.counts, flaggedLinks, movedLinks }
 }
 
 export class UpdateMismatchError extends Error {}

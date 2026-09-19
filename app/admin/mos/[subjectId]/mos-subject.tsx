@@ -3,6 +3,7 @@
 import type React from "react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import {
   AlertTriangle,
   ArrowLeft,
@@ -63,7 +64,7 @@ interface Payload extends CoverageDetail {
 const FILTERS: { id: Filter; label: string; match: (s: MosStatus) => boolean }[] = [
   { id: "attention", label: "Needs attention", match: (s) => s === "missing" || s === "low" || s === "draft" },
   { id: "missing", label: "Not mapped", match: (s) => s === "missing" },
-  { id: "low", label: "Low on questions", match: (s) => s === "low" },
+  { id: "low", label: "Partly covered", match: (s) => s === "low" },
   { id: "draft", label: "Drafts only", match: (s) => s === "draft" },
   { id: "excluded", label: "Excluded", match: (s) => s === "excluded" },
   { id: "all", label: "All items", match: () => true },
@@ -182,11 +183,14 @@ function ReviewRow({ review, subjectId, onDone }: { review: ReviewItem; subjectI
 }
 
 function ItemRow({
+  highlighted,
   item,
   subjectId,
   isAdmin,
   onExclude,
 }: {
+  /** Arrived here from writing a question against this item. */
+  highlighted?: boolean
   item: ItemCoverage
   subjectId: string
   isAdmin: boolean
@@ -195,11 +199,23 @@ function ItemRow({
   const liveLessons = item.lessons.filter((l) => l.live)
   const draftLessons = item.lessons.length - liveLessons.length
   return (
-    <li className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-start sm:gap-4">
+    <li
+      id={`item-${item.id}`}
+      className={cn(
+        "flex scroll-mt-24 flex-col gap-3 px-4 py-3 transition-colors sm:flex-row sm:items-start sm:gap-4",
+        highlighted && "bg-primary/[0.07]",
+      )}
+    >
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-mono text-sm font-semibold text-foreground">{item.mosId}</span>
           <StatusBadge status={item.status} />
+          {/* "Partly covered" is only useful if it says which half is missing. */}
+          {item.needs?.length > 0 && item.status !== "missing" && (
+            <span className="text-xs text-muted-foreground">
+              Needs {item.needs.map((n) => (n === "questions" ? "questions" : "a lesson")).join(" and ")}
+            </span>
+          )}
         </div>
         <p className={cn("mt-1 text-sm", item.excluded ? "text-muted-foreground" : "text-foreground")}>{item.fullText}</p>
         {item.excluded && item.excludedReason && (
@@ -274,6 +290,7 @@ function ItemRow({
 
 export function MosSubject({ subjectId }: { subjectId: string }) {
   const { user } = useUser()
+  const searchParams = useSearchParams()
   const [data, setData] = useState<Payload | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [view, setView] = useState<View | null>(null)
@@ -339,6 +356,24 @@ export function MosSubject({ subjectId }: { subjectId: string }) {
     }
     return out
   }, [data, filter, query])
+
+  /**
+   * ?item=<id> is how the question editor sends someone back to where they
+   * started. Its topic is opened, the row is scrolled to and marked, and the
+   * parameter is dropped so a refresh doesn't keep re-scrolling.
+   */
+  const returnedTo = searchParams.get("item")
+  useEffect(() => {
+    if (!returnedTo || !data) return
+    const item = data.items.find((i) => i.id === returnedTo)
+    if (!item) return
+    setExpanded((open) => new Set(open).add(`${item.unitNumber}:${item.topicNumber}`))
+    // After the group has rendered.
+    const timer = setTimeout(() => {
+      document.getElementById(`item-${returnedTo}`)?.scrollIntoView({ block: "center", behavior: "smooth" })
+    }, 60)
+    return () => clearTimeout(timer)
+  }, [returnedTo, data])
 
   const searching = query.trim().length > 0
   const allOpen = groups.length > 0 && groups.every((g) => expanded.has(g.key))
@@ -477,7 +512,7 @@ export function MosSubject({ subjectId }: { subjectId: string }) {
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <StatTile icon={Gauge} label="Mapped" value={`${s.percent}%`} detail={`${s.mapped} of ${s.assessable} items`} />
             <StatTile icon={ListChecks} label="Not mapped" value={String(notMapped)} detail={s.draftOnly ? `${s.draftOnly} in draft` : undefined} />
-            <StatTile icon={AlertTriangle} label="Low on questions" value={String(s.lowDensity)} detail={`Fewer than ${MIN_QUESTIONS_PER_ITEM}`} />
+            <StatTile icon={AlertTriangle} label="Partly covered" value={String(s.lowDensity)} detail={`Needs ${MIN_QUESTIONS_PER_ITEM} questions and a lesson`} />
             <StatTile icon={FileQuestion} label="Unlinked content" value={String(unlinked)} detail={`${s.unmappedQuestions} questions · ${s.unmappedLessons} lessons`} />
           </div>
 
@@ -634,6 +669,7 @@ export function MosSubject({ subjectId }: { subjectId: string }) {
                           <ul className="divide-y divide-border border-t border-border">
                             {g.items.map((i) => (
                               <ItemRow
+                                highlighted={i.id === returnedTo}
                                 key={i.id}
                                 item={i}
                                 subjectId={subjectId}

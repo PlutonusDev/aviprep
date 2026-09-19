@@ -35,7 +35,7 @@ export interface SubjectCoverage {
   /** Assessable items with at least one live question or lesson. */
   mapped: number
   missing: number
-  /** Mapped, but with fewer live questions than MIN_QUESTIONS_PER_ITEM. */
+  /** Mapped, but not yet fully covered. See `needs` for what's outstanding. */
   lowDensity: number
   draftOnly: number
   percent: number
@@ -89,6 +89,8 @@ export interface ItemCoverage {
   excluded: boolean
   excludedReason: string | null
   status: MosStatus
+  /** What's still outstanding: live questions, a live lesson, or both. */
+  needs: ("questions" | "lesson")[]
   liveQuestions: number
   draftQuestions: number
   lessons: LessonRef[]
@@ -286,13 +288,20 @@ function summarise(
     const lessons = lessonsByItem.get(i.id) ?? []
     const liveLessons = lessons.filter((l) => l.live).length
 
+    // An item is only covered once a student can both read about it and be
+    // tested on it. Questions without a lesson leave nothing to learn from;
+    // a lesson without questions is never examined.
+    const needs: ItemCoverage["needs"] = []
+    if (live < MIN_QUESTIONS_PER_ITEM) needs.push("questions")
+    if (liveLessons === 0) needs.push("lesson")
+
     let status: MosStatus
     if (i.excluded) {
       status = "excluded"
       excluded++
     } else if (live + liveLessons > 0) {
       mapped++
-      if (live < MIN_QUESTIONS_PER_ITEM) {
+      if (needs.length) {
         status = "low"
         lowDensity++
       } else status = "covered"
@@ -315,6 +324,7 @@ function summarise(
       excluded: !!i.excluded,
       excludedReason: i.excludedReason ?? null,
       status,
+      needs: i.excluded ? [] : needs,
       liveQuestions: live,
       draftQuestions: drafts,
       lessons,

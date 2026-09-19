@@ -57,7 +57,10 @@ export interface ChangeReport {
     subjects: string[]
     links: number
     content: ContentRef[]
-    suggestions: { id: string; text: string; similarity: number }[]
+    /** Where the links were sent instead, once that was decided. */
+    movedTo: string | null
+    /** Current items offered as a destination while an update is being reviewed. */
+    candidates?: { id: string; text: string }[]
   }[]
   added: { id: string; text: string; subjects: string[] }[]
   /** Subject units the new compilation doesn't have. */
@@ -92,7 +95,7 @@ export const CHANGE_COLUMNS = [
   "Linked content",
   "Action",
   "Affected AviPrep content",
-  "Suggested replacements",
+  "Links moved to",
 ] as const
 
 /** One row per changed item, for the CSV. */
@@ -108,9 +111,9 @@ export function changeRows(report: ChangeReport): string[][] {
       "",
       "",
       String(r.links),
-      r.links ? "Links flagged for review" : "None",
+      !r.links ? "None" : r.movedTo ? "Links moved" : "Links flagged for review",
       contentList(r.content),
-      r.suggestions.map((s) => `${s.id} (${Math.round(s.similarity * 100)}%)`).join("\n"),
+      r.movedTo ?? "",
     ])
   }
   for (const r of report.reworded) {

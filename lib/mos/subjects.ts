@@ -79,7 +79,7 @@ export type MosStatus = "covered" | "low" | "draft" | "missing" | "excluded"
 
 export const MOS_STATUS_LABELS: Record<MosStatus, string> = {
   covered: "Covered",
-  low: "Low on questions",
+  low: "Partly covered",
   draft: "Drafts only",
   missing: "Not mapped",
   excluded: "Excluded",
