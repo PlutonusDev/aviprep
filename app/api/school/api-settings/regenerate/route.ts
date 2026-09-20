@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { prisma } from "@lib/prisma"
+import { schoolWhereFor } from "@lib/school/access"
 import { verifyToken } from "@lib/auth"
 import crypto from "crypto"
 
@@ -27,8 +28,8 @@ export async function POST() {
       return NextResponse.json({ error: "Not authorized" }, { status: 403 })
     }
 
-    const school = await prisma.flightSchool.findUnique({
-      where: { adminId: payload.userId },
+    const school = await prisma.flightSchool.findFirst({
+      where: schoolWhereFor(payload.userId),
     })
 
     if (!school) {

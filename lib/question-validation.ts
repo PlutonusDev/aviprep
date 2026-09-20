@@ -46,7 +46,6 @@ export interface QuestionDraft {
   tolerance?: number | null
   toleranceType?: string | null
   explanation: string
-  reference?: string
   status?: string | null
 }
 
@@ -141,9 +140,6 @@ export function isValid(errors: FieldErrors) {
 export function questionWarnings(q: QuestionDraft): string[] {
   const warnings: string[] = []
 
-  if (!q.reference?.trim()) {
-    warnings.push("No reference. Add the CASA/source citation so the question can be defended.")
-  }
   if (answerTypeOf(q) === "choice" && (q.options ?? []).length < 4) {
     warnings.push("CASA exams normally present four options.")
   }

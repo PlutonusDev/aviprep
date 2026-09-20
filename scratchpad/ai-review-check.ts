@@ -35,7 +35,6 @@ const choice: QuestionForReview = {
   options: ["longer, because density altitude is higher", "shorter, because density altitude is lower", "longer, because pressure altitude is higher", "unchanged, because QNH is standard"],
   correctIndex: 0,
   explanation: "At 35 degrees C the air is well above ISA for 2,000 ft, so density altitude is higher and the aircraft performs as though it were at a greater elevation.",
-  reference: "Part 61 MOS Schedule 3",
 }
 const mos: MosForReview[] = [{ ref: "CMET 2.3.1(a)", primary: true, text: "Explain the effect of air density on aeroplane take-off performance: temperature" }]
 const prompt = buildPrompt(choice, mos)

@@ -2,7 +2,7 @@
 
 import React from "react"
 import { Suspense } from "react"
-import { useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import { useSchool } from "../layout"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -66,15 +66,34 @@ interface Student {
   arn: string
   profilePicture: string | null
   enrolledAt: string
+  /** Every group they're in. The first one decides where they sit in the list. */
+  groups: { id: string; name: string; color: string }[]
   examCount: number
   averageScore: number | null
   lastActive: string | null
+}
+
+/**
+ * The API returns students already ordered by group, so the table only has to
+ * break the run into sections. Anyone ungrouped comes last, under "No group".
+ */
+function inGroups(students: Student[]) {
+  const sections: { key: string; name: string; color: string | null; students: Student[] }[] = []
+  for (const student of students) {
+    const group = student.groups[0]
+    const key = group?.id ?? "__none"
+    const last = sections[sections.length - 1]
+    if (last?.key === key) last.students.push(student)
+    else sections.push({ key, name: group?.name ?? "No group", color: group?.color ?? null, students: [student] })
+  }
+  return sections
 }
 
 const Loading = () => null
 
 export default function StudentsPage() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const { school, studentCount, refreshData } = useSchool()
   const [students, setStudents] = useState<Student[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -277,9 +296,27 @@ export default function StudentsPage() {
                       <TableHead className="w-10" />
                     </TableRow>
                   </TableHeader>
-                  <TableBody>
-                    {students.map((student) => (
-                      <TableRow key={student.id}>
+                  {inGroups(students).map((section) => (
+                  <TableBody key={section.key}>
+                    <TableRow className="hover:bg-transparent">
+                      <TableCell colSpan={6} className="bg-muted/40 py-1.5">
+                        <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                          {section.color && (
+                            <span aria-hidden="true" className="h-2 w-2 rounded-full" style={{ backgroundColor: section.color }} />
+                          )}
+                          {section.name}
+                          <span className="font-normal normal-case tracking-normal">
+                            {section.students.length} {section.students.length === 1 ? "student" : "students"}
+                          </span>
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                    {section.students.map((student) => (
+                      <TableRow
+                        key={student.id}
+                        onClick={() => router.push(`/school/students/${student.id}`)}
+                        className="cursor-pointer"
+                      >
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <Avatar className="h-8 w-8">
@@ -289,11 +326,20 @@ export default function StudentsPage() {
                                 {student.lastName[0]}
                               </AvatarFallback>
                             </Avatar>
-                            <div>
-                              <p className="font-medium">
+                            <div className="min-w-0">
+                              <Link
+                                href={`/school/students/${student.id}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              >
                                 {student.firstName} {student.lastName}
-                              </p>
-                              <p className="text-xs text-muted-foreground">{student.email}</p>
+                              </Link>
+                              <p className="truncate text-xs text-muted-foreground">{student.email}</p>
+                              {student.groups.length > 1 && (
+                                <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                                  Also in {student.groups.slice(1).map((g) => g.name).join(", ")}
+                                </p>
+                              )}
                             </div>
                           </div>
                         </TableCell>
@@ -317,7 +363,7 @@ export default function StudentsPage() {
                             <span className="text-muted-foreground">Never</span>
                           )}
                         </TableCell>
-                        <TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon">
@@ -356,6 +402,7 @@ export default function StudentsPage() {
                       </TableRow>
                     ))}
                   </TableBody>
+                  ))}
                 </Table>
 
                 {totalPages > 1 && (

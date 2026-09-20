@@ -31,7 +31,7 @@ export type EventAction = "submitted" | "comment" | "approved" | "changes-reques
 export const CONTENT_TYPES: ContentType[] = ["question", "lesson", "course"]
 export const MESSAGE_MAX = 2000
 
-export const QUESTION_FIELDS = ["subjectId", "topic", "difficulty", "questionText", "options", "correctIndex", "explanation", "reference"] as const
+export const QUESTION_FIELDS = ["subjectId", "topic", "difficulty", "questionText", "options", "correctIndex", "explanation"] as const
 export const LESSON_FIELDS = ["title", "description", "contentType", "content", "estimatedMins"] as const
 export const COURSE_FIELDS = ["title", "description", "estimatedHours", "difficulty"] as const
 
@@ -50,7 +50,6 @@ const FIELD_LABELS: Record<string, string> = {
   tolerance: "Tolerance",
   toleranceType: "Tolerance type",
   explanation: "Explanation",
-  reference: "Reference",
   title: "Title",
   description: "Description",
   contentType: "Lesson type",
@@ -87,7 +86,6 @@ export function questionContent(source: Record<string, unknown>) {
     tolerance: numberOrNull(source.tolerance),
     toleranceType: source.toleranceType === "absolute" ? "absolute" : "percent",
     explanation: source.explanation as string,
-    reference: (source.reference as string) || "",
   }
 }
 

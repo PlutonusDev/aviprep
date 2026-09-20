@@ -68,7 +68,6 @@ export interface QuestionBody {
   tolerance?: number | null
   toleranceType?: string | null
   explanation: string
-  reference: string
   points?: number
   authorNote?: string | null
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { prisma } from "@lib/prisma"
+import { schoolWhereFor } from "@lib/school/access"
 import { verifyToken } from "@lib/auth"
 
 async function verifySchoolAccess(userId: string, studentId: string) {
@@ -11,8 +12,8 @@ async function verifySchoolAccess(userId: string, studentId: string) {
 
   if (!user?.isFlightSchoolAdmin) return null
 
-  const school = await prisma.flightSchool.findUnique({
-    where: { adminId: userId },
+  const school = await prisma.flightSchool.findFirst({
+    where: schoolWhereFor(userId),
     select: { id: true },
   })
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { prisma } from "@lib/prisma"
+import { schoolWhereFor } from "@lib/school/access"
 import { verifyToken } from "@lib/auth"
 import { formatDistanceToNow } from "date-fns"
 
@@ -29,8 +30,8 @@ export async function GET() {
     }
 
     // Get the flight school
-    const school = await prisma.flightSchool.findUnique({
-      where: { adminId: user.id },
+    const school = await prisma.flightSchool.findFirst({
+      where: schoolWhereFor(user.id),
       select: { id: true },
     })
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { prisma } from "@lib/prisma"
+import { schoolWhereFor } from "@lib/school/access"
 import { sanitiseDisabledFeatures } from "@lib/tenant-features"
 import { verifyToken } from "@lib/auth"
 
@@ -12,8 +13,8 @@ async function getSchoolForAdmin(userId: string) {
 
   if (!user?.isFlightSchoolAdmin) return null
 
-  return prisma.flightSchool.findUnique({
-    where: { adminId: userId },
+  return prisma.flightSchool.findFirst({
+    where: schoolWhereFor(userId),
   })
 }
 

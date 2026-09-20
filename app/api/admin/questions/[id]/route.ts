@@ -31,7 +31,6 @@ const CONTENT_FIELDS = [
   "tolerance",
   "toleranceType",
   "explanation",
-  "reference",
 ] as const
 
 /** Numbers arrive as strings from a form; anything unreadable is simply absent. */
@@ -57,7 +56,6 @@ function contentFrom(source: Record<string, unknown>) {
     toleranceType: source.toleranceType === "absolute" ? "absolute" : "percent",
     explanation: source.explanation as string,
     // Previously omitted on edit, which silently wiped the citation.
-    reference: (source.reference as string) || "",
   }
 }
 

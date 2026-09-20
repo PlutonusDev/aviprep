@@ -113,10 +113,6 @@ function QuestionView({ q }: { q: QuestionBody }) {
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Explanation</p>
         <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">{q.explanation || "No explanation."}</p>
       </div>
-      <div className="space-y-1">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Reference</p>
-        <p className={cn("text-sm", q.reference ? "text-foreground" : "text-warning")}>{q.reference || "No reference given"}</p>
-      </div>
     </div>
   )
 }

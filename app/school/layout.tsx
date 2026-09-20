@@ -8,7 +8,6 @@ import {
   LayoutDashboard,
   Users,
   GraduationCap,
-  BarChart3,
   Settings,
   LogOut,
   Menu,
@@ -17,6 +16,7 @@ import {
   Key,
   ShoppingCart,
   FolderKanban,
+  UserCog,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@lib/utils"
@@ -73,7 +73,7 @@ const navGroups = [
       { name: "Dashboard", href: "/school", icon: LayoutDashboard },
       { name: "Students", href: "/school/students", icon: Users },
       { name: "Groups", href: "/school/groups", icon: FolderKanban },
-      { name: "Progress", href: "/school/progress", icon: BarChart3 },
+      { name: "Instructors", href: "/school/instructors", icon: UserCog },
     ],
   },
   {
@@ -97,6 +97,9 @@ export default function SchoolLayout({ children }: { children: React.ReactNode }
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
   const pathname = usePathname()
+  // An instructor following an invite link has no access yet, so the gate below
+  // would bounce them to the login page they're trying to avoid.
+  const isJoining = pathname.startsWith("/school/join")
 
   const fetchData = async () => {
     try {
@@ -118,13 +121,16 @@ export default function SchoolLayout({ children }: { children: React.ReactNode }
   }
 
   useEffect(() => {
-    fetchData()
-  }, [])
+    if (isJoining) setIsLoading(false)
+    else fetchData()
+  }, [isJoining])
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" })
     router.push("/login")
   }
+
+  if (isJoining) return <>{children}</>
 
   if (isLoading) {
     return (

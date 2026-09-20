@@ -200,7 +200,7 @@ export default function SchoolDashboard() {
               <CardDescription>Latest student exam attempts</CardDescription>
             </div>
             <Button variant="ghost" size="sm" asChild>
-              <Link href="/school/progress">
+              <Link href="/school/students">
                 View All
                 <ChevronRight className="ml-1 h-4 w-4" />
               </Link>

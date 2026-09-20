@@ -12,8 +12,7 @@ const questionSchema = z.object({
       questionText: z.string().describe("The question text"),
       options: z.array(z.string()).length(4).describe("Four answer options"),
       correctIndex: z.number().min(0).max(3).describe("Index of the correct answer (0-3)"),
-      explanation: z.string().describe("Explanation of why the correct answer is correct, don't include the reference here"),
-      reference: z.string().describe("The reference to the Manual of Standards document, returned as 'Part 61 MOS - Unit X.X Section X.X.X'")
+      explanation: z.string().describe("Explanation of why the correct answer is correct")
     }),
   ),
 })
@@ -107,9 +106,9 @@ ${mosContext}
 
 ${ragContext}
 
-Instructions for References:
-- Use the [REF] tags provided in the context above to populate the "reference" field.
+Instructions:
 - Ensure the "explanation" reflects the specific technical wording in the MOS excerpts provided.
+- Questions are linked to their Schedule 3 item in the editor, so don't cite one in the explanation.
 
 Generate ${count} unique, high-quality exam questions.`,
     })

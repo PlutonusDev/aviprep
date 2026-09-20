@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { prisma } from "@lib/prisma"
+import { schoolWhereFor } from "@lib/school/access"
 import { verifyToken } from "@lib/auth"
 import { getSubjectById } from "@lib/subjects"
 
@@ -21,8 +22,8 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    const school = await prisma.flightSchool.findUnique({
-      where: { adminId: payload.userId },
+    const school = await prisma.flightSchool.findFirst({
+      where: schoolWhereFor(payload.userId),
       select: { id: true },
     })
     if (!school) return NextResponse.json({ error: "No school" }, { status: 404 })

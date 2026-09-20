@@ -54,7 +54,6 @@ export interface QuestionForReview {
   tolerance?: number | null
   toleranceType?: string | null
   explanation: string
-  reference: string
 }
 
 export interface MosForReview {
@@ -91,7 +90,7 @@ export function buildPrompt(question: QuestionForReview, mos: MosForReview[]): s
     })
   }
 
-  lines.push("", `Explanation: ${question.explanation}`, `Reference: ${question.reference || "none given"}`)
+  lines.push("", `Explanation: ${question.explanation}`)
 
   lines.push("", "Part 61 MOS Schedule 3 items the curator linked:")
   if (!mos.length) lines.push("  none")

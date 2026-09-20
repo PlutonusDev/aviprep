@@ -89,8 +89,12 @@ model FlightSchool {
   website         String?
   logo            String?
 
+  /// The person who set the school up. They can never be removed from it.
   adminId         String    @unique @db.ObjectId
   admin           User      @relation("FlightSchoolAdmin", fields: [adminId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  /// Other instructors invited into the school panel (lib/school/access.ts).
+  /// They have the same access as the owner apart from removing people.
+  instructorIds   String[]  @db.ObjectId
 
   isActive        Boolean   @default(true)
   maxStudents     Int       @default(50)
@@ -145,6 +149,31 @@ model StudentGroup {
   updatedAt   DateTime @updatedAt
 
   @@index([flightSchoolId])
+}
+
+/// An invitation for another instructor to join a school's panel. Mirrors
+/// CuratorInvite: the emailed token is never stored, only its hash.
+model SchoolInvite {
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+  flightSchoolId String    @db.ObjectId
+  email          String
+  firstName      String?
+  lastName       String?
+  /// Optional personal note shown in the email and on the join page.
+  note           String?
+  tokenHash      String    @unique
+  invitedById    String    @db.ObjectId
+  expiresAt      DateTime
+  sentAt         DateTime  @default(now())
+  sendCount      Int       @default(1)
+  acceptedAt     DateTime?
+  revokedAt      DateTime?
+  /// The User who accepted it.
+  userId         String?   @db.ObjectId
+  createdAt      DateTime  @default(now())
+
+  @@index([flightSchoolId])
+  @@index([email])
 }
 
 model SchoolPurchase {
@@ -300,7 +329,6 @@ model Question {
   toleranceType String?
 
   explanation  String
-  reference    String
 
   // Authoring workflow. All optional so existing rows need no backfill -
   // a missing status is treated as "published" (see lib/question-validation.ts).

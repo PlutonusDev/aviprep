@@ -134,7 +134,6 @@ export async function POST(request: NextRequest) {
         // carries a stale option list and a choice never carries a tolerance.
         ...answerFields(body),
         explanation: body.explanation,
-        reference: body.reference || "",
         status,
         authorId: staff.userId,
         authorNote: body.authorNote || null,

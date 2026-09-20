@@ -618,19 +618,6 @@ export default function QuestionEditor({
                 <FieldError message={shown.explanation} />
               </div>
             </div>
-
-            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
-              <Label htmlFor="q-reference" className="shrink-0 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Reference
-              </Label>
-              <Input
-                id="q-reference"
-                value={value.reference ?? ""}
-                onChange={(e) => set({ reference: e.target.value })}
-                className="h-9 min-w-0 flex-1 border-transparent bg-transparent px-2 text-sm shadow-none hover:border-border focus-visible:border-border"
-                placeholder={primaryMos ? `e.g. CASA Part 61 MOS, Schedule 3, ${primaryMos.ref}` : "e.g. CASA Part 61 MOS, Schedule 3, 2.1"}
-              />
-            </div>
           </div>
 
           {warnings.length > 0 && (

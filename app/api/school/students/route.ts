@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { prisma } from "@lib/prisma"
+import { schoolWhereFor } from "@lib/school/access"
 import { verifyToken, hashPassword, isValidAustralianPhone, isValidARN } from "@lib/auth"
 import { sendEmailWelcome } from "@lib/email"
 import { getSchoolWelcomeTemplate } from "@lib/email-school-welcome"
@@ -14,8 +15,8 @@ async function getSchoolForAdmin(userId: string) {
 
   if (!user?.isFlightSchoolAdmin) return null
 
-  return prisma.flightSchool.findUnique({
-    where: { adminId: userId },
+  return prisma.flightSchool.findFirst({
+    where: schoolWhereFor(userId),
     select: { id: true, name: true, maxStudents: true, subdomain: true, logo: true },
   })
 }
@@ -54,7 +55,10 @@ export async function GET(request: Request) {
       ]
     }
 
-    const [students, total] = await Promise.all([
+    // Groups live as an array of ids on StudentGroup, so ordering by group has
+    // to happen here rather than in the query. Schools are small enough that
+    // reading the roster and slicing it is cheaper than the alternatives.
+    const [everyone, groups] = await Promise.all([
       prisma.user.findMany({
         where,
         select: {
@@ -72,12 +76,39 @@ export async function GET(request: Request) {
           },
           _count: { select: { examAttempts: true } },
         },
-        orderBy: { enrolledAt: "desc" },
-        skip: (page - 1) * limit,
-        take: limit,
       }),
-      prisma.user.count({ where }),
+      prisma.studentGroup.findMany({
+        where: { flightSchoolId: school.id },
+        orderBy: { name: "asc" },
+        select: { id: true, name: true, color: true, studentIds: true },
+      }),
     ])
+
+    const groupsByStudent = new Map<string, { id: string; name: string; color: string }[]>()
+    for (const g of groups) {
+      for (const id of g.studentIds) {
+        const list = groupsByStudent.get(id) ?? []
+        list.push({ id: g.id, name: g.name, color: g.color })
+        groupsByStudent.set(id, list)
+      }
+    }
+
+    // Grouped students first, alphabetically by group then by name; everyone
+    // who isn't in a group falls to the bottom under "No group".
+    const sortKey = (id: string) => groupsByStudent.get(id)?.[0]?.name ?? null
+    everyone.sort((a, b) => {
+      const ga = sortKey(a.id)
+      const gb = sortKey(b.id)
+      if (ga !== gb) {
+        if (ga === null) return 1
+        if (gb === null) return -1
+        return ga.localeCompare(gb)
+      }
+      return `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`)
+    })
+
+    const total = everyone.length
+    const students = everyone.slice((page - 1) * limit, page * limit)
 
     // Get average scores for all students
     const studentIds = students.map((s) => s.id)
@@ -97,6 +128,7 @@ export async function GET(request: Request) {
         arn: s.arn,
         profilePicture: s.profilePicture,
         enrolledAt: s.enrolledAt,
+        groups: groupsByStudent.get(s.id) ?? [],
         examCount: s._count.examAttempts,
         averageScore: s._count.examAttempts > 0 ? avgScoreMap.get(s.id) || null : null,
         lastActive: s.examAttempts[0]?.completedAt || null,

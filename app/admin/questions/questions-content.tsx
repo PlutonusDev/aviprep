@@ -82,7 +82,6 @@ const BLANK: EditableQuestion = {
   tolerance: 5,
   toleranceType: "percent",
   explanation: "",
-  reference: "",
   status: "draft",
 }
 
