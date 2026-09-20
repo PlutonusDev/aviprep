@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { prisma } from "@lib/prisma"
-import { schoolWhereFor } from "@lib/school/access"
+import { schoolWhereFor, studentsOf } from "@lib/school/access"
 import { verifyToken } from "@lib/auth"
 import { sanitiseSubjectIds } from "@lib/school-access"
 
@@ -53,7 +53,8 @@ export async function PATCH(
   }
   if (typeof body.description === "string") data.description = body.description.trim() || null
   if (typeof body.color === "string") data.color = body.color
-  if (Array.isArray(body.studentIds)) data.studentIds = body.studentIds
+  // Never trust the ids: a group may only hold this school's own students.
+  if (Array.isArray(body.studentIds)) data.studentIds = await studentsOf(school.id, body.studentIds)
   if (body.subjectIds !== undefined) data.subjectIds = sanitiseSubjectIds(body.subjectIds)
 
   const group = await prisma.studentGroup.update({ where: { id: groupId }, data })

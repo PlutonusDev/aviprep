@@ -8,7 +8,9 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/api/", "/checkout/", "/dashboard/settings/", "/admin/"],
+        // /demo is a sales walkthrough full of invented students; it's shared
+        // by link, not found by search.
+        disallow: ["/api/", "/checkout/", "/dashboard/settings/", "/admin/", "/demo"],
       },
     ],
     sitemap: `${siteUrl}/sitemap.xml`,

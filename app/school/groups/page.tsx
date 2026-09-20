@@ -19,8 +19,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, BookOpen, FolderKanban, Plus, Trash2, Users } from "lucide-react"
+import { AlertCircle, BookOpen, FolderKanban, Plus, Trash2, UserPlus, Users } from "lucide-react"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { SubjectPicker } from "@/components/school/subject-picker"
+import { MemberPicker } from "@/components/school/member-picker"
 import { SUBJECTS } from "@lib/subjects"
 
 interface Member {
@@ -65,13 +67,17 @@ export default function SchoolGroupsPage() {
   const [subjectIds, setSubjectIds] = useState<string[]>([])
   const [editingSubjectsFor, setEditingSubjectsFor] = useState<Group | null>(null)
   const [editSubjectIds, setEditSubjectIds] = useState<string[]>([])
+  const [editingMembersFor, setEditingMembersFor] = useState<Group | null>(null)
+  const [editMemberIds, setEditMemberIds] = useState<string[]>([])
 
   async function load() {
     setLoading(true)
     try {
       const [gRes, sRes] = await Promise.all([
         fetch("/api/school/groups"),
-        fetch("/api/school/students"),
+        // The whole roster, not the table's first page: this list is what you
+        // pick a group's students from.
+        fetch("/api/school/students?limit=1000"),
       ])
       if (!gRes.ok) throw new Error("Could not load groups")
       const gData = await gRes.json()
@@ -139,6 +145,48 @@ export default function SchoolGroupsPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  /**
+   * Sent as adds and removes rather than the whole list, so an instructor
+   * editing the same group at the same moment doesn't lose their change.
+   */
+  async function saveGroupMembers() {
+    if (!editingMembersFor) return
+    setSaving(true)
+    setError(null)
+    try {
+      const before = editingMembersFor.studentIds
+      const res = await fetch(`/api/school/groups/${editingMembersFor.id}/members`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          add: editMemberIds.filter((id) => !before.includes(id)),
+          remove: before.filter((id) => !editMemberIds.includes(id)),
+        }),
+      })
+      if (!res.ok) throw new Error("Could not save the students")
+      setEditingMembersFor(null)
+      await load()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not save the students")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  /** Which other groups each student is in, so the picker can warn about overlap. */
+  function otherGroupsFor(exceptGroupId: string) {
+    const map = new Map<string, { id: string; name: string; color: string }[]>()
+    for (const g of groups) {
+      if (g.id === exceptGroupId) continue
+      for (const id of g.studentIds) {
+        const list = map.get(id) ?? []
+        list.push({ id: g.id, name: g.name, color: g.color })
+        map.set(id, list)
+      }
+    }
+    return map
   }
 
   async function handleDelete() {
@@ -223,40 +271,13 @@ export default function SchoolGroupsPage() {
             </fieldset>
 
             <fieldset className="space-y-2">
-              <legend className="mb-1 text-sm font-medium text-foreground">
-                Students ({memberIds.length} selected)
-              </legend>
-              <div className="max-h-56 overflow-y-auto rounded-md border border-border">
-                {students.length === 0 ? (
-                  <p className="px-3 py-6 text-center text-sm text-muted-foreground">
-                    No students yet.
-                  </p>
-                ) : (
-                  students.map((s) => (
-                    <label
-                      key={s.id}
-                      className="flex cursor-pointer items-center gap-3 border-t border-border px-3 py-2 first:border-t-0 hover:bg-muted"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={memberIds.includes(s.id)}
-                        onChange={() =>
-                          setMemberIds((prev) =>
-                            prev.includes(s.id)
-                              ? prev.filter((x) => x !== s.id)
-                              : [...prev, s.id],
-                          )
-                        }
-                        className="h-4 w-4 accent-primary"
-                      />
-                      <span className="min-w-0 flex-1 truncate text-sm text-foreground">
-                        {s.firstName} {s.lastName}
-                      </span>
-                      <span className="truncate text-xs text-muted-foreground">{s.email}</span>
-                    </label>
-                  ))
-                )}
-              </div>
+              <legend className="mb-1 text-sm font-medium text-foreground">Students</legend>
+              <MemberPicker
+                students={students.map((s) => ({ ...s, otherGroups: otherGroupsFor("").get(s.id) ?? [] }))}
+                selected={memberIds}
+                onChange={setMemberIds}
+                idPrefix="new-group"
+              />
             </fieldset>
 
             <fieldset className="space-y-2">
@@ -351,19 +372,34 @@ export default function SchoolGroupsPage() {
                     </p>
                   )}
 
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="h-9 w-full"
-                    onClick={() => {
-                      setEditingSubjectsFor(g)
-                      setEditSubjectIds(g.subjectIds ?? [])
-                    }}
-                  >
-                    Manage subjects
-                  </Button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="h-9 gap-1.5"
+                      onClick={() => {
+                        setEditingMembersFor(g)
+                        setEditMemberIds(g.studentIds)
+                      }}
+                    >
+                      <UserPlus className="h-3.5 w-3.5" aria-hidden="true" />
+                      Students
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="h-9 gap-1.5"
+                      onClick={() => {
+                        setEditingSubjectsFor(g)
+                        setEditSubjectIds(g.subjectIds ?? [])
+                      }}
+                    >
+                      <BookOpen className="h-3.5 w-3.5" aria-hidden="true" />
+                      Subjects
+                    </Button>
+                  </div>
 
-                  {g.members.length > 0 && (
+                  {g.members.length > 0 ? (
                     <ul className="space-y-0.5 text-sm text-muted-foreground">
                       {g.members.slice(0, 4).map((m) => (
                         <li key={m.id} className="truncate">
@@ -374,6 +410,17 @@ export default function SchoolGroupsPage() {
                         <li className="text-xs">+{g.members.length - 4} more</li>
                       )}
                     </ul>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingMembersFor(g)
+                        setEditMemberIds(g.studentIds)
+                      }}
+                      className="w-full rounded-lg border border-dashed border-border px-3 py-3 text-sm text-muted-foreground hover:border-primary/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      Nobody in this group yet. Add students.
+                    </button>
                   )}
                 </CardContent>
               </Card>
@@ -412,6 +459,35 @@ export default function SchoolGroupsPage() {
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={!!editingMembersFor} onOpenChange={(open) => !open && !saving && setEditingMembersFor(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Students in {editingMembersFor?.name}</DialogTitle>
+            <DialogDescription>
+              Everyone ticked is in the group, and sees whatever subjects it grants.
+            </DialogDescription>
+          </DialogHeader>
+
+          {editingMembersFor && (
+            <MemberPicker
+              students={students.map((s) => ({ ...s, otherGroups: otherGroupsFor(editingMembersFor.id).get(s.id) ?? [] }))}
+              selected={editMemberIds}
+              onChange={setEditMemberIds}
+              idPrefix={`group-${editingMembersFor.id}`}
+            />
+          )}
+
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setEditingMembersFor(null)} disabled={saving}>
+              Cancel
+            </Button>
+            <Button onClick={saveGroupMembers} disabled={saving}>
+              {saving ? "Saving..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
         <AlertDialogContent>

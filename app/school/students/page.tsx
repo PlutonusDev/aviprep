@@ -48,10 +48,22 @@ import {
   Download,
   Upload,
   BookOpen,
+  FolderKanban,
+  X,
 } from "lucide-react"
 import { SubjectPicker } from "@/components/school/subject-picker"
 import Link from "next/link"
 import { formatDistanceToNow } from "date-fns"
+
+interface SchoolGroup {
+  id: string
+  name: string
+  color: string
+  description: string | null
+  memberCount: number
+  subjectCount: number
+  member: boolean
+}
 
 interface SubjectGrants {
   individual: string[]
@@ -109,6 +121,64 @@ export default function StudentsPage() {
   const [grantsLoading, setGrantsLoading] = useState(false)
   const [grantsSaving, setGrantsSaving] = useState(false)
 
+  // Groups, from the student's side.
+  const [groupsFor, setGroupsFor] = useState<Student | null>(null)
+  const [groupOptions, setGroupOptions] = useState<SchoolGroup[]>([])
+  const [groupDraft, setGroupDraft] = useState<string[]>([])
+  const [groupsLoading, setGroupsLoading] = useState(false)
+  const [groupsSaving, setGroupsSaving] = useState(false)
+
+  // Ticking several rows and filing them in one go: how an intake gets set up.
+  const [picked, setPicked] = useState<string[]>([])
+  const [filing, setFiling] = useState(false)
+  const [allGroups, setAllGroups] = useState<{ id: string; name: string; color: string }[]>([])
+
+  async function openGroups(student: Student) {
+    setGroupsFor(student)
+    setGroupsLoading(true)
+    try {
+      const res = await fetch(`/api/school/students/${student.id}/groups`)
+      const data = await res.json()
+      const list: SchoolGroup[] = data.groups ?? []
+      setGroupOptions(list)
+      setGroupDraft(list.filter((g) => g.member).map((g) => g.id))
+    } finally {
+      setGroupsLoading(false)
+    }
+  }
+
+  async function saveGroups() {
+    if (!groupsFor) return
+    setGroupsSaving(true)
+    try {
+      await fetch(`/api/school/students/${groupsFor.id}/groups`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ groupIds: groupDraft }),
+      })
+      setGroupsFor(null)
+      fetchStudents()
+    } finally {
+      setGroupsSaving(false)
+    }
+  }
+
+  /** Adds every ticked student to one group, leaving their other groups alone. */
+  async function fileInto(groupId: string) {
+    setFiling(true)
+    try {
+      await fetch(`/api/school/groups/${groupId}/members`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ add: picked }),
+      })
+      setPicked([])
+      fetchStudents()
+    } finally {
+      setFiling(false)
+    }
+  }
+
   async function openSubjects(student: Student) {
     setSubjectsFor(student)
     setGrantsLoading(true)
@@ -161,6 +231,18 @@ export default function StudentsPage() {
 
   useEffect(() => {
     fetchStudents()
+  }, [page, search])
+
+  useEffect(() => {
+    fetch("/api/school/groups")
+      .then((r) => (r.ok ? r.json() : { groups: [] }))
+      .then((d) => setAllGroups((d.groups ?? []).map((g: SchoolGroup) => ({ id: g.id, name: g.name, color: g.color }))))
+      .catch(() => {})
+  }, [])
+
+  // Ticks belong to the rows on screen; changing page or search starts fresh.
+  useEffect(() => {
+    setPicked([])
   }, [page, search])
 
   const handleAddStudent = async (e: React.FormEvent) => {
@@ -288,6 +370,18 @@ export default function StudentsPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10">
+                        <input
+                          type="checkbox"
+                          aria-label="Select every student on this page"
+                          checked={picked.length > 0 && picked.length === students.length}
+                          ref={(el) => {
+                            if (el) el.indeterminate = picked.length > 0 && picked.length < students.length
+                          }}
+                          onChange={(e) => setPicked(e.target.checked ? students.map((s) => s.id) : [])}
+                          className="h-4 w-4 accent-primary"
+                        />
+                      </TableHead>
                       <TableHead>Student</TableHead>
                       <TableHead>ARN</TableHead>
                       <TableHead className="text-center">Exams</TableHead>
@@ -299,7 +393,7 @@ export default function StudentsPage() {
                   {inGroups(students).map((section) => (
                   <TableBody key={section.key}>
                     <TableRow className="hover:bg-transparent">
-                      <TableCell colSpan={6} className="bg-muted/40 py-1.5">
+                      <TableCell colSpan={7} className="bg-muted/40 py-1.5">
                         <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                           {section.color && (
                             <span aria-hidden="true" className="h-2 w-2 rounded-full" style={{ backgroundColor: section.color }} />
@@ -315,8 +409,22 @@ export default function StudentsPage() {
                       <TableRow
                         key={student.id}
                         onClick={() => router.push(`/school/students/${student.id}`)}
+                        data-state={picked.includes(student.id) ? "selected" : undefined}
                         className="cursor-pointer"
                       >
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            aria-label={`Select ${student.firstName} ${student.lastName}`}
+                            checked={picked.includes(student.id)}
+                            onChange={() =>
+                              setPicked((prev) =>
+                                prev.includes(student.id) ? prev.filter((x) => x !== student.id) : [...prev, student.id],
+                              )
+                            }
+                            className="h-4 w-4 accent-primary"
+                          />
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <Avatar className="h-8 w-8">
@@ -377,6 +485,10 @@ export default function StudentsPage() {
                                   View Progress
                                 </Link>
                               </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openGroups(student)}>
+                                <FolderKanban className="mr-2 h-4 w-4" />
+                                Groups
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => openSubjects(student)}>
                                 <BookOpen className="mr-2 h-4 w-4" />
                                 Manage subjects
@@ -434,6 +546,112 @@ export default function StudentsPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* What you do with a handful of ticked students. */}
+        {picked.length > 0 && (
+          <div className="sticky bottom-4 z-30 mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 shadow-e2">
+            <p className="text-sm font-medium text-foreground">
+              {picked.length} selected
+            </p>
+            <div className="ml-auto flex flex-wrap items-center gap-2">
+              {allGroups.length === 0 ? (
+                <Link href="/school/groups" className="text-sm font-medium text-primary hover:underline">
+                  Make a group first
+                </Link>
+              ) : (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="sm" className="h-9 gap-1.5" disabled={filing}>
+                      {filing ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <FolderKanban className="h-3.5 w-3.5" aria-hidden="true" />}
+                      Add to group
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {allGroups.map((g) => (
+                      <DropdownMenuItem key={g.id} onClick={() => fileInto(g.id)}>
+                        <span aria-hidden="true" className="mr-2 h-2.5 w-2.5 rounded-full" style={{ backgroundColor: g.color }} />
+                        {g.name}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              <Button variant="ghost" size="sm" className="h-9 gap-1.5" onClick={() => setPicked([])}>
+                <X className="h-3.5 w-3.5" aria-hidden="true" />
+                Clear
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* One student, every group. */}
+        <Dialog open={!!groupsFor} onOpenChange={(open) => !open && !groupsSaving && setGroupsFor(null)}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>
+                Groups for {groupsFor?.firstName} {groupsFor?.lastName}
+              </DialogTitle>
+              <DialogDescription>
+                A group decides which subjects its students see, and keeps them together in this list.
+              </DialogDescription>
+            </DialogHeader>
+
+            {groupsLoading ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">Loading...</p>
+            ) : groupOptions.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border px-4 py-8 text-center">
+                <FolderKanban className="mx-auto mb-2 h-6 w-6 text-muted-foreground" aria-hidden="true" />
+                <p className="text-sm text-muted-foreground">No groups yet.</p>
+                <Link href="/school/groups" className="mt-2 inline-block text-sm font-medium text-primary hover:underline">
+                  Create one
+                </Link>
+              </div>
+            ) : (
+              <ul className="max-h-80 space-y-1.5 overflow-y-auto">
+                {groupOptions.map((g) => {
+                  const on = groupDraft.includes(g.id)
+                  return (
+                    <li key={g.id}>
+                      <label
+                        className={`flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-2.5 transition-colors ${
+                          on ? "border-primary/40 bg-primary/5" : "border-border hover:bg-muted/60"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={on}
+                          onChange={() =>
+                            setGroupDraft((prev) => (prev.includes(g.id) ? prev.filter((x) => x !== g.id) : [...prev, g.id]))
+                          }
+                          className="mt-0.5 h-4 w-4 accent-primary"
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="flex items-center gap-2 text-sm font-medium text-foreground">
+                            <span aria-hidden="true" className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: g.color }} />
+                            <span className="truncate">{g.name}</span>
+                          </span>
+                          <span className="mt-0.5 block text-xs text-muted-foreground">
+                            {g.memberCount} {g.memberCount === 1 ? "student" : "students"}
+                            {g.subjectCount > 0 && ` \u00b7 ${g.subjectCount} ${g.subjectCount === 1 ? "subject" : "subjects"}`}
+                          </span>
+                        </span>
+                      </label>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setGroupsFor(null)} disabled={groupsSaving}>
+                Cancel
+              </Button>
+              <Button onClick={saveGroups} disabled={groupsSaving || groupsLoading || groupOptions.length === 0}>
+                {groupsSaving ? "Saving..." : "Save"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Add Student Dialog */}
         <Dialog open={!!subjectsFor} onOpenChange={(open) => !open && setSubjectsFor(null)}>

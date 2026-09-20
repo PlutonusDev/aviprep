@@ -69,6 +69,19 @@ export async function ownsStudent(schoolId: string, studentId: string) {
   return !!student
 }
 
+/**
+ * The subset of these ids that really are this school's students. Group
+ * membership is a bare array of ObjectIds, so it has to be filtered on the way
+ * in or a school could write anyone's id into its own group.
+ */
+export async function studentsOf(schoolId: string, ids: unknown): Promise<string[]> {
+  if (!Array.isArray(ids)) return []
+  const candidates = [...new Set(ids.filter((id): id is string => typeof id === "string" && /^[a-f0-9]{24}$/i.test(id)))]
+  if (!candidates.length) return []
+  const rows = await prisma.user.findMany({ where: { id: { in: candidates }, flightSchoolId: schoolId }, select: { id: true } })
+  return rows.map((r) => r.id)
+}
+
 /** Everyone with access to the panel, owner first. */
 export async function instructorsOf(schoolId: string) {
   const school = await prisma.flightSchool.findUnique({ where: { id: schoolId }, select: { adminId: true, instructorIds: true } })

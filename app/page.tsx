@@ -356,9 +356,16 @@ export default function LandingPage() {
                   <div className="p-8 sm:p-10">
                     <h3 className="font-heading text-xl font-bold text-foreground">Let&apos;s talk</h3>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      Pricing, a demo portal, and a hand getting your students set up. We&apos;ll come back to you
-                      within two business days.
+                      Pricing and a hand getting your students set up. We&apos;ll come back to you within two
+                      business days.
                     </p>
+                    <Link
+                      href="/demo"
+                      className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+                    >
+                      Have a look through the panel first
+                      <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                    </Link>
                     <div className="mt-6">
                       <RtoForm />
                     </div>

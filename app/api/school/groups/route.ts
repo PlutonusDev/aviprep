@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { prisma } from "@lib/prisma"
-import { schoolWhereFor } from "@lib/school/access"
+import { schoolWhereFor, studentsOf } from "@lib/school/access"
 import { verifyToken } from "@lib/auth"
 import { sanitiseSubjectIds } from "@lib/school-access"
 
@@ -75,7 +75,7 @@ export async function POST(request: Request) {
       name,
       description: String(body.description ?? "").trim() || null,
       color: typeof body.color === "string" ? body.color : "#3b82f6",
-      studentIds: Array.isArray(body.studentIds) ? body.studentIds : [],
+      studentIds: await studentsOf(school.id, body.studentIds),
       subjectIds: sanitiseSubjectIds(body.subjectIds),
     },
   })
