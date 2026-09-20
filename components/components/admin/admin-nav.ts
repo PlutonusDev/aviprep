@@ -6,6 +6,7 @@ import {
   GraduationCap,
   HelpCircle,
   ImageIcon,
+  KeyRound,
   LayoutDashboard,
   Library,
   Mail,
@@ -81,6 +82,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
       { name: "Curator payouts", href: "/admin/payouts", icon: Wallet },
       { name: "Products", href: "/admin/products", icon: Package },
       { name: "Coupons", href: "/admin/coupons", icon: Ticket },
+      { name: "Demo access", href: "/admin/demo", icon: KeyRound },
     ],
   },
   {

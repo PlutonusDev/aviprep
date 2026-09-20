@@ -23,13 +23,10 @@ const METHOD_TONE: Record<string, string> = {
 export default function DemoApi() {
   return (
     <div className="mx-auto max-w-4xl">
-      <PageHead
-        title="API"
-        blurb="If your student management system already knows who's enrolled, let it do the enrolling here too."
-      />
+      <PageHead title="API" blurb="https://aviprep.com.au/api/v1" />
 
       <div className="space-y-6">
-        <Panel title="Your key" description="Generated for the school. Rotate it whenever you like.">
+        <Panel title="Your key" description="Rotate it whenever you like.">
           <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/40 px-4 py-3">
             <KeyRound className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
             <code className="min-w-0 flex-1 truncate font-mono text-sm text-foreground">avp_live_••••••••••••••••••••••••7f2a</code>
@@ -57,7 +54,7 @@ export default function DemoApi() {
           </div>
         </Panel>
 
-        <Panel title="Webhooks" description="We'll post to your system when something happens here.">
+        <Panel title="Webhooks" description="We post to your system when something happens here.">
           <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/40 px-4 py-3">
             <Webhook className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
             <code className="min-w-0 flex-1 truncate font-mono text-sm text-foreground">https://windsock.example.com/hooks/aviprep</code>
@@ -69,9 +66,7 @@ export default function DemoApi() {
               </li>
             ))}
           </ul>
-          <p className="mt-4 text-sm text-muted-foreground">
-            Every request is signed with a secret only you and we hold, so your system can tell a real one from anything else.
-          </p>
+          <p className="mt-4 text-sm text-muted-foreground">Every request is signed with a shared secret.</p>
         </Panel>
       </div>
     </div>

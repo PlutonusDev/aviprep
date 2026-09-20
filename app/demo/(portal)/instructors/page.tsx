@@ -8,7 +8,7 @@ export default function DemoInstructors() {
     <div className="mx-auto max-w-4xl">
       <PageHead
         title="Instructors"
-        blurb={`Everyone here can manage ${DEMO_SCHOOL.name} — its students, groups and subjects. Any of them can invite another.`}
+        blurb={`${DEMO_INSTRUCTORS.length} with access, ${DEMO_INVITES.length} invited`}
         aside={
           <span className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground">
             <UserPlus className="h-4 w-4" aria-hidden="true" />
@@ -42,7 +42,7 @@ export default function DemoInstructors() {
           </ul>
         </Panel>
 
-        <Panel title="Waiting to accept" description="Invites that haven't been used yet.">
+        <Panel title="Invited">
           <ul className="divide-y divide-border">
             {DEMO_INVITES.map((invite) => (
               <li key={invite.email} className="flex items-center gap-3 py-3">
@@ -60,25 +60,6 @@ export default function DemoInstructors() {
           </ul>
         </Panel>
 
-        <Panel title="How it works">
-          <ol className="space-y-4">
-            {[
-              { n: 1, title: "Send the invite", body: "An email address and, if you like, a note. The link works for two weeks." },
-              { n: 2, title: "They accept", body: "Already have an AviPrep account? One button. If not, they set a password on the way in." },
-              { n: 3, title: "Same access as you", body: "Students, groups, subjects and progress. Only the owner can remove someone, and anyone can show themselves out." },
-            ].map((step) => (
-              <li key={step.n} className="flex gap-3">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-                  {step.n}
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-sm font-medium text-foreground">{step.title}</span>
-                  <span className="block text-sm leading-relaxed text-muted-foreground">{step.body}</span>
-                </span>
-              </li>
-            ))}
-          </ol>
-        </Panel>
       </div>
     </div>
   )

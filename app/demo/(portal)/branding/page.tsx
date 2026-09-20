@@ -10,13 +10,10 @@ const OFF: string[] = ["forums", "messages"]
 export default function DemoBranding() {
   return (
     <div className="mx-auto max-w-4xl">
-      <PageHead
-        title="Your branding"
-        blurb="Students sign in at your address and see your school, not ours. Welcome emails go out co-branded."
-      />
+      <PageHead title="Your branding" blurb={`${DEMO_SCHOOL.subdomain}.aviprep.com.au`} />
 
       <div className="space-y-6">
-        <Panel title="Your address" description="A subdomain comes with the plan. Point your own domain at it if you'd rather.">
+        <Panel title="Your address" description="Or point your own domain at it.">
           <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/40 px-4 py-3">
             <Globe className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
             <code className="min-w-0 flex-1 truncate text-sm text-foreground">
@@ -29,7 +26,7 @@ export default function DemoBranding() {
           </div>
         </Panel>
 
-        <Panel title="Colours and logo" description="Used across the student app, the sign-in page and every email we send on your behalf.">
+        <Panel title="Colours and logo" description="The student app, the sign-in page and your emails.">
           <div className="grid gap-5 sm:grid-cols-2">
             <div className="space-y-3">
               {[
@@ -64,7 +61,7 @@ export default function DemoBranding() {
           </div>
         </Panel>
 
-        <Panel title="Which features your students get" description="Switch off anything that doesn't suit how you teach.">
+        <Panel title="Student features">
           <ul className="divide-y divide-border">
             {TENANT_FEATURES.map((feature) => {
               const on = !OFF.includes(feature.key)
@@ -86,9 +83,6 @@ export default function DemoBranding() {
               )
             })}
           </ul>
-          <p className="mt-4 text-sm text-muted-foreground">
-            A feature switched off disappears from the student&rsquo;s navigation and its pages stop answering, so there&rsquo;s no back door into it.
-          </p>
         </Panel>
       </div>
     </div>

@@ -176,6 +176,30 @@ model SchoolInvite {
   @@index([email])
 }
 
+/// A password-protected invitation to the flight school demo portal (app/demo).
+/// The code is emailed once and only its hash is kept.
+model DemoGrant {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  organisation  String
+  contactName   String?
+  email         String
+  codeHash      String    @unique
+  /// The last four characters, so two live codes can be told apart in the list.
+  codeHint      String
+  note          String?
+  invitedById   String    @db.ObjectId
+  expiresAt     DateTime
+  sentAt        DateTime  @default(now())
+  sendCount     Int       @default(1)
+  revokedAt     DateTime?
+  firstOpenedAt DateTime?
+  lastOpenedAt  DateTime?
+  opens         Int       @default(0)
+  createdAt     DateTime  @default(now())
+
+  @@index([email])
+}
+
 model SchoolPurchase {
   id        String    @id @default(auto()) @map("_id")  @db.ObjectId
 

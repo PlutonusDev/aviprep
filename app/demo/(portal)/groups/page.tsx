@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { BookOpen, Plus, UserPlus, Users } from "lucide-react"
 import { PageHead, Panel } from "@/components/demo/bits"
-import { DEMO_GROUPS, PASS_MARK, attemptsFor, averageOf, membersOf, subjectCode, subjectName } from "@lib/demo/school"
+import { DEMO_GROUPS, PASS_MARK, attemptsFor, averageOf, membersOf, subjectCode } from "@lib/demo/school"
 
 /** Groups: a class, an intake, or a course, with the subjects it unlocks. */
 export default function DemoGroups() {
@@ -9,7 +9,7 @@ export default function DemoGroups() {
     <div className="mx-auto max-w-6xl">
       <PageHead
         title="Groups"
-        blurb="A group is a class, an intake or a course. Put students in it and they get its subjects — no need to hand out access one by one."
+        blurb={`${DEMO_GROUPS.length} groups`}
         aside={
           <span className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground">
             <Plus className="h-4 w-4" aria-hidden="true" />
@@ -83,23 +83,6 @@ export default function DemoGroups() {
         })}
       </ul>
 
-      <Panel className="mt-6" title="What a group decides" description="One switch instead of a row of them.">
-        <ul className="grid gap-4 sm:grid-cols-3">
-          {[
-            { title: "Who sees what", body: "Everyone in the group gets its subjects. Take someone out and the access goes with them." },
-            { title: "How the list reads", body: "The Students table files everyone under their group, so an intake reads as an intake." },
-            { title: "How they're tracked", body: "Cohort averages per group, so you can see one class pulling ahead of another." },
-          ].map((item) => (
-            <li key={item.title}>
-              <p className="text-sm font-medium text-foreground">{item.title}</p>
-              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{item.body}</p>
-            </li>
-          ))}
-        </ul>
-        <p className="mt-4 text-sm text-muted-foreground">
-          Subjects on offer: {DEMO_GROUPS.flatMap((g) => g.subjectIds).filter((v, i, a) => a.indexOf(v) === i).map(subjectName).join(", ")}.
-        </p>
-      </Panel>
     </div>
   )
 }

@@ -1,7 +1,8 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { ArrowLeft, BookOpen, Clock, Target, TrendingDown } from "lucide-react"
+import { ArrowLeft, BookOpen, Clock, Target } from "lucide-react"
 import { Initials, Panel, ScoreBars, Stat } from "@/components/demo/bits"
+import { StatusPill } from "@/components/demo/live"
 import { DEMO_STUDENTS, PASS_MARK, averageOf, groupById, studentSummary, subjectCode, subjectName } from "@lib/demo/school"
 
 export function generateStaticParams() {
@@ -56,6 +57,8 @@ export default async function DemoStudent({ params }: { params: Promise<{ studen
                 </span>
               </>
             )}
+            <span aria-hidden="true">·</span>
+            <StatusPill studentId={student.id} />
           </p>
         </div>
       </div>
@@ -74,7 +77,7 @@ export default async function DemoStudent({ params }: { params: Promise<{ studen
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <Panel className="lg:col-span-2" title="By subject" description={`Every sitting, oldest to newest. The dashed line is ${PASS_MARK}%.`}>
+        <Panel className="lg:col-span-2" title="By subject" description={`Oldest to newest. The line is ${PASS_MARK}%.`}>
           <div className="space-y-5">
             {bySubject.map((s) => (
               <div key={s.id}>
@@ -94,7 +97,7 @@ export default async function DemoStudent({ params }: { params: Promise<{ studen
         </Panel>
 
         <div className="space-y-6">
-          <Panel title="Where they're weakest" description="Lowest average first.">
+          <Panel title="Weakest subjects">
             <ul className="space-y-3">
               {weakest.map((s) => (
                 <li key={s.id} className="flex items-baseline justify-between gap-3">
@@ -108,10 +111,6 @@ export default async function DemoStudent({ params }: { params: Promise<{ studen
                 </li>
               ))}
             </ul>
-            <p className="mt-4 flex items-start gap-1.5 text-xs text-muted-foreground">
-              <TrendingDown className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" aria-hidden="true" />
-              Students see the same breakdown, down to the topic.
-            </p>
           </Panel>
 
           <Panel title="Recent exams">

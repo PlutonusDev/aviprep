@@ -9,10 +9,7 @@ export default function DemoSeats() {
 
   return (
     <div className="mx-auto max-w-4xl">
-      <PageHead
-        title="Seats & subjects"
-        blurb="Buy seats per subject and hand them out as students come through. A seat goes back on the shelf when a student leaves."
-      />
+      <PageHead title="Seats & subjects" blurb={`${used} of ${total} in use`} />
 
       <div className="space-y-6">
         <Panel>
@@ -59,15 +56,15 @@ export default function DemoSeats() {
           </ul>
         </Panel>
 
-        <Panel title="What a seat gets a student">
-          <ul className="grid gap-3 sm:grid-cols-2">
+        <Panel title="A seat covers">
+          <ul className="grid gap-2.5 sm:grid-cols-2">
             {[
-              "The full question bank for that subject, written against the Part 61 MOS",
-              "Practice exams that mirror the real sitting: timed, flagged, marked at the end",
-              "Course material — lessons, flash cards and quizzes",
-              "Their own results and weak topics, which you see too",
+              "The question bank for that subject",
+              "Practice exams, timed and marked",
+              "Lessons, flash cards and quizzes",
+              "Results and weak topics",
             ].map((item) => (
-              <li key={item} className="flex gap-2.5 text-sm leading-relaxed text-muted-foreground">
+              <li key={item} className="flex gap-2.5 text-sm text-muted-foreground">
                 <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden="true" />
                 {item}
               </li>

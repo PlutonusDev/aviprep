@@ -51,14 +51,29 @@ export function Stat({
   )
 }
 
-/** Panel around a block of the real interface. */
-export function Panel({ title, description, children, className }: { title?: string; description?: string; children: React.ReactNode; className?: string }) {
+export function Panel({
+  title,
+  description,
+  action,
+  children,
+  className,
+}: {
+  title?: string
+  description?: string
+  /** Right-aligned link or control in the panel header. */
+  action?: React.ReactNode
+  children: React.ReactNode
+  className?: string
+}) {
   return (
-    <section className={cn("rounded-xl border border-border bg-card shadow-e1", className)}>
-      {(title || description) && (
-        <div className="border-b border-border px-5 py-4">
-          {title && <h2 className="text-base font-semibold text-foreground">{title}</h2>}
-          {description && <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>}
+    <section className={cn("rounded-xl border border-border bg-card", className)}>
+      {(title || description || action) && (
+        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-border px-5 py-3.5">
+          <div className="min-w-0">
+            {title && <h2 className="text-sm font-semibold text-foreground">{title}</h2>}
+            {description && <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>}
+          </div>
+          {action}
         </div>
       )}
       <div className="p-5">{children}</div>
