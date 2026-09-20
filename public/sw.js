@@ -8,10 +8,11 @@
  *
  * Bump VERSION to drop old caches on the next visit.
  */
-const VERSION = "v1"
+const VERSION = "v2"
 const STATIC_CACHE = `aviprep-static-${VERSION}`
 const OFFLINE_URL = "/offline.html"
-const PRECACHE = [OFFLINE_URL, "/img/AviPrep-logo.png", "/android-chrome-192x192.png"]
+// The offline page carries its own artwork, so install stays to two small files.
+const PRECACHE = [OFFLINE_URL, "/android-chrome-192x192.png"]
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -53,6 +54,7 @@ self.addEventListener("fetch", (event) => {
   const immutable =
     url.pathname.startsWith("/_next/static/") ||
     url.pathname.startsWith("/icons/") ||
+    url.pathname.startsWith("/img/") ||
     /^\/(android-chrome-\d+x\d+|apple-touch-icon|favicon-\d+x\d+)\.png$/.test(url.pathname)
 
   if (immutable) {

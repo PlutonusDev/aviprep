@@ -5,13 +5,13 @@ import type { MosLink } from "@lib/mos/subjects"
 export type ContentType = "question" | "lesson" | "course"
 export type ReviewKind = "new" | "edit"
 export type ReviewAction = "approve" | "request-changes" | "reject" | "comment"
-export type EventAction = "submitted" | "comment" | "approved" | "changes-requested" | "rejected"
+export type EventAction = "submitted" | "comment" | "approved" | "changes-requested" | "rejected" | "ai-comment" | "ai-flagged"
 
 export interface Person {
   id: string
   name: string
   email: string | null
-  role: "admin" | "curator"
+  role: "admin" | "curator" | "ai"
   credentials: string[]
 }
 
@@ -29,6 +29,7 @@ export interface QueueItem {
   author: Person | null
   comments: number
   resubmitted: boolean
+  aiFlagged: boolean
   missingMos: boolean
 }
 

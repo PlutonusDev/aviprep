@@ -1,4 +1,4 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { type NextRequest, NextResponse, after } from "next/server"
 import { prisma } from "@lib/prisma"
 import { isResponse, requireStaff } from "@lib/staff"
 import { effectiveStatus, validateQuestion, isValid } from "@lib/question-validation"
@@ -13,6 +13,7 @@ import {
   saveMappings,
 } from "@lib/mos/mappings"
 import { decide, logEvent } from "@lib/review/review"
+import { reviewSubmission } from "@lib/review/ai-reviewer"
 import { answerTypeOf } from "@lib/exam/marking"
 
 const CONTENT_FIELDS = [
@@ -137,6 +138,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         })
         await logEvent({ contentType: "question", contentId: id, kind: "edit", action: "submitted", staff, message: body.authorNote })
         await saveMos()
+        after(() => reviewSubmission(id, "edit"))
         return NextResponse.json({ ...question, revisionPending: true })
       }
 
@@ -145,10 +147,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         where: { id },
         data: { ...contentFrom(body), status, authorNote: body.authorNote ?? undefined, ...(status === "review" ? clearRejection : {}) },
       })
+      await saveMos()
       if (status === "review" && existing.status !== "review") {
         await logEvent({ contentType: "question", contentId: id, kind: "new", action: "submitted", staff, message: body.authorNote })
+        // After saveMos, so the reviewer sees the links the curator just made.
+        after(() => reviewSubmission(id, "new"))
       }
-      await saveMos()
       return NextResponse.json(question)
     }
 

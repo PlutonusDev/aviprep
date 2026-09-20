@@ -52,6 +52,7 @@ function QueueRow({ item, active, onSelect }: { item: QueueItem; active: boolean
             </span>
             {item.resubmitted && <span className="rounded bg-warning/15 px-1.5 py-px text-foreground">Resubmitted</span>}
             {item.missingMos && <span className="rounded bg-warning/15 px-1.5 py-px text-foreground">No MOS link</span>}
+            {item.aiFlagged && <span className="rounded bg-warning/15 px-1.5 py-px text-foreground">AI raised something</span>}
           </span>
           <span className="line-clamp-2 block text-sm font-medium leading-snug text-foreground">{item.title}</span>
           <span className="block truncate text-xs text-muted-foreground">

@@ -4,7 +4,7 @@ import type React from "react"
 import { useState } from "react"
 import { format, formatDistanceToNowStrict } from "date-fns"
 import { toast } from "sonner"
-import { CheckCircle2, CornerUpLeft, Loader2, MessageCircle, Send, Upload, XCircle } from "lucide-react"
+import { CheckCircle2, CornerUpLeft, Loader2, MessageCircle, Send, Sparkles, Upload, XCircle } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -18,6 +18,8 @@ const ACTIONS: Record<EventAction, { verb: string; icon: React.ComponentType<{ c
   approved: { verb: "approved it", icon: CheckCircle2, tone: "bg-success/15 text-success" },
   "changes-requested": { verb: "asked for changes", icon: CornerUpLeft, tone: "bg-warning/15 text-warning" },
   rejected: { verb: "rejected it", icon: XCircle, tone: "bg-destructive/10 text-destructive" },
+  "ai-comment": { verb: "read it", icon: Sparkles, tone: "bg-primary/10 text-primary" },
+  "ai-flagged": { verb: "read it and raised something", icon: Sparkles, tone: "bg-warning/15 text-warning" },
 }
 
 export function initials(name: string) {
@@ -46,6 +48,9 @@ export function PersonChip({ person, size = "sm", showCredentials = false }: { p
           {person.name}
           {person.role === "admin" && (
             <span className="rounded border border-primary/30 bg-primary/10 px-1 text-[10px] font-semibold uppercase tracking-wide">Admin</span>
+          )}
+          {person.role === "ai" && (
+            <span className="rounded border border-border bg-muted px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">AI</span>
           )}
         </span>
         {showCredentials && credentials.length > 0 && (
@@ -95,9 +100,10 @@ function Event({ event, last }: { event: TimelineEvent; last: boolean }) {
           <p
             className={cn(
               "mt-2 whitespace-pre-line rounded-lg border px-3 py-2.5 text-sm text-foreground",
-              event.action === "changes-requested" && "border-warning/40 bg-warning/5",
+              (event.action === "changes-requested" || event.action === "ai-flagged") && "border-warning/40 bg-warning/5",
               event.action === "rejected" && "border-destructive/30 bg-destructive/5",
-              (event.action === "comment" || event.action === "submitted" || event.action === "approved") && "border-border bg-card",
+              (event.action === "comment" || event.action === "submitted" || event.action === "approved" || event.action === "ai-comment") &&
+                "border-border bg-card",
             )}
           >
             {event.message}

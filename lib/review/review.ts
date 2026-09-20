@@ -26,7 +26,7 @@ import { answerTypeOf } from "@lib/exam/marking"
 export type ContentType = "question" | "lesson" | "course"
 export type ReviewKind = "new" | "edit"
 export type ReviewAction = "approve" | "request-changes" | "reject" | "comment"
-export type EventAction = "submitted" | "comment" | "approved" | "changes-requested" | "rejected"
+export type EventAction = "submitted" | "comment" | "approved" | "changes-requested" | "rejected" | "ai-comment" | "ai-flagged"
 
 export const CONTENT_TYPES: ContentType[] = ["question", "lesson", "course"]
 export const MESSAGE_MAX = 2000
@@ -170,6 +170,8 @@ export interface QueueItem {
   comments: number
   /** It came back after an admin asked for changes. */
   resubmitted: boolean
+  /** AviPrep Intelligence read it and thinks a person should look closely. */
+  aiFlagged: boolean
   /** Unpublished content missing the primary MOS link it needs to go live. */
   missingMos: boolean
 }
@@ -223,17 +225,19 @@ export async function reviewQueue(): Promise<QueueItem[]> {
   ]
   const events = ids.length
     ? await prisma.reviewEvent.findMany({
-        where: { contentId: { in: ids }, action: { in: ["comment", "changes-requested", "submitted"] } },
+        where: { contentId: { in: ids }, action: { in: ["comment", "changes-requested", "submitted", "ai-comment", "ai-flagged"] } },
         select: { contentId: true, kind: true, action: true, actorId: true, createdAt: true },
         orderBy: { createdAt: "asc" },
       })
     : []
-  const stats = new Map<string, { comments: number; resubmitted: boolean; submittedBy?: string }>()
+  const stats = new Map<string, { comments: number; resubmitted: boolean; aiFlagged: boolean; submittedBy?: string }>()
   for (const e of events) {
     const key = `${e.contentId}:${e.kind}`
-    const entry = stats.get(key) ?? { comments: 0, resubmitted: false }
-    if (e.action === "comment") entry.comments += 1
+    const entry = stats.get(key) ?? { comments: 0, resubmitted: false, aiFlagged: false }
+    if (e.action === "comment" || e.action === "ai-comment" || e.action === "ai-flagged") entry.comments += 1
     if (e.action === "changes-requested") entry.resubmitted = true
+    // Events are in order, so the latest AI read wins after a resubmission.
+    if (e.action === "ai-comment" || e.action === "ai-flagged") entry.aiFlagged = e.action === "ai-flagged"
     if (e.action === "submitted") entry.submittedBy = e.actorId
     stats.set(key, entry)
   }
@@ -253,7 +257,7 @@ export async function reviewQueue(): Promise<QueueItem[]> {
     ...events.map((e) => e.actorId),
   ])
   const person = (id: string | null | undefined) => (id ? people.get(id) ?? null : null)
-  const extra = (id: string, kind: ReviewKind) => stats.get(`${id}:${kind}`) ?? { comments: 0, resubmitted: false }
+  const extra = (id: string, kind: ReviewKind) => stats.get(`${id}:${kind}`) ?? { comments: 0, resubmitted: false, aiFlagged: false }
 
   const items: QueueItem[] = [
     ...newQuestions.map((q) => ({
@@ -270,6 +274,7 @@ export async function reviewQueue(): Promise<QueueItem[]> {
       author: person(q.authorId),
       comments: extra(q.id, "new").comments,
       resubmitted: extra(q.id, "new").resubmitted,
+      aiFlagged: extra(q.id, "new").aiFlagged,
       missingMos: !mappedQuestions.has(q.id),
     })),
     ...questionEdits.map((q) => ({
@@ -286,6 +291,7 @@ export async function reviewQueue(): Promise<QueueItem[]> {
       author: person(q.authorId),
       comments: extra(q.id, "edit").comments,
       resubmitted: extra(q.id, "edit").resubmitted,
+      aiFlagged: extra(q.id, "edit").aiFlagged,
       missingMos: false,
     })),
     ...lessonEdits.map((l) => ({
@@ -302,6 +308,7 @@ export async function reviewQueue(): Promise<QueueItem[]> {
       author: person(l.authorId),
       comments: extra(l.id, "edit").comments,
       resubmitted: extra(l.id, "edit").resubmitted,
+      aiFlagged: extra(l.id, "edit").aiFlagged,
       missingMos: false,
     })),
     ...newCourses.map((c) => {
@@ -320,6 +327,7 @@ export async function reviewQueue(): Promise<QueueItem[]> {
         author: person(c.authorId),
         comments: extra(c.id, "new").comments,
         resubmitted: extra(c.id, "new").resubmitted,
+        aiFlagged: extra(c.id, "new").aiFlagged,
         missingMos: lessonIds.some((id) => !mappedLessons.has(id)),
       }
     }),
@@ -337,6 +345,7 @@ export async function reviewQueue(): Promise<QueueItem[]> {
       author: person(c.authorId),
       comments: extra(c.id, "edit").comments,
       resubmitted: extra(c.id, "edit").resubmitted,
+      aiFlagged: extra(c.id, "edit").aiFlagged,
       missingMos: false,
     })),
   ]

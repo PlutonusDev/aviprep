@@ -1,9 +1,10 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { type NextRequest, NextResponse, after } from "next/server"
 import { prisma } from "@lib/prisma"
 import { isResponse, requireStaff } from "@lib/staff"
 import { validateQuestion, isValid } from "@lib/question-validation"
 import { MOS_PUBLISH_ERROR, checkLinksForSubject, parseMosInput, saveMappings, withPrimaryMapping } from "@lib/mos/mappings"
 import { logEvent } from "@lib/review/review"
+import { reviewSubmission } from "@lib/review/ai-reviewer"
 import { answerTypeOf } from "@lib/exam/marking"
 
 export async function GET(request: NextRequest) {
@@ -147,6 +148,8 @@ export async function POST(request: NextRequest) {
     }
     if (status === "review") {
       await logEvent({ contentType: "question", contentId: question.id, kind: "new", action: "submitted", staff, message: body.authorNote })
+      // The curator doesn't wait on the model; its comment lands in the thread.
+      after(() => reviewSubmission(question.id, "new"))
     }
 
     return NextResponse.json(question)
